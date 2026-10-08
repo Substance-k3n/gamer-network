@@ -4,5 +4,16 @@
     "suspicious": "warn"
   },
   "plugins": ["typescript", "import", "react", "nextjs"],
-  "ignorePatterns": ["**/dist/**", "**/.next/**", "apps/mobile/**"]
+  "ignorePatterns": ["**/dist/**", "**/.next/**", "apps/mobile/**"],
+  "rules": {
+    "typescript/no-extraneous-class": [
+      "warn",
+      {
+        "allowWithDecorator": true
+      }
+    ]
+  },
+  "env": {
+    "node": true
+  }
 }
