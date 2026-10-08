@@ -1,0 +1,8 @@
+{
+  "name": "@app/api-spec",
+  "version": "0.0.0",
+  "private": true,
+  "files": [
+    "openapi.json"
+  ]
+}

@@ -1,0 +1,5 @@
+# apps/mobile is Flutter and is not a pnpm package.
+packages:
+  - 'apps/api'
+  - 'apps/web'
+  - 'packages/*'

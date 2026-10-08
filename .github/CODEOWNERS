@@ -1,0 +1,16 @@
+# A PR asks for review from the owner of every path it touches.
+# Last matching line wins.
+
+*                     @Substance-k3n @Natnsis
+
+/apps/api/            @Substance-k3n
+/apps/web/            @Substance-k3n
+/infra/               @Substance-k3n
+/.github/workflows/   @Substance-k3n
+
+/apps/mobile/         @Natnsis
+
+/packages/api-spec/   @Substance-k3n @Natnsis
+/docs/                @Substance-k3n @Natnsis
+/.claude/             @Substance-k3n @Natnsis
+/.github/CODEOWNERS   @Substance-k3n @Natnsis
