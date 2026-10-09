@@ -178,6 +178,10 @@ array) so each can grow a field later without breaking old apps.
 | GET    | `/v1/users/{username}` | `Profile`. Gaming IDs filtered by visibility and connection         |
 | GET    | `/v1/users?query=dav`  | Search by username or display name prefix → `{ items: UserCard[] }` |
 
+`404 not_found` for anyone you can't see: not live yet, banned, deleted,
+or blocked either way. Search needs ≥ 2 characters, returns up to 20 by
+username, and never includes you.
+
 ### Find Players
 
 | Method | Path                       | Body → Response                                                                                                                                                                                                                                                        |

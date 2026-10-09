@@ -664,6 +664,69 @@
           "me"
         ]
       }
+    },
+    "/v1/users/{username}": {
+      "get": {
+        "operationId": "usersGet",
+        "parameters": [
+          {
+            "name": "username",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Someone's profile. 404 if they don't exist, aren't live, or either of you blocked the other.",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/v1/users": {
+      "get": {
+        "operationId": "usersSearch",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSearchResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Find people by username or display name prefix.",
+        "tags": [
+          "users"
+        ]
+      }
     }
   },
   "info": {
@@ -1513,6 +1576,144 @@
         ]
       },
       "UsernameAvailability": {
+        "type": "object",
+        "properties": {}
+      },
+      "ProfileDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "description": "Already reset to not_available once its time has passed.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayerStatus"
+              }
+            ]
+          },
+          "ageRange": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgeRange"
+              }
+            ]
+          },
+          "availableDays": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Day"
+            }
+          },
+          "platforms": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Platform"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayTag"
+            }
+          },
+          "relationship": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Relationship"
+              }
+            ]
+          },
+          "bio": {
+            "type": "string",
+            "nullable": true
+          },
+          "statusUntil": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When available_tonight or playing clears itself."
+          },
+          "games": {
+            "description": "In profile order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserGameDto"
+            }
+          },
+          "gamingIds": {
+            "description": "Only the ones you may see.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GamingIdDto"
+            }
+          },
+          "stats": {
+            "$ref": "#/components/schemas/ProfileStatsDto"
+          },
+          "incomingRequestId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Set when relationship is incoming_request, to accept from the profile."
+          },
+          "id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string"
+          },
+          "statusGame": {
+            "nullable": true,
+            "description": "The game behind \"Playing …\".",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GameRefDto"
+              }
+            ]
+          },
+          "topGame": {
+            "nullable": true,
+            "description": "First game on the profile.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserGameDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "ageRange",
+          "availableDays",
+          "platforms",
+          "tags",
+          "relationship",
+          "bio",
+          "statusUntil",
+          "games",
+          "gamingIds",
+          "stats",
+          "incomingRequestId",
+          "id",
+          "username",
+          "displayName",
+          "avatarUrl",
+          "city",
+          "statusGame",
+          "topGame"
+        ]
+      },
+      "UserSearchResponse": {
         "type": "object",
         "properties": {}
       },
