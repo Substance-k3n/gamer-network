@@ -11,8 +11,8 @@ together.** Everything else waits. See [docs/PRD.md](docs/PRD.md).
 ```
 gamer-network/
 ├── apps/
-│   ├── admin/          Next.js moderation dashboard (mock data until the
-│   │                   moderation endpoints land).
+│   ├── admin/          Next.js moderation dashboard (mock data; the admin
+│   │                   endpoints exist, wiring is next).
 │   ├── api/            NestJS + PostgreSQL. The only thing that talks to the DB.
 │   ├── mobile/         Flutter app, Android first. The product.
 │   └── web/            Next.js: public listing share pages.
@@ -52,7 +52,7 @@ calls:
 | File                                               | For                                                     |
 | -------------------------------------------------- | ------------------------------------------------------- |
 | [docs/PRD.md](docs/PRD.md)                         | What the MVP is and the number that decides if it works |
-| [docs/BUILD_PLAN.md](docs/BUILD_PLAN.md)           | Phases from empty repo to closed beta, with status      |
+| [docs/BUILD_PLAN.md](docs/BUILD_PLAN.md)           | Where we are, what's next, phases to closed beta        |
 | [docs/DATA_MODEL.md](docs/DATA_MODEL.md)           | Every table, enum and rule                              |
 | [docs/API.md](docs/API.md)                         | Endpoints, conventions and how to wire the app          |
 | [docs/validation-test.md](docs/validation-test.md) | The manual Telegram test                                |
@@ -63,11 +63,11 @@ Requirements: Node 22 (`nvm use`), pnpm 10, Docker, Flutter (stable).
 
 ```bash
 pnpm install                                  # root tooling + git hooks
-docker compose -f infra/docker/dev/compose.yml up -d   # Postgres on :5470
+docker compose -f infra/docker/dev/compose.yml up -d   # Postgres :5470, RustFS :9470
 ```
 
-The apps themselves are scaffolded in their own PRs; each one's README
-says how to run it.
+Then each app's README says how to run it (start with
+[apps/api](apps/api/README.md)).
 
 ## Branches and commits
 

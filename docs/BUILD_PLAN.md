@@ -5,6 +5,54 @@ The map from an empty repo to a closed beta. Update the status marks
 is the map, not a one-time plan. Scope: [PRD.md](PRD.md). Tables:
 [DATA_MODEL.md](DATA_MODEL.md). Endpoints: [API.md](API.md).
 
+## Where we are (2026-10-09)
+
+**The API for phases 1–8 is merged into `dev`** (#3–#18): 145 e2e tests
+against Postgres and 31 unit tests, CI green. The app and the admin
+dashboard can build against every endpoint in [API.md](API.md).
+
+**Next, in order:**
+
+1. **`Idempotency-Key`** on the create endpoints (listings, connection
+   requests, play invites, reports). API.md promises it and CORS allows
+   the header, but no handler reads it yet. Small PR: a
+   `idempotency_keys` table (user, key, response, 24 h), an interceptor.
+2. **Phase 9 share page:** scaffold `apps/web` (Next.js), `/l/[id]` from
+   `GET /v1/public/listings/{id}` with Open Graph tags, privacy policy
+   page, `/.well-known/assetlinks.json` (needs the app's signing SHA-256
+   from Natnael).
+3. **Phase 9 deploy setup:** Dockerfiles for api, web and admin;
+   `infra/docker/prod` (Caddy, api, web, admin, Postgres 17, migrate
+   step, daily `pg_dump` + off-server copy); `docs/DEPLOY.md`. Can be
+   written and tested locally before there is a server.
+4. **Wire `apps/admin`** to the admin endpoints (Natnael's dashboard,
+   still on mock data): sign in with `/v1/auth/login`, then Reports,
+   Users, Games and Overview (metric). Groups stays mock.
+
+**Waiting on Kidus (keys come last, by choice):**
+
+| Needed                        | For                                        | Until then                |
+| ----------------------------- | ------------------------------------------ | ------------------------- |
+| `GOOGLE_CLIENT_IDS`           | Google sign-in                             | only email + password     |
+| `RESEND_API_KEY`, `MAIL_FROM` | verify / reset emails                      | codes printed to console  |
+| `FIREBASE_SERVICE_ACCOUNT`    | push                                       | pushes printed to console |
+| VPS, domain, R2 bucket        | deploy, share links, avatars in production | local only                |
+
+**Open decisions:**
+
+- PWA: proposed ADR-0008, a Flutter web build instead of a separate
+  Next.js PWA. Not written yet.
+- Branch protection on `main` and `dev` (phase 0). Until then PRs are
+  merged by their author once CI is green.
+- Launch games: codm, pubg and efootball are `is_launch` provisionally;
+  admins can switch them with `PATCH /v1/admin/games/{id}`.
+
+**Things that changed from the first version of the docs** (the docs now
+say the new thing): a listing's expiry counts from when play starts
+(`startsAt + duration`), not from posting; `GET /v1/play-invites` was
+added for the invite banner; the game switch is audited
+(`admin_actions.game_id`, migration `0003`).
+
 ## How we work through it
 
 - **Two tracks, one phase apart.** Kidus builds the API for phase N while
@@ -54,8 +102,8 @@ Branch: `feature/api-db`.
 - [x] CI `api` job gets a Postgres service; migrations run before tests (#3)
 - [x] Shared pieces: error envelope + error codes, UUIDv7, request
       validation (class-validator), app version gate (#4)
-- [ ] Cursor pagination and `Idempotency-Key`: built with the first list
-      and create endpoints (phase 4)
+- [x] Cursor pagination (`common/cursor.ts`, #12)
+- [ ] `Idempotency-Key` on create endpoints (documented, not built yet)
 - [x] `GET /v1/app/config`, `GET /v1/games` (#4)
 
 **Mobile:** generated `api_client` package, Dio setup (auth header,
@@ -180,14 +228,15 @@ the question and their answers show in `GET /admin/metrics`.
 
 ## Phase 8 — Safety and admin `[in progress]`
 
-Branches: `feature/api-safety`, `feature/web-admin`.
+Branches: `feature/api-safety`, `feature/api-admin`, then
+`feature/admin-api` for the dashboard wiring.
 
 - [x] Blocks with every effect in DATA_MODEL.md "Blocks"; reports; waitlist
 - [x] Admin endpoints + `admin_actions` audit log; bans revoke sessions;
       launch-game switch; `admin:grant` script
 - [x] `DELETE /me` + the 30-day scrub job
-- [ ] `apps/web` scaffold (Next.js), admin sign-in, reports queue,
-      ban/remove, the metric on one page
+- [ ] `apps/admin` (Natnael's dashboard, #8) wired to the admin
+      endpoints: sign-in, reports queue, ban/remove, the metric
 
 **Mobile:** Block / Report in every profile and listing menu, Blocked
 users in Settings, Delete account in Settings.
