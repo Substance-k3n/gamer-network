@@ -109,7 +109,7 @@ the days row.
 minutes and sees their gamer ID; a second account sees only the public
 gaming IDs.
 
-## Phase 4 — Find Players `[in progress]`
+## Phase 4 — Find Players `[done on the API side]`
 
 Branch: `feature/api-listings`.
 
@@ -117,7 +117,9 @@ Branch: `feature/api-listings`.
 - [x] `GET /listings` with all filters, cursor paging, block filtering
 - [x] `GET /listings/{id}`, `/close`, `GET /me/listing`, `/listings/stats`,
       `GET /public/listings/{id}` for share pages
-- [ ] Expiry job (every minute) + `listing_expiring` 15 min before
+- [x] Expiry job (every minute) + `listing_expiring` 15 min before
+      (`JobRunner`: timers in the API process, one Postgres advisory lock
+      per job so a second instance never doubles up; push comes in phase 6)
 - [x] Tests for every start/expiry case (`now`, `tonight` by day, in the
       evening and after midnight, `weekend` on weekdays and weekends) in
       `Africa/Addis_Ababa`
