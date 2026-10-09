@@ -165,8 +165,6 @@ skip it and look around.
 | PUT    | `/v1/me/avatar`            | `{ key }` → `Me`. The previous avatar is deleted                                                                                                                            |
 | DELETE | `/v1/me/avatar`            | → `Me` without an avatar                                                                                                                                                    |
 | POST   | `/v1/me/onboard`           | `204`. "Go live": needs ≥ 1 game, else `422 profile_incomplete`. Safe to repeat                                                                                             |
-| DELETE | `/v1/me`                   | `204`. Deletes the account (Play requirement)                                                                                                                               |
-| GET    | `/v1/me/blocks`            | `{ items: UserCard[] }`                                                                                                                                                     |
 | GET    | `/v1/me/listing`           | `{ listing: Listing \| null }` (see Find Players)                                                                                                                           |
 
 Onboarding maps one-to-one onto the prototype: step 1 → `PATCH /me`,
@@ -275,14 +273,20 @@ pushes. A token moves to whoever signed in on the phone last.
 
 ### Safety
 
-| Method | Path                  | Body → Response                                    |
-| ------ | --------------------- | -------------------------------------------------- |
-| POST   | `/v1/blocks`          | `{ userId }` → `204`                               |
-| DELETE | `/v1/blocks/{userId}` | `204`                                              |
-| POST   | `/v1/reports`         | `{ userId, listingId?, reason, details? }` → `204` |
+| Method | Path                  | Body → Response                                                                         |
+| ------ | --------------------- | --------------------------------------------------------------------------------------- |
+| POST   | `/v1/blocks`          | `{ userId }` → `204`. Safe to repeat                                                    |
+| DELETE | `/v1/blocks/{userId}` | `204`, or `404` if you hadn't blocked them                                              |
+| GET    | `/v1/me/blocks`       | `{ items: UserCard[] }` for Settings → Blocked users                                    |
+| POST   | `/v1/reports`         | `{ userId, listingId?, reason, details? }` → `204`. Goes to the admin queue             |
+| DELETE | `/v1/me`              | `{ password }` (when `hasPassword`) → `204`. `401 wrong_password`. Signs out everywhere |
 
 Every profile and listing card needs "Block" and "Report" in its menu
-(ADR-0005, Play policy).
+(ADR-0005, Play policy). Blocking hides you from each other everywhere,
+ends the connection and withdraws pending requests and invites both
+ways. Deleting an account closes the live listing, withdraws everything
+pending and removes connections at once; personal data is erased 30
+days later and the email can then sign up again.
 
 ### Groups (coming soon)
 

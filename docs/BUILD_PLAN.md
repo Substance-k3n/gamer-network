@@ -178,13 +178,13 @@ Branch: `feature/api-play`.
 **Acceptance:** the next day after a listing connection, both people get
 the question and their answers show in `GET /admin/metrics`.
 
-## Phase 8 — Safety and admin `[todo]`
+## Phase 8 — Safety and admin `[in progress]`
 
 Branches: `feature/api-safety`, `feature/web-admin`.
 
-- [ ] Blocks with every effect in DATA_MODEL.md "Blocks"; reports
+- [x] Blocks with every effect in DATA_MODEL.md "Blocks"; reports; waitlist
 - [ ] Admin endpoints + `admin_actions` audit log; bans revoke sessions
-- [ ] `DELETE /me` + the 30-day scrub job
+- [x] `DELETE /me` + the 30-day scrub job
 - [ ] `apps/web` scaffold (Next.js), admin sign-in, reports queue,
       ban/remove, the metric on one page
 
