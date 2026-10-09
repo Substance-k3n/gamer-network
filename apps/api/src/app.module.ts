@@ -5,6 +5,7 @@ import { DbModule } from './db/db.module.js';
 import { GamesModule } from './games/games.module.js';
 import { HealthModule } from './health/health.module.js';
 import { MailModule } from './mail/mail.module.js';
+import { ListingsModule } from './listings/listings.module.js';
 import { MeModule } from './me/me.module.js';
 import { StorageModule } from './storage/storage.module.js';
 import { UsersModule } from './users/users.module.js';
@@ -20,6 +21,7 @@ import { UsersModule } from './users/users.module.js';
     GamesModule,
     MeModule,
     UsersModule,
+    ListingsModule,
   ],
 })
 export class AppModule {}

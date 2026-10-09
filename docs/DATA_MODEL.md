@@ -155,7 +155,7 @@ Unique `(user_id, kind, game_id)`.
 | `play_when`               | play_when      |                                                                                      |
 | `starts_at`               | timestamptz    | Worked out by the API from `play_when`; see expiry rules                             |
 | `duration_hours`          | smallint       | What the poster picked: 2, 6 or 24 ("Expires after")                                 |
-| `expires_at`              | timestamptz    | `created_at + duration_hours`                                                        |
+| `expires_at`              | timestamptz    | `starts_at + duration_hours`                                                         |
 | `note`                    | text null      | ≤ 140 chars                                                                          |
 | `city`                    | text           | Copied from the owner at creation, for filtering                                     |
 | `status`                  | listing_status | Default `open`                                                                       |
@@ -223,11 +223,12 @@ These live in the services and each has a test.
 
 **Listing times.** The app sends `playWhen` and `durationHours`; the API
 works out the rest, in Addis time. `starts_at`: `now` → created time;
-`tonight` → 20:00 today, or the created time if later; `weekend` → 10:00
-the coming Saturday, or the created time if it is already the weekend.
-`expires_at` = created + 2, 6 or 24 h, whatever the poster picked. A
-`weekend` listing posted on Monday with 24 h would expire before it
-starts, so `weekend` listings get at least until `starts_at` + 6 h. A job every minute sets
+`tonight` → 20:00 today, or the created time if it is already past 20:00
+or still before 04:00; `weekend` → 10:00 the coming Saturday, or the
+created time if it is already Saturday or Sunday. `expires_at` =
+`starts_at` + 2, 6 or 24 h, whatever the poster picked: the duration is
+how long the game stays open once it starts, so a `tonight` or `weekend`
+listing never expires before it begins. A job every minute sets
 `status = 'expired'` on passed listings and `expired` on their pending
 requests; reads also filter on `expires_at > now()` so a late job never
 shows a dead listing. 15 min before expiry the owner gets

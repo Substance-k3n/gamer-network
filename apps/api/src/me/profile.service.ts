@@ -81,7 +81,7 @@ export class ProfileService {
     @Inject(MEDIA_STORAGE) private readonly storage: MediaStorage,
   ) {}
 
-  private avatarUrl(key: string | null) {
+  avatarUrl(key: string | null) {
     return key && this.storage.publicUrl(key);
   }
 

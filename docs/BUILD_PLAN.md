@@ -109,16 +109,18 @@ the days row.
 minutes and sees their gamer ID; a second account sees only the public
 gaming IDs.
 
-## Phase 4 — Find Players `[todo]`
+## Phase 4 — Find Players `[in progress]`
 
 Branch: `feature/api-listings`.
 
-- [ ] `POST /listings` with the expiry rules and one-live-listing rule
-- [ ] `GET /listings` with all filters, cursor paging, block filtering
-- [ ] `GET /listings/{id}`, `/close`, `GET /me/listing`, `/listings/stats`
+- [x] `POST /listings` with the expiry rules and one-live-listing rule
+- [x] `GET /listings` with all filters, cursor paging, block filtering
+- [x] `GET /listings/{id}`, `/close`, `GET /me/listing`, `/listings/stats`,
+      `GET /public/listings/{id}` for share pages
 - [ ] Expiry job (every minute) + `listing_expiring` 15 min before
-- [ ] Tests for every expiry case (`now`, `tonight` before and after
-      02:00, `scheduled`, 24 h cap) in `Africa/Addis_Ababa`
+- [x] Tests for every start/expiry case (`now`, `tonight` by day, in the
+      evening and after midnight, `weekend` on weekdays and weekends) in
+      `Africa/Addis_Ababa`
 
 **Mobile:** Find Players list with filter chips and live countdowns,
 listing card, Post a listing sheet, your live listing on Home.
