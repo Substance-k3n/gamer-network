@@ -33,6 +33,19 @@ export const env = {
   get launchCity() {
     return process.env.LAUNCH_CITY ?? 'Addis Ababa';
   },
+  get resendApiKey() {
+    return process.env.RESEND_API_KEY ?? '';
+  },
+  get mailFrom() {
+    return process.env.MAIL_FROM ?? 'gamer-network <no-reply@example.com>';
+  },
+  /** Every OAuth client id whose Google ID tokens we accept (Android, iOS, web). */
+  get googleClientIds() {
+    return (process.env.GOOGLE_CLIENT_IDS ?? '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
+  },
   /** Browser origins allowed to call the API (the PWA, the web site). */
   get webOrigins() {
     return (process.env.WEB_ORIGINS ?? 'http://localhost:3000,http://localhost:8080')

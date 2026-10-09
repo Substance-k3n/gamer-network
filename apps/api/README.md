@@ -17,6 +17,16 @@ pnpm --filter @app/api spec       # rewrite packages/api-spec/openapi.json
 
 **Commit `openapi.json` with every API change.** CI fails if it is stale.
 
+## Sign-in (ADR-0007)
+
+Every route needs `Authorization: Bearer <token>` unless it's marked
+`@Public()`. Use `@CurrentUser()` for the signed-in user and
+`@RequireVerifiedEmail()` on routes that need a verified email (posting
+listings, sending requests).
+
+Without `RESEND_API_KEY`, emails (and their 6-digit codes) are printed to
+the API console. Google sign-in needs `GOOGLE_CLIENT_IDS`.
+
 ## Database
 
 Drizzle (ADR-0006). The schema is TypeScript in `src/db/schema/`, one file
@@ -48,7 +58,8 @@ generated Dart client gets, so name handlers for the caller.
 
 ```
 src/
-├── auth/           Google sign-in, emailed code, sessions
+├── auth/           email + password, Google, sessions, email codes  ✓
+├── me/             GET /me, username availability  ✓ (profile editing: phase 3)
 ├── users/          gamer profile: games, ranks, platforms, gaming IDs, age range
 ├── games/          the 2–3 launch games and their modes/ranks (seeded, not user-made)
 ├── listings/       Find Players posts, filters, expiry

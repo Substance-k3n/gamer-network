@@ -1,4 +1,5 @@
 import { Controller, Get, Inject, ServiceUnavailableException } from '@nestjs/common';
+import { Public } from '../auth/auth.decorators.js';
 import { ApiProperty, ApiServiceUnavailableResponse, ApiTags } from '@nestjs/swagger';
 import { sql } from 'drizzle-orm';
 import type { Db } from '../db/db.js';
@@ -13,6 +14,7 @@ export class HealthResponse {
 }
 
 @ApiTags('health')
+@Public()
 @Controller('health')
 export class HealthController {
   constructor(@Inject(DB) private readonly db: Db) {}

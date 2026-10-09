@@ -10,7 +10,7 @@ describe('API conventions', () => {
 
   beforeAll(async () => {
     process.env.MIN_APP_VERSION = '1.2.0';
-    app = await createTestApp();
+    ({ app } = await createTestApp());
   });
   afterAll(async () => {
     process.env.MIN_APP_VERSION = prevMin;
