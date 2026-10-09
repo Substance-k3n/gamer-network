@@ -31,6 +31,23 @@ jobs:
 
   api:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: gn
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: gn
+        ports:
+          - 5470:5432
+        options: >-
+          --health-cmd "pg_isready -U gn -d gn"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # Same server and credentials as infra/docker/dev; tests use gn_test.
+      DATABASE_URL: postgres://gn:password@localhost:5470/gn
     steps:
       - uses: actions/checkout@v4
 
@@ -50,7 +67,22 @@ jobs:
       - name: Test
         run: pnpm --filter @app/api test
 
-      - name: Test (e2e)
+      # ADR-0006: a schema change must come with its migration.
+      - name: Migrations match the schema
+        run: |
+          pnpm --filter @app/api db:generate
+          git diff --exit-code apps/api/drizzle || {
+            echo "::error::apps/api/src/db/schema changed without a migration. Run 'pnpm --filter @app/api db:generate' and commit it."
+            exit 1
+          }
+          test -z "$(git status --porcelain apps/api/drizzle)"
+
+      - name: Migrate and seed a fresh database
+        run: |
+          pnpm --filter @app/api db:migrate
+          pnpm --filter @app/api db:seed
+
+      - name: Test (e2e, real Postgres)
         run: pnpm --filter @app/api test:e2e
 
       # ADR-0003: the committed spec must match the code.
