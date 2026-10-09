@@ -1094,6 +1094,244 @@
           "listings"
         ]
       }
+    },
+    "/v1/connection-requests": {
+      "post": {
+        "operationId": "connectionRequestsSend",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendRequestBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionRequestDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "\"Connect\" on a listing card (pass listingId) or a profile. 409 already_connected,\nrequest_pending, request_waiting_for_you (fields.requestId: accept that instead),\nlisting_not_open; 429 request_cooldown, daily_limit.",
+        "tags": [
+          "connections"
+        ]
+      },
+      "get": {
+        "operationId": "connectionRequestsList",
+        "parameters": [
+          {
+            "name": "direction",
+            "required": false,
+            "in": "query",
+            "description": "incoming: asking you (Alerts). outgoing: yours, still waiting.",
+            "schema": {
+              "default": "incoming",
+              "type": "string",
+              "enum": [
+                "incoming",
+                "outgoing"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionRequestListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Pending requests to you (Alerts) or from you.",
+        "tags": [
+          "connections"
+        ]
+      }
+    },
+    "/v1/connection-requests/{id}/accept": {
+      "post": {
+        "operationId": "connectionRequestsAccept",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedRequestDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Connects you; takes a slot on their listing and schedules check-ins if it came from one.",
+        "tags": [
+          "connections"
+        ]
+      }
+    },
+    "/v1/connection-requests/{id}/decline": {
+      "post": {
+        "operationId": "connectionRequestsDecline",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "\"Not now\".",
+        "tags": [
+          "connections"
+        ]
+      }
+    },
+    "/v1/connection-requests/{id}": {
+      "delete": {
+        "operationId": "connectionRequestsCancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Withdraw your own pending request.",
+        "tags": [
+          "connections"
+        ]
+      }
+    },
+    "/v1/me/connections": {
+      "get": {
+        "operationId": "connectionsList",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Your connections, newest first.",
+        "tags": [
+          "connections"
+        ]
+      }
+    },
+    "/v1/connections/{userId}": {
+      "delete": {
+        "operationId": "connectionsRemove",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "connections"
+        ]
+      }
     }
   },
   "info": {
@@ -2607,6 +2845,141 @@
           "startsAt",
           "expiresAt",
           "note"
+        ]
+      },
+      "SendRequestBody": {
+        "type": "object",
+        "properties": {
+          "toUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "listingId": {
+            "type": "string",
+            "description": "When sent from a listing card: one of their live listings.",
+            "format": "uuid"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 140
+          }
+        },
+        "required": [
+          "toUserId"
+        ]
+      },
+      "ConnectionRequestDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RequestStatus"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "from": {
+            "$ref": "#/components/schemas/UserCardDto"
+          },
+          "to": {
+            "$ref": "#/components/schemas/UserCardDto"
+          },
+          "listing": {
+            "nullable": true,
+            "description": "Set when sent from a listing card (\"wants to play · Div 2 EA FC 25\").",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingDto"
+              }
+            ]
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "id",
+          "from",
+          "to",
+          "listing",
+          "message",
+          "createdAt"
+        ]
+      },
+      "ConnectionRequestListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "Pending only, newest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConnectionRequestDto"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "ConnectionDto": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/UserCardDto"
+          },
+          "connectedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user",
+          "connectedAt"
+        ]
+      },
+      "AcceptedRequestDto": {
+        "type": "object",
+        "properties": {
+          "request": {
+            "$ref": "#/components/schemas/ConnectionRequestDto"
+          },
+          "connection": {
+            "$ref": "#/components/schemas/ConnectionDto"
+          }
+        },
+        "required": [
+          "request",
+          "connection"
+        ]
+      },
+      "ConnectionPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConnectionDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
         ]
       },
       "ErrorBody": {

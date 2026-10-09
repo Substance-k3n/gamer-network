@@ -10,6 +10,6 @@ import { ListingsService } from './listings.service.js';
 @Module({
   controllers: [ListingsController, MyListingController, PublicListingsController],
   providers: [ListingsService, ListingExpiryJob],
-  exports: [ListingExpiryJob],
+  exports: [ListingsService, ListingExpiryJob],
 })
 export class ListingsModule {}

@@ -130,15 +130,15 @@ listing card, Post a listing sheet, your live listing on Home.
 **Acceptance:** two phones: A posts, B sees it within seconds with the
 right countdown; it disappears from B's list when it expires.
 
-## Phase 5 — Connections `[todo]`
+## Phase 5 — Connections `[done on the API side]`
 
 Branch: `feature/api-connections`.
 
-- [ ] Connection requests: send (from listing or profile), list,
+- [x] Connection requests: send (from listing or profile), list,
       accept, decline, cancel; rate limits and 7-day re-request rule
-- [ ] Accept transaction: connection, `filled`, `full`, check-ins
-- [ ] `GET /me/connections`, `DELETE /connections/{userId}`
-- [ ] Gaming IDs unlock on accept (covered by a test)
+- [x] Accept transaction: connection, `filled`, `full`, check-ins
+- [x] `GET /me/connections`, `DELETE /connections/{userId}`
+- [x] Gaming IDs unlock on accept (covered by a test)
 
 **Mobile:** Connect button states (Connect → Requested… → Connected ✓),
 someone's profile, Alerts "Connection requests" with Accept / Not now.

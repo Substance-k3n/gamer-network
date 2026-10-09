@@ -167,7 +167,6 @@ skip it and look around.
 | POST   | `/v1/me/onboard`           | `204`. "Go live": needs ≥ 1 game, else `422 profile_incomplete`. Safe to repeat                                                                                             |
 | DELETE | `/v1/me`                   | `204`. Deletes the account (Play requirement)                                                                                                                               |
 | PUT    | `/v1/me/devices`           | `{ fcmToken, platform, appVersion }` → `204`. Call on every launch and on token refresh                                                                                     |
-| GET    | `/v1/me/connections`       | `{ items: [{ user: UserCard, connectedAt }], nextCursor }`                                                                                                                  |
 | GET    | `/v1/me/blocks`            | `{ items: UserCard[] }`                                                                                                                                                     |
 | GET    | `/v1/me/listing`           | `{ listing: Listing \| null }` (see Find Players)                                                                                                                           |
 
@@ -211,17 +210,27 @@ defaults to your rank in that game. `status` reads `expired` as soon as
 
 ### Connections
 
-| Method | Path                                         | Body → Response                                                                                   |
-| ------ | -------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| POST   | `/v1/connection-requests`                    | `{ toUserId, listingId?, message? }` → `ConnectionRequest`. From a listing card, pass `listingId` |
-| GET    | `/v1/connection-requests?direction=incoming` | `{ items: ConnectionRequest[] }` (Alerts → "Connection requests")                                 |
-| GET    | `/v1/connection-requests?direction=outgoing` | Your pending ones                                                                                 |
-| POST   | `/v1/connection-requests/{id}/accept`        | → `{ request, connection }`. Unlocks gaming IDs; schedules check-ins if from a listing            |
-| POST   | `/v1/connection-requests/{id}/decline`       | "Not now" → `204`                                                                                 |
-| DELETE | `/v1/connection-requests/{id}`               | Cancel your own pending request → `204`                                                           |
-| DELETE | `/v1/connections/{userId}`                   | Remove a connection → `204`                                                                       |
+| Method | Path                                         | Body → Response                                                                                                                        |
+| ------ | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/v1/connection-requests`                    | `{ toUserId, listingId?, message? }` → `201 ConnectionRequest`. From a listing card, pass `listingId`                                  |
+| GET    | `/v1/connection-requests?direction=incoming` | `{ items: ConnectionRequest[] }`, pending, newest first (Alerts → "Connection requests"). Default `incoming`                           |
+| GET    | `/v1/connection-requests?direction=outgoing` | Your pending ones                                                                                                                      |
+| POST   | `/v1/connection-requests/{id}/accept`        | → `{ request, connection: { user, connectedAt } }`. Unlocks gaming IDs; takes a listing slot and schedules check-ins if from a listing |
+| POST   | `/v1/connection-requests/{id}/decline`       | "Not now" → `204`. The sender isn't told                                                                                               |
+| DELETE | `/v1/connection-requests/{id}`               | Cancel your own pending request → `204`                                                                                                |
+| GET    | `/v1/me/connections`                         | `{ items: [{ user: UserCard, connectedAt }], nextCursor }`, newest first                                                               |
+| DELETE | `/v1/connections/{userId}`                   | Remove a connection → `204`                                                                                                            |
 
 `ConnectionRequest { id, from: UserCard, to: UserCard, listing: Listing | null, message, status, createdAt }`
+
+Sending needs a verified email and answers: `404` if you can't see
+them, `409 already_connected`, `409 request_pending` (you already
+asked), `409 request_waiting_for_you` with `fields.requestId` (they
+asked you first: accept that one), `409 listing_not_open`, `429
+request_cooldown` (they declined you in the last 7 days), `429
+daily_limit` (30 a day). Accept, decline and cancel answer `409
+request_not_pending` once a request was already answered. Accepting a
+request for a listing that filled up meanwhile still connects you.
 
 ### Play together
 
