@@ -825,6 +825,275 @@
           "users"
         ]
       }
+    },
+    "/v1/listings": {
+      "get": {
+        "operationId": "listingsFeed",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "platform",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/Platform"
+            }
+          },
+          {
+            "name": "voice",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "required"
+              ]
+            }
+          },
+          {
+            "name": "when",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "now",
+                "tonight"
+              ]
+            }
+          },
+          {
+            "name": "style",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/PlayStyle"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Find Players. Open listings in your city, newest first; yours and blocked people's left out.",
+        "tags": [
+          "listings"
+        ]
+      },
+      "post": {
+        "operationId": "listingsCreate",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateListingBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Post a listing. One live listing each: 409 listing_already_open.",
+        "tags": [
+          "listings"
+        ]
+      }
+    },
+    "/v1/listings/stats": {
+      "get": {
+        "operationId": "listingsStats",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingStatsDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The Home counter.",
+        "tags": [
+          "listings"
+        ]
+      }
+    },
+    "/v1/listings/{id}": {
+      "get": {
+        "operationId": "listingsGet",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "listings"
+        ]
+      }
+    },
+    "/v1/listings/{id}/close": {
+      "post": {
+        "operationId": "listingsClose",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Owner only. 409 listing_not_live once it has ended.",
+        "tags": [
+          "listings"
+        ]
+      }
+    },
+    "/v1/me/listing": {
+      "get": {
+        "operationId": "myListingGet",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyListingDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Your live listing for Home, or null.",
+        "tags": [
+          "listings"
+        ]
+      }
+    },
+    "/v1/public/listings/{id}": {
+      "get": {
+        "operationId": "publicListingsGet",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicListingDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "For the share page: no sign-in, no ids or gaming IDs.",
+        "tags": [
+          "listings"
+        ]
+      }
     }
   },
   "info": {
@@ -1871,6 +2140,474 @@
       "UserSearchResponse": {
         "type": "object",
         "properties": {}
+      },
+      "PlayStyle": {
+        "type": "string",
+        "enum": [
+          "competitive",
+          "casual"
+        ]
+      },
+      "Voice": {
+        "type": "string",
+        "enum": [
+          "required",
+          "optional"
+        ]
+      },
+      "PlayWhen": {
+        "type": "string",
+        "enum": [
+          "now",
+          "tonight",
+          "weekend"
+        ]
+      },
+      "ListingStatus": {
+        "type": "string",
+        "enum": [
+          "open",
+          "full",
+          "closed",
+          "expired",
+          "removed"
+        ],
+        "description": "expired as soon as expiresAt passes, even before the expiry job runs."
+      },
+      "UserCardDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "description": "Already reset to not_available once its time has passed.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayerStatus"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string"
+          },
+          "statusGame": {
+            "nullable": true,
+            "description": "The game behind \"Playing …\".",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GameRefDto"
+              }
+            ]
+          },
+          "topGame": {
+            "nullable": true,
+            "description": "First game on the profile.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserGameDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "id",
+          "username",
+          "displayName",
+          "avatarUrl",
+          "city",
+          "statusGame",
+          "topGame"
+        ]
+      },
+      "ModeRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "RequestStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "accepted",
+          "declined",
+          "cancelled",
+          "expired"
+        ]
+      },
+      "MyRequestDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RequestStatus"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "id"
+        ]
+      },
+      "ListingDto": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Platform"
+              }
+            ]
+          },
+          "voice": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Voice"
+              }
+            ]
+          },
+          "style": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayStyle"
+              }
+            ]
+          },
+          "playWhen": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayWhen"
+              }
+            ]
+          },
+          "durationHours": {
+            "enum": [
+              2,
+              6,
+              24
+            ],
+            "type": "number"
+          },
+          "status": {
+            "description": "expired as soon as expiresAt passes, even before the expiry job runs.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingStatus"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/UserCardDto"
+          },
+          "game": {
+            "$ref": "#/components/schemas/GameRefDto"
+          },
+          "mode": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ModeRefDto"
+              }
+            ]
+          },
+          "rank": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RankRefDto"
+              }
+            ]
+          },
+          "partySize": {
+            "type": "number",
+            "description": "Whole party including the owner: 2 = Duo … 5 = 5-stack."
+          },
+          "filled": {
+            "type": "number",
+            "description": "Players accepted so far, owner not counted."
+          },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Count down to this."
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "myRequest": {
+            "nullable": true,
+            "description": "Your latest request to join, for \"Requested…\" / \"Connected ✓\". Null on your own.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MyRequestDto"
+              }
+            ]
+          },
+          "shareUrl": {
+            "type": "string",
+            "description": "Link for Telegram/WhatsApp."
+          }
+        },
+        "required": [
+          "platform",
+          "voice",
+          "style",
+          "playWhen",
+          "durationHours",
+          "status",
+          "id",
+          "owner",
+          "game",
+          "mode",
+          "rank",
+          "partySize",
+          "filled",
+          "startsAt",
+          "expiresAt",
+          "note",
+          "createdAt",
+          "myRequest",
+          "shareUrl"
+        ]
+      },
+      "ListingPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ListingDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "CreateListingBody": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Platform"
+              }
+            ]
+          },
+          "voice": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Voice"
+              }
+            ]
+          },
+          "style": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayStyle"
+              }
+            ]
+          },
+          "playWhen": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayWhen"
+              }
+            ]
+          },
+          "durationHours": {
+            "type": "number",
+            "enum": [
+              2,
+              6,
+              24
+            ]
+          }
+        },
+        "required": [
+          "platform",
+          "voice",
+          "style",
+          "playWhen",
+          "durationHours"
+        ]
+      },
+      "ListingStatsDto": {
+        "type": "object",
+        "properties": {
+          "lookingNow": {
+            "type": "number",
+            "description": "Distinct people in your city with an open listing or a \"looking\" status."
+          }
+        },
+        "required": [
+          "lookingNow"
+        ]
+      },
+      "MyListingDto": {
+        "type": "object",
+        "properties": {
+          "listing": {
+            "nullable": true,
+            "description": "Your open or full listing, or null.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "listing"
+        ]
+      },
+      "PublicListingDto": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Platform"
+              }
+            ]
+          },
+          "voice": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Voice"
+              }
+            ]
+          },
+          "playWhen": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayWhen"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingStatus"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "ownerDisplayName": {
+            "type": "string"
+          },
+          "ownerAvatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "game": {
+            "$ref": "#/components/schemas/GameRefDto"
+          },
+          "mode": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ModeRefDto"
+              }
+            ]
+          },
+          "rank": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RankRefDto"
+              }
+            ]
+          },
+          "partySize": {
+            "type": "number"
+          },
+          "filled": {
+            "type": "number"
+          },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "platform",
+          "voice",
+          "playWhen",
+          "status",
+          "id",
+          "ownerDisplayName",
+          "ownerAvatarUrl",
+          "game",
+          "mode",
+          "rank",
+          "partySize",
+          "filled",
+          "startsAt",
+          "expiresAt",
+          "note"
+        ]
       },
       "ErrorBody": {
         "type": "object",

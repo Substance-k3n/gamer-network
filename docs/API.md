@@ -169,7 +169,7 @@ skip it and look around.
 | PUT    | `/v1/me/devices`           | `{ fcmToken, platform, appVersion }` → `204`. Call on every launch and on token refresh                                                                                     |
 | GET    | `/v1/me/connections`       | `{ items: [{ user: UserCard, connectedAt }], nextCursor }`                                                                                                                  |
 | GET    | `/v1/me/blocks`            | `{ items: UserCard[] }`                                                                                                                                                     |
-| GET    | `/v1/me/listing`           | Your live `Listing` or `null`, with its pending requests                                                                                                                    |
+| GET    | `/v1/me/listing`           | `{ listing: Listing \| null }` (see Find Players)                                                                                                                           |
 
 Onboarding maps one-to-one onto the prototype: step 1 → `PATCH /me`,
 step 2 → `PUT /me/games` (no ranks yet), step 3 → `PUT /me/games` (with
@@ -192,14 +192,22 @@ username, and never includes you.
 
 ### Find Players
 
-| Method | Path                       | Body → Response                                                                                                                                                                                                                                                        |
-| ------ | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `/v1/listings`             | Filters: `game`, `rank` (min tier), `platform`, `mode`, `voice=required`, `when=now\|tonight`, `style`, `partySize`. Newest first → `{ items: Listing[], nextCursor }`. Your own and blocked users' are excluded                                                       |
-| GET    | `/v1/listings/stats`       | `{ lookingNow: 43 }` for the Home counter                                                                                                                                                                                                                              |
-| POST   | `/v1/listings`             | `{ gameId, modeId?, rankId?, platform, partySize, voice: "required"\|"optional", style, playWhen: "now"\|"tonight"\|"weekend", durationHours: 2\|6\|24, note? }`. The API works out `startsAt` and `expiresAt` → `Listing`. `409 listing_already_open` if you have one |
-| GET    | `/v1/listings/{id}`        | `Listing`                                                                                                                                                                                                                                                              |
-| POST   | `/v1/listings/{id}/close`  | Owner only → `Listing` (status `closed`)                                                                                                                                                                                                                               |
-| GET 🔓 | `/v1/public/listings/{id}` | For share pages: owner display name, game, rank, platform, party, when, note, expiresAt. No IDs or gaming IDs                                                                                                                                                          |
+| Method | Path                       | Body → Response                                                                                                                                                                                                        |
+| ------ | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/v1/listings`             | Filters: `game`, `minRank` (a rank id: that tier or higher), `platform`, `mode`, `voice=required`, `when=now\|tonight`, `style`, `partySize`, plus `limit`/`cursor`. Newest first → `{ items: Listing[], nextCursor }` |
+| GET    | `/v1/listings/stats`       | `{ lookingNow: 43 }` for the Home counter                                                                                                                                                                              |
+| POST   | `/v1/listings`             | `{ gameId, modeId?, rankId?, platform, partySize, voice, style, playWhen, durationHours: 2\|6\|24, note? }` → `201 Listing`. Needs a verified email. `409 listing_already_open` if you have one                        |
+| GET    | `/v1/listings/{id}`        | `Listing`, any status (a shared link can say "expired")                                                                                                                                                                |
+| POST   | `/v1/listings/{id}/close`  | Owner only (`403 not_owner`) → `Listing` with status `closed`. `409 listing_not_live` once it has ended                                                                                                                |
+| GET    | `/v1/me/listing`           | `{ listing: Listing \| null }`: your open or full listing                                                                                                                                                              |
+| GET 🔓 | `/v1/public/listings/{id}` | For share pages: owner display name and avatar, game, mode, rank, platform, party, voice, when, note, status. No ids or gaming IDs                                                                                     |
+
+The feed shows `open` listings in your city that haven't run out, never
+your own and never from someone blocked either way. Posting checks the
+game is a launch game, the platform is one of its platforms, the party
+fits `maxParty`, and the mode and rank belong to the game; `rankId`
+defaults to your rank in that game. `status` reads `expired` as soon as
+`expiresAt` passes.
 
 ### Connections
 

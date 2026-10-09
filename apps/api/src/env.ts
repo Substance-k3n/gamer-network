@@ -82,4 +82,8 @@ export const env = {
   get mediaPublicUrl() {
     return devDefault('MEDIA_PUBLIC_URL', 'http://localhost:9470/gn-media').replace(/\/+$/, '');
   },
+  /** The web app; share links are <publicWebUrl>/l/<listing id>. */
+  get publicWebUrl() {
+    return devDefault('PUBLIC_WEB_URL', 'http://localhost:3000').replace(/\/+$/, '');
+  },
 };
