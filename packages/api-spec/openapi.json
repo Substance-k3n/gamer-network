@@ -555,6 +555,34 @@
         "tags": [
           "me"
         ]
+      },
+      "delete": {
+        "operationId": "accountDelete",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAccountBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete your account (Settings). Needs your password if you have one\n(401 wrong_password). Signs out everywhere; personal data is erased\nafter 30 days.",
+        "tags": [
+          "safety"
+        ]
       }
     },
     "/v1/me/games": {
@@ -1662,6 +1690,151 @@
         "summary": "One tap. The product's main number (docs/PRD.md).",
         "tags": [
           "play"
+        ]
+      }
+    },
+    "/v1/blocks": {
+      "post": {
+        "operationId": "safetyBlock",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlockBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Hides you from each other everywhere and ends the connection.",
+        "tags": [
+          "safety"
+        ]
+      }
+    },
+    "/v1/blocks/{userId}": {
+      "delete": {
+        "operationId": "safetyUnblock",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "safety"
+        ]
+      }
+    },
+    "/v1/me/blocks": {
+      "get": {
+        "operationId": "safetyBlocked",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlockListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Settings → Blocked users.",
+        "tags": [
+          "safety"
+        ]
+      }
+    },
+    "/v1/reports": {
+      "post": {
+        "operationId": "safetyReport",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Goes to the admin reports queue.",
+        "tags": [
+          "safety"
+        ]
+      }
+    },
+    "/v1/waitlist": {
+      "post": {
+        "operationId": "safetyJoinWaitlist",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WaitlistBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "\"Notify me\" for features that aren't built yet (Groups).",
+        "tags": [
+          "safety"
         ]
       }
     }
@@ -3681,6 +3854,100 @@
         "required": [
           "answer"
         ]
+      },
+      "BlockBody": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "userId"
+        ]
+      },
+      "BlockListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "People you blocked, most recent first (Settings → Blocked users).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserCardDto"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "ReportReason": {
+        "type": "string",
+        "enum": [
+          "harassment",
+          "hate",
+          "sexual_content",
+          "underage",
+          "spam",
+          "impersonation",
+          "cheating_or_scam",
+          "other"
+        ]
+      },
+      "ReportBody": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReportReason"
+              }
+            ]
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "listingId": {
+            "type": "string",
+            "description": "When reporting from a listing card: one of their listings.",
+            "format": "uuid"
+          },
+          "details": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "reason",
+          "userId"
+        ]
+      },
+      "WaitlistBody": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string",
+            "description": "\"groups\" for the Groups \"Notify me\" button.",
+            "pattern": "^[a-z_]{1,30}$"
+          }
+        },
+        "required": [
+          "topic"
+        ]
+      },
+      "DeleteAccountBody": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string",
+            "description": "Required when the account has a password (hasPassword on Me).",
+            "minLength": 1,
+            "maxLength": 72
+          }
+        }
       },
       "ErrorBody": {
         "type": "object",
