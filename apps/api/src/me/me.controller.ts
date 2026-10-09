@@ -1,7 +1,7 @@
 import { Body, Controller, Get, HttpCode, Inject, Param, Patch, Post, Put } from '@nestjs/common';
 import { ApiBearerAuth, ApiNoContentResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { eq } from 'drizzle-orm';
-import { Public, CurrentUser } from '../auth/auth.decorators.js';
+import { BeforeOnboarding, CurrentUser, Public } from '../auth/auth.decorators.js';
 import { USERNAME } from '../auth/auth.dto.js';
 import type { User } from '../auth/sessions.service.js';
 import type { Db } from '../db/db.js';
@@ -29,6 +29,7 @@ export class UsernameAvailability {
 
 @ApiTags('me')
 @ApiBearerAuth()
+@BeforeOnboarding()
 @Controller('me')
 export class MeController {
   constructor(private readonly profiles: ProfileService) {}

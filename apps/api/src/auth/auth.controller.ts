@@ -8,7 +8,7 @@ import {
 } from '@nestjs/swagger';
 import { MeDto } from '../me/me.dto.js';
 import { ProfileService } from '../me/profile.service.js';
-import { CurrentSession, CurrentUser, Public } from './auth.decorators.js';
+import { BeforeOnboarding, CurrentSession, CurrentUser, Public } from './auth.decorators.js';
 import {
   AuthResponse,
   ChangePasswordBody,
@@ -28,6 +28,7 @@ class ResetResponse {
 }
 
 @ApiTags('auth')
+@BeforeOnboarding()
 @Controller('auth')
 export class AuthController {
   constructor(

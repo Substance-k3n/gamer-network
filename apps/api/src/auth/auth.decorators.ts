@@ -10,6 +10,13 @@ export const NEEDS_VERIFIED = 'needsVerifiedEmail';
 /** 403 email_not_verified until the sign-up code is entered (ADR-0007). */
 export const RequireVerifiedEmail = () => SetMetadata(NEEDS_VERIFIED, true);
 
+export const BEFORE_ONBOARDING = 'beforeOnboarding';
+/**
+ * Usable before "Go live" (`/me*`, `/auth/*`). Every other route answers
+ * 403 not_onboarded until POST /v1/me/onboard.
+ */
+export const BeforeOnboarding = () => SetMetadata(BEFORE_ONBOARDING, true);
+
 export interface AuthedRequest extends Request {
   user: User;
   session: Session;

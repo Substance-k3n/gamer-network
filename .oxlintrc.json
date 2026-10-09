@@ -18,6 +18,12 @@
       {
         "allow": ["**/*.css"]
       }
+    ],
+    "no-unused-vars": [
+      "error",
+      {
+        "ignoreRestSiblings": true
+      }
     ]
   },
   "env": {

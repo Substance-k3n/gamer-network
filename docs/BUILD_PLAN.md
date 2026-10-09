@@ -76,9 +76,9 @@ Branch: `feature/api-auth`.
 - [x] Google: `/auth/google` verifies the ID token server side; links to
       an existing account with the same email (#5)
 - [x] Sessions: opaque token, sha-256 stored, 90-day sliding expiry,
-      `AuthGuard`, `@CurrentUser()`, `@RequireVerifiedEmail()` (#5).
-      The onboarded and admin checks come with the first routes that
-      need them (phases 3 and 8)
+      `AuthGuard`, `@CurrentUser()`, `@RequireVerifiedEmail()` (#5),
+      `403 not_onboarded` outside `/me` and `/auth` (`@BeforeOnboarding()`).
+      The admin check comes with the admin routes (phase 8)
 - [x] `/auth/logout`, `/auth/password` (change), `GET /me` (#5)
 
 **Mobile:** wire the existing Log in and Sign up screens, verify-email
@@ -97,7 +97,7 @@ Branch: `feature/api-profile`.
 - [ ] Avatar: R2 bucket, presigned upload URL, `PUT /me/avatar`
       (dev uses a local S3-compatible container, like abro)
 - [x] `POST /me/onboard` ("Go live") rules
-- [ ] `GET /users/{username}` with gaming-ID visibility and
+- [x] `GET /users/{username}` with gaming-ID visibility and
       `relationship`; `GET /users?query=`
 - [x] Profile stats (connections, games, played with)
 

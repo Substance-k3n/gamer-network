@@ -1,7 +1,12 @@
 import { CanActivate, ExecutionContext, HttpStatus, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AppError } from '../common/app-error.js';
-import { type AuthedRequest, IS_PUBLIC, NEEDS_VERIFIED } from './auth.decorators.js';
+import {
+  type AuthedRequest,
+  BEFORE_ONBOARDING,
+  IS_PUBLIC,
+  NEEDS_VERIFIED,
+} from './auth.decorators.js';
 import { SessionsService } from './sessions.service.js';
 
 const unauthenticated = () =>
@@ -36,6 +41,17 @@ export class AuthGuard implements CanActivate {
         HttpStatus.FORBIDDEN,
         'email_not_verified',
         'Verify your email first. We sent you a code.',
+      );
+    }
+
+    if (
+      !found.user.onboardedAt &&
+      !this.reflector.getAllAndOverride<boolean>(BEFORE_ONBOARDING, targets)
+    ) {
+      throw new AppError(
+        HttpStatus.FORBIDDEN,
+        'not_onboarded',
+        'Finish setting up your profile first.',
       );
     }
 

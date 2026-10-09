@@ -1,5 +1,5 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
-import { and, asc, countDistinct, eq, inArray, or, sql } from 'drizzle-orm';
+import { and, asc, countDistinct, eq, inArray, or, type SQL, sql } from 'drizzle-orm';
 import { endOfTonight, hoursFrom } from '../common/addis-time.js';
 import { AppError } from '../common/app-error.js';
 import { uniqueViolation } from '../common/db-errors.js';
@@ -8,6 +8,7 @@ import type { Db } from '../db/db.js';
 import { DB } from '../db/db.module.js';
 import {
   checkIns,
+  connectionRequests,
   connections,
   gameRanks,
   gameRoles,
@@ -35,6 +36,8 @@ import {
   type PlayerStatus,
   type ProfileDto,
   type ProfileStatsDto,
+  type Relationship,
+  type UserCardDto,
   type UserGameDto,
 } from './profile.dto.js';
 
@@ -81,13 +84,14 @@ export class ProfileService {
     };
   }
 
-  /** `user`'s profile as `viewerId` may see it. */
+  /** `user`'s profile as `viewerId` may see it. Callers check that `viewerId` may see `user` at all. */
   async profile(user: User, viewerId: string): Promise<ProfileDto> {
-    const self = user.id === viewerId;
     const now = new Date();
     const expired = user.statusUntil !== null && user.statusUntil <= now;
+    const rel = await this.relationship(user.id, viewerId);
+    const allIds = rel.relationship === 'self' || rel.relationship === 'connected';
     const [userGameRows, platforms, tags, ids, statusGame, stats] = await Promise.all([
-      this.games(user.id),
+      this.games(eq(userGames.userId, user.id)).then((rows) => rows.map(({ userId, ...g }) => g)),
       this.db
         .select({ platform: userPlatforms.platform })
         .from(userPlatforms)
@@ -98,7 +102,7 @@ export class ProfileService {
         .from(userTags)
         .where(eq(userTags.userId, user.id))
         .orderBy(asc(userTags.tag)),
-      this.gamingIds(user.id, self),
+      this.gamingIds(user.id, allIds),
       user.statusGameId && !expired
         ? this.db.query.games.findFirst({ where: eq(games.id, user.statusGameId) })
         : undefined,
@@ -122,15 +126,94 @@ export class ProfileService {
       tags: tags.map((t) => t.tag),
       gamingIds: ids,
       stats,
-      relationship: self ? 'self' : 'none',
-      incomingRequestId: null,
+      ...rel,
     };
   }
 
-  private async games(userId: string): Promise<UserGameDto[]> {
+  /** Cards for a list, in the order given. */
+  async cards(list: User[]): Promise<UserCardDto[]> {
+    if (list.length === 0) return [];
+    const now = new Date();
+    const live = (u: User) => u.statusUntil === null || u.statusUntil > now;
+    const statusGameIds = [
+      ...new Set(list.flatMap((u) => (u.statusGameId && live(u) ? [u.statusGameId] : []))),
+    ];
+    const [tops, statusGames] = await Promise.all([
+      this.games(
+        and(
+          inArray(
+            userGames.userId,
+            list.map((u) => u.id),
+          ),
+          eq(userGames.position, 0),
+        )!,
+      ),
+      statusGameIds.length
+        ? this.db
+            .select({ id: games.id, name: games.name, shortCode: games.shortCode })
+            .from(games)
+            .where(inArray(games.id, statusGameIds))
+        : [],
+    ]);
+    const topByUser = new Map(tops.map(({ userId, ...g }) => [userId, g]));
+    const gameById = new Map(statusGames.map((g) => [g.id, g]));
+    return list.map((u) => ({
+      id: u.id,
+      username: u.username,
+      displayName: u.displayName,
+      avatarUrl: null,
+      city: u.city,
+      status: live(u) ? u.status : 'not_available',
+      statusGame: live(u) && u.statusGameId ? (gameById.get(u.statusGameId) ?? null) : null,
+      topGame: topByUser.get(u.id) ?? null,
+    }));
+  }
+
+  /** How `viewerId` stands with `userId`. */
+  private async relationship(
+    userId: string,
+    viewerId: string,
+  ): Promise<{ relationship: Relationship; incomingRequestId: string | null }> {
+    if (userId === viewerId) return { relationship: 'self', incomingRequestId: null };
+    // connections stores each pair once, lower id first; uuid order matches hex string order.
+    const [a, b] = userId < viewerId ? [userId, viewerId] : [viewerId, userId];
+    const [connected, pending] = await Promise.all([
+      this.db
+        .select({ a: connections.userAId })
+        .from(connections)
+        .where(and(eq(connections.userAId, a), eq(connections.userBId, b)))
+        .limit(1),
+      this.db
+        .select({ id: connectionRequests.id, fromUserId: connectionRequests.fromUserId })
+        .from(connectionRequests)
+        .where(
+          and(
+            eq(connectionRequests.status, 'pending'),
+            or(
+              and(
+                eq(connectionRequests.fromUserId, viewerId),
+                eq(connectionRequests.toUserId, userId),
+              ),
+              and(
+                eq(connectionRequests.fromUserId, userId),
+                eq(connectionRequests.toUserId, viewerId),
+              ),
+            ),
+          ),
+        ),
+    ]);
+    if (connected.length) return { relationship: 'connected', incomingRequestId: null };
+    const incoming = pending.find((r) => r.fromUserId === userId);
+    if (incoming) return { relationship: 'incoming_request', incomingRequestId: incoming.id };
+    if (pending.length) return { relationship: 'outgoing_request', incomingRequestId: null };
+    return { relationship: 'none', incomingRequestId: null };
+  }
+
+  private async games(where: SQL): Promise<(UserGameDto & { userId: string })[]> {
     const rows = await this.db
       .select({
         id: userGames.id,
+        userId: userGames.userId,
         customGameName: userGames.customGameName,
         rankText: userGames.rankText,
         game: { id: games.id, name: games.name, shortCode: games.shortCode },
@@ -141,13 +224,13 @@ export class ProfileService {
       .leftJoin(games, eq(games.id, userGames.gameId))
       .leftJoin(gameRanks, eq(gameRanks.id, userGames.rankId))
       .leftJoin(gameRoles, eq(gameRoles.id, userGames.roleId))
-      .where(eq(userGames.userId, userId))
+      .where(where)
       .orderBy(asc(userGames.position));
     return rows.map((r) => ({ ...r, game: gameRef(r.game) }));
   }
 
-  /** Visibility (docs/DATA_MODEL.md): connections-only IDs need a connection. Checked in phase 4. */
-  private async gamingIds(userId: string, self: boolean): Promise<GamingIdDto[]> {
+  /** docs/DATA_MODEL.md "Gaming ID visibility": connections-only IDs need `all`. */
+  private async gamingIds(userId: string, all: boolean): Promise<GamingIdDto[]> {
     const rows = await this.db
       .select({
         id: gamingIds.id,
@@ -159,7 +242,7 @@ export class ProfileService {
       .from(gamingIds)
       .leftJoin(games, eq(games.id, gamingIds.gameId))
       .where(
-        and(eq(gamingIds.userId, userId), self ? undefined : eq(gamingIds.visibility, 'public')),
+        and(eq(gamingIds.userId, userId), all ? undefined : eq(gamingIds.visibility, 'public')),
       )
       .orderBy(asc(gamingIds.kind), asc(gamingIds.id));
     return rows.map((r) => ({ ...r, game: gameRef(r.game) }));
