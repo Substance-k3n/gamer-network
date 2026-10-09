@@ -8,6 +8,7 @@ import { buildOpenApiDocument } from './openapi.js';
 // CI runs it and fails if the committed file differs. No database is
 // needed: the client only connects on the first query.
 process.env.DATABASE_URL ??= 'postgres://spec@localhost:1/spec';
+process.env.JOBS_ENABLED = 'false';
 const app = configureApp(await NestFactory.create(AppModule, { logger: false }));
 const document = buildOpenApiDocument(app);
 const target = new URL('../../../packages/api-spec/openapi.json', import.meta.url);

@@ -9,3 +9,5 @@ export function createDb(url: string) {
 }
 
 export type Db = ReturnType<typeof createDb>['db'];
+/** A transaction handle: has the same query API as Db. */
+export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];

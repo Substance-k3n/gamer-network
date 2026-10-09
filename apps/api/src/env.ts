@@ -86,4 +86,8 @@ export const env = {
   get publicWebUrl() {
     return devDefault('PUBLIC_WEB_URL', 'http://localhost:3000').replace(/\/+$/, '');
   },
+  /** Timed jobs (listing expiry …). Tests turn them off and run them by hand. */
+  get jobsEnabled() {
+    return process.env.JOBS_ENABLED !== 'false';
+  },
 };
