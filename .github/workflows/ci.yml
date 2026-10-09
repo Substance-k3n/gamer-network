@@ -5,8 +5,8 @@ on:
   push:
     branches: [main, dev]
 
-# Per-app jobs (api tests against Postgres, spec freshness, web build,
-# flutter analyze/test) are added in each app's scaffold PR.
+# Per-app jobs (web build, flutter analyze/test) are added in each
+# app's scaffold PR.
 jobs:
   repo:
     runs-on: ubuntu-latest
@@ -28,3 +28,36 @@ jobs:
 
       - name: Lint
         run: pnpm lint
+
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm --filter @app/api typecheck
+
+      - name: Test
+        run: pnpm --filter @app/api test
+
+      - name: Test (e2e)
+        run: pnpm --filter @app/api test:e2e
+
+      # ADR-0003: the committed spec must match the code.
+      - name: API spec is up to date
+        run: |
+          pnpm --filter @app/api spec
+          git diff --exit-code packages/api-spec/openapi.json || {
+            echo "::error::packages/api-spec/openapi.json is stale. Run 'pnpm --filter @app/api spec' and commit it."
+            exit 1
+          }
