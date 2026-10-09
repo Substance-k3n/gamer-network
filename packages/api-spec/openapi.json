@@ -15,9 +15,12 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "The database is unreachable"
           }
         },
-        "summary": "Liveness check for uptime monitors and the deploy.",
+        "summary": "Liveness and database check for uptime monitors and the deploy.",
         "tags": [
           "health"
         ]
@@ -42,10 +45,17 @@
             "enum": [
               "ok"
             ]
+          },
+          "database": {
+            "type": "string",
+            "enum": [
+              "ok"
+            ]
           }
         },
         "required": [
-          "status"
+          "status",
+          "database"
         ]
       }
     }

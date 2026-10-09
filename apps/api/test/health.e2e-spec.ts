@@ -17,7 +17,10 @@ describe('GET /health', () => {
     await app.close();
   });
 
-  it('answers 200 with status ok', () => {
-    return request(app.getHttpServer()).get('/health').expect(200).expect({ status: 'ok' });
+  it('answers 200 once the database answers', () => {
+    return request(app.getHttpServer())
+      .get('/health')
+      .expect(200)
+      .expect({ status: 'ok', database: 'ok' });
   });
 });

@@ -5,3 +5,4 @@ dist
 coverage
 apps/mobile
 packages/api-spec/openapi.json
+apps/api/drizzle
