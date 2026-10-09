@@ -146,14 +146,15 @@ someone's profile, Alerts "Connection requests" with Accept / Not now.
 **Acceptance:** B connects from A's listing, A accepts in Alerts, B sees
 A's `connections`-only Riot ID.
 
-## Phase 6 — Notifications and push `[todo]`
+## Phase 6 — Notifications and push `[done on the API side]`
 
 Branch: `feature/api-notifications`.
 
-- [ ] `notifications` written by every event in phases 4–5
-- [ ] FCM via Firebase Admin SDK; `PUT /me/devices`; invalid tokens
-      removed
-- [ ] `GET /notifications`, unread count, mark read
+- [x] `notifications` written by every event in phases 4–5
+- [x] FCM via Firebase Admin SDK; `PUT /me/devices`; invalid tokens
+      removed. Needs `FIREBASE_SERVICE_ACCOUNT` before launch (with the
+      Google and Resend keys); dev logs pushes to the console
+- [x] `GET /notifications`, unread count, mark read
 
 **Mobile:** FCM setup, permission prompt at a sensible moment (after the
 first listing or request, not at launch), Alerts activity list, bell

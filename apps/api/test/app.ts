@@ -6,6 +6,7 @@ import { AppModule } from '../src/app.module.js';
 import { configureApp } from '../src/app.setup.js';
 import { GOOGLE_VERIFIER, type GoogleProfile, type GoogleVerifier } from '../src/auth/google.js';
 import { type Mail, MAILER, type Mailer } from '../src/mail/mailer.js';
+import { type Push, PUSHER, type Pusher } from '../src/notifications/pusher.js';
 
 /** Keeps sent mail so tests can read the codes. */
 export class MemoryMailer implements Mailer {
@@ -31,24 +32,41 @@ export class FakeGoogle implements GoogleVerifier {
   }
 }
 
+/** Keeps pushes; tokens starting with "dead" are reported invalid, like FCM would. */
+export class MemoryPusher implements Pusher {
+  readonly sent: { tokens: string[]; push: Push }[] = [];
+  async send(tokens: string[], push: Push) {
+    this.sent.push({ tokens, push });
+    return { invalidTokens: tokens.filter((t) => t.startsWith('dead')) };
+  }
+  /** Pushes that reached `token`. */
+  to(token: string) {
+    return this.sent.filter((s) => s.tokens.includes(token)).map((s) => s.push);
+  }
+}
+
 export interface TestApp {
   app: INestApplication<App>;
   mailer: MemoryMailer;
+  pusher: MemoryPusher;
 }
 
-/** The real app (same setup as main.ts) on the test database, with mail and Google faked. */
+/** The real app (same setup as main.ts) on the test database, with mail, Google and push faked. */
 export async function createTestApp(): Promise<TestApp> {
   const mailer = new MemoryMailer();
+  const pusher = new MemoryPusher();
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(MAILER)
     .useValue(mailer)
     .overrideProvider(GOOGLE_VERIFIER)
     .useValue(new FakeGoogle())
+    .overrideProvider(PUSHER)
+    .useValue(pusher)
     .compile();
   const app = moduleRef.createNestApplication<INestApplication<App>>({ logger: false });
   configureApp(app);
   await app.init();
-  return { app, mailer };
+  return { app, mailer, pusher };
 }
 
 /** Unique per run, so tests never collide with rows left from earlier runs. */

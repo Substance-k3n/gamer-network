@@ -1,6 +1,132 @@
 {
   "openapi": "3.0.0",
   "paths": {
+    "/v1/notifications": {
+      "get": {
+        "operationId": "notificationsList",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Alerts, newest first.",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/v1/notifications/unread-count": {
+      "get": {
+        "operationId": "notificationsUnreadCount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadCountDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "For the bell badge.",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/v1/notifications/read": {
+      "post": {
+        "operationId": "notificationsMarkRead",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkReadBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "`{ ids }` or `{ all: true }`.",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/v1/me/devices": {
+      "put": {
+        "operationId": "devicesRegister",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDeviceBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Where to push. Call on every launch and when the FCM token changes.\nTied to this sign-in: logging out stops pushes to the device.",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
     "/v1/auth/signup": {
       "post": {
         "operationId": "authSignup",
@@ -1351,52 +1477,16 @@
       }
     },
     "schemas": {
-      "AgeRange": {
+      "NotificationType": {
         "type": "string",
         "enum": [
-          "16_17",
-          "18_24",
-          "25_34",
-          "35_plus"
-        ]
-      },
-      "SignupBody": {
-        "type": "object",
-        "properties": {
-          "ageRange": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/AgeRange"
-              }
-            ]
-          },
-          "email": {
-            "type": "string",
-            "maxLength": 254,
-            "format": "email"
-          },
-          "displayName": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 30
-          },
-          "username": {
-            "type": "string",
-            "description": "Stored lowercase."
-          },
-          "password": {
-            "type": "string",
-            "description": "8–72 characters.",
-            "minLength": 8,
-            "maxLength": 72
-          }
-        },
-        "required": [
-          "ageRange",
-          "email",
-          "displayName",
-          "username",
-          "password"
+          "connection_request",
+          "connection_accepted",
+          "play_invite",
+          "play_invite_accepted",
+          "check_in_due",
+          "listing_expiring",
+          "report_resolved"
         ]
       },
       "PlayerStatus": {
@@ -1408,59 +1498,6 @@
           "not_available"
         ],
         "description": "Already reset to not_available once its time has passed."
-      },
-      "Day": {
-        "type": "string",
-        "enum": [
-          "mon",
-          "tue",
-          "wed",
-          "thu",
-          "fri",
-          "sat",
-          "sun"
-        ]
-      },
-      "Platform": {
-        "type": "string",
-        "enum": [
-          "pc",
-          "playstation",
-          "xbox",
-          "mobile",
-          "switch"
-        ]
-      },
-      "PlayTag": {
-        "type": "string",
-        "enum": [
-          "competitive",
-          "casual",
-          "fps",
-          "rpg",
-          "strategy",
-          "co_op",
-          "ranked",
-          "achievement_hunter",
-          "story"
-        ]
-      },
-      "Relationship": {
-        "type": "string",
-        "enum": [
-          "self",
-          "none",
-          "outgoing_request",
-          "incoming_request",
-          "connected"
-        ]
-      },
-      "UserRole": {
-        "type": "string",
-        "enum": [
-          "player",
-          "admin"
-        ]
       },
       "GameRefDto": {
         "type": "object",
@@ -1567,6 +1604,323 @@
           "rank",
           "rankText",
           "role"
+        ]
+      },
+      "UserCardDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "description": "Already reset to not_available once its time has passed.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayerStatus"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string"
+          },
+          "statusGame": {
+            "nullable": true,
+            "description": "The game behind \"Playing …\".",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GameRefDto"
+              }
+            ]
+          },
+          "topGame": {
+            "nullable": true,
+            "description": "First game on the profile.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserGameDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "id",
+          "username",
+          "displayName",
+          "avatarUrl",
+          "city",
+          "statusGame",
+          "topGame"
+        ]
+      },
+      "NotificationDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NotificationType"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "actor": {
+            "nullable": true,
+            "description": "Who caused it; for check_in_due, who you played with.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserCardDto"
+              }
+            ]
+          },
+          "listingId": {
+            "type": "string",
+            "nullable": true
+          },
+          "connectionRequestId": {
+            "type": "string",
+            "nullable": true
+          },
+          "playInviteId": {
+            "type": "string",
+            "nullable": true
+          },
+          "checkInId": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "description": "Push title."
+          },
+          "text": {
+            "type": "string",
+            "description": "Ready to show, e.g. \"Hana wants to play PUBG Mobile with you\"."
+          },
+          "route": {
+            "type": "string",
+            "description": "In-app path to open on tap, same as the push's data.route."
+          },
+          "readAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "actor",
+          "listingId",
+          "connectionRequestId",
+          "playInviteId",
+          "checkInId",
+          "title",
+          "text",
+          "route",
+          "readAt",
+          "createdAt"
+        ]
+      },
+      "NotificationPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "UnreadCountDto": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "count"
+        ]
+      },
+      "MarkReadBody": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "description": "Ids to mark read. Or send all: true.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "all": {
+            "type": "boolean"
+          }
+        }
+      },
+      "DevicePlatform": {
+        "type": "string",
+        "enum": [
+          "android",
+          "ios",
+          "web"
+        ]
+      },
+      "RegisterDeviceBody": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DevicePlatform"
+              }
+            ]
+          },
+          "appVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20
+          },
+          "fcmToken": {
+            "type": "string",
+            "description": "From FirebaseMessaging.getToken().",
+            "minLength": 10,
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "platform",
+          "fcmToken"
+        ]
+      },
+      "AgeRange": {
+        "type": "string",
+        "enum": [
+          "16_17",
+          "18_24",
+          "25_34",
+          "35_plus"
+        ]
+      },
+      "SignupBody": {
+        "type": "object",
+        "properties": {
+          "ageRange": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgeRange"
+              }
+            ]
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email"
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 30
+          },
+          "username": {
+            "type": "string",
+            "description": "Stored lowercase."
+          },
+          "password": {
+            "type": "string",
+            "description": "8–72 characters.",
+            "minLength": 8,
+            "maxLength": 72
+          }
+        },
+        "required": [
+          "ageRange",
+          "email",
+          "displayName",
+          "username",
+          "password"
+        ]
+      },
+      "Day": {
+        "type": "string",
+        "enum": [
+          "mon",
+          "tue",
+          "wed",
+          "thu",
+          "fri",
+          "sat",
+          "sun"
+        ]
+      },
+      "Platform": {
+        "type": "string",
+        "enum": [
+          "pc",
+          "playstation",
+          "xbox",
+          "mobile",
+          "switch"
+        ]
+      },
+      "PlayTag": {
+        "type": "string",
+        "enum": [
+          "competitive",
+          "casual",
+          "fps",
+          "rpg",
+          "strategy",
+          "co_op",
+          "ranked",
+          "achievement_hunter",
+          "story"
+        ]
+      },
+      "Relationship": {
+        "type": "string",
+        "enum": [
+          "self",
+          "none",
+          "outgoing_request",
+          "incoming_request",
+          "connected"
+        ]
+      },
+      "UserRole": {
+        "type": "string",
+        "enum": [
+          "player",
+          "admin"
         ]
       },
       "GamingIdKind": {
@@ -2411,65 +2765,6 @@
           "removed"
         ],
         "description": "expired as soon as expiresAt passes, even before the expiry job runs."
-      },
-      "UserCardDto": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "description": "Already reset to not_available once its time has passed.",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/PlayerStatus"
-              }
-            ]
-          },
-          "id": {
-            "type": "string"
-          },
-          "username": {
-            "type": "string"
-          },
-          "displayName": {
-            "type": "string"
-          },
-          "avatarUrl": {
-            "type": "string",
-            "nullable": true
-          },
-          "city": {
-            "type": "string"
-          },
-          "statusGame": {
-            "nullable": true,
-            "description": "The game behind \"Playing …\".",
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/GameRefDto"
-              }
-            ]
-          },
-          "topGame": {
-            "nullable": true,
-            "description": "First game on the profile.",
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/UserGameDto"
-              }
-            ]
-          }
-        },
-        "required": [
-          "status",
-          "id",
-          "username",
-          "displayName",
-          "avatarUrl",
-          "city",
-          "statusGame",
-          "topGame"
-        ]
       },
       "ModeRefDto": {
         "type": "object",

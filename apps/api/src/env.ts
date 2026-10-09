@@ -90,4 +90,8 @@ export const env = {
   get jobsEnabled() {
     return process.env.JOBS_ENABLED !== 'false';
   },
+  /** Firebase service account JSON (raw or base64) for FCM push. Empty: pushes are logged (dev only). */
+  get firebaseServiceAccount() {
+    return process.env.FIREBASE_SERVICE_ACCOUNT ?? '';
+  },
 };

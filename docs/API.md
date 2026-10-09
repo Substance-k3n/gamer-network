@@ -166,7 +166,6 @@ skip it and look around.
 | DELETE | `/v1/me/avatar`            | → `Me` without an avatar                                                                                                                                                    |
 | POST   | `/v1/me/onboard`           | `204`. "Go live": needs ≥ 1 game, else `422 profile_incomplete`. Safe to repeat                                                                                             |
 | DELETE | `/v1/me`                   | `204`. Deletes the account (Play requirement)                                                                                                                               |
-| PUT    | `/v1/me/devices`           | `{ fcmToken, platform, appVersion }` → `204`. Call on every launch and on token refresh                                                                                     |
 | GET    | `/v1/me/blocks`            | `{ items: UserCard[] }`                                                                                                                                                     |
 | GET    | `/v1/me/listing`           | `{ listing: Listing \| null }` (see Find Players)                                                                                                                           |
 
@@ -247,18 +246,25 @@ Show due check-ins as a card on Home: "Did you play with Dave?"
 
 ### Notifications
 
-| Method | Path                             | Purpose                                     |
-| ------ | -------------------------------- | ------------------------------------------- |
-| GET    | `/v1/notifications`              | `{ items: Notification[], nextCursor }`     |
-| GET    | `/v1/notifications/unread-count` | `{ count }` for the bell badge              |
-| POST   | `/v1/notifications/read`         | `{ ids: [...] }` or `{ all: true }` → `204` |
+| Method | Path                             | Purpose                                                          |
+| ------ | -------------------------------- | ---------------------------------------------------------------- |
+| GET    | `/v1/notifications`              | `{ items: Notification[], nextCursor }`, newest first            |
+| GET    | `/v1/notifications/unread-count` | `{ count }` for the bell badge                                   |
+| POST   | `/v1/notifications/read`         | `{ ids: [...] }` or `{ all: true }` → `204`                      |
+| PUT    | `/v1/me/devices`                 | `{ fcmToken, platform: android\|ios\|web, appVersion? }` → `204` |
 
-`Notification { id, type, actor: UserCard | null, listingId?, connectionRequestId?, playInviteId?, checkInId?, text, readAt, createdAt }`.
-`text` is ready to show ("Dave answered your listing").
+`Notification { id, type, actor: UserCard | null, listingId, connectionRequestId, playInviteId, checkInId, title, text, route, readAt, createdAt }`.
+`text` is ready to show ("Hana wants to play PUBG Mobile with you");
+`route` is where tapping it goes. Notifications from people you can no
+longer see (blocked, banned) are left out.
 
-**Push.** Every notification is also sent through FCM with
-`data: { type, id, route }`. `route` is the in-app path to open, e.g.
+**Push.** Every notification is also sent through FCM to each device
+the person registered, with `notification: { title, body: text }` and
+`data: { type, id, route }`. `route` is the in-app path to open:
 `/alerts`, `/players/<username>`, `/listings/<id>`, `/check-ins/<id>`.
+Register the device (`PUT /v1/me/devices`) on every launch and when the
+token refreshes; it is tied to that sign-in, so logging out stops its
+pushes. A token moves to whoever signed in on the phone last.
 
 ### Safety
 
