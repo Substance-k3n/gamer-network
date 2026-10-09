@@ -27,7 +27,7 @@ is the map, not a one-time plan. Scope: [PRD.md](PRD.md). Tables:
 
 - [x] Repo, CODEOWNERS, CI, hooks, ADR-0001…0005, PRD (`03938d8`)
 - [x] NestJS scaffold, `/health`, generated spec, spec-freshness CI (#1)
-- [x] Data model, API guide, this plan, ADR-0006 Drizzle (this PR)
+- [x] Data model, API guide, this plan, ADR-0006 Drizzle (#2)
 - [ ] GitHub: invite @Natnsis, branch protection on `main` and `dev`
       (1 approval from a code owner, CI green)
 - [ ] Validation test running in one Telegram group
@@ -42,19 +42,21 @@ Groups, You).
 **Acceptance:** both of you can clone, run the API and the app locally,
 and open a PR that the other has to approve.
 
-## Phase 1 — Data layer `[todo]`
+## Phase 1 — Data layer `[done on the API side]`
 
 Branch: `feature/api-db`.
 
-- [ ] Drizzle + `drizzle-kit`, `src/db/schema/*` for every table in
-      DATA_MODEL.md, first migration reviewed as SQL
-- [ ] `DbModule` providing the connection; `/health` checks the database
-- [ ] Seed: launch games with ranks, roles, modes (and the other 6 from
-      the prototype with `is_launch = false`)
-- [ ] CI `api` job gets a Postgres service; migrations run before tests
-- [ ] Shared pieces: error envelope + error codes, cursor pagination,
-      UUIDv7, `Idempotency-Key`, request validation (class-validator)
-- [ ] `GET /v1/app/config`, `GET /v1/games`
+- [x] Drizzle + `drizzle-kit`, `src/db/schema/*` for every table in
+      DATA_MODEL.md, first migration reviewed as SQL (#3)
+- [x] `DbModule` providing the connection; `/health` checks the database (#3)
+- [x] Seed: the prototype's 49 games with ranks and modes; codm, pubg and
+      efootball provisionally `is_launch` (#3)
+- [x] CI `api` job gets a Postgres service; migrations run before tests (#3)
+- [x] Shared pieces: error envelope + error codes, UUIDv7, request
+      validation (class-validator), app version gate (#4)
+- [ ] Cursor pagination and `Idempotency-Key`: built with the first list
+      and create endpoints (phase 4)
+- [x] `GET /v1/app/config`, `GET /v1/games` (#4)
 
 **Mobile:** generated `api_client` package, Dio setup (auth header,
 version headers, 401/426 handling), Prism mock server script, splash +
@@ -63,21 +65,21 @@ onboarding carousel calling `/app/config`.
 **Acceptance:** fresh database → `migrate` → `seed` → the app lists the
 games from the real API.
 
-## Phase 2 — Sign-in `[todo]`
+## Phase 2 — Sign-in `[done on the API side]`
 
 Branch: `feature/api-auth`.
 
-- [ ] Email + password: `/auth/signup`, `/auth/login`, argon2id hashes,
-      lockout after 10 failures in 15 min (ADR-0007)
-- [ ] Email codes: verify email, forgot/reset password; hashed codes,
-      10 min expiry, 5 attempts, 5 sends/hour. Email via Resend (Brevo
-      fallback, as in abro)
-- [ ] Google: `/auth/google` verifies the ID token server side; links to
-      an existing account with the same email
-- [ ] Sessions: opaque token, sha-256 stored, 90-day sliding expiry,
-      `AuthGuard`, `@CurrentUser()`, `OnboardedGuard`, `VerifiedGuard`,
-      `AdminGuard`
-- [ ] `/auth/logout`, `/auth/password` (change), `GET /me`
+- [x] Email + password: `/auth/signup`, `/auth/login`, argon2id hashes,
+      lockout after 10 failures in 15 min (ADR-0007) (#5)
+- [x] Email codes: verify email, forgot/reset password; hashed codes,
+      10 min expiry, 5 attempts, 5 sends/hour. Email via Resend (#5)
+- [x] Google: `/auth/google` verifies the ID token server side; links to
+      an existing account with the same email (#5)
+- [x] Sessions: opaque token, sha-256 stored, 90-day sliding expiry,
+      `AuthGuard`, `@CurrentUser()`, `@RequireVerifiedEmail()` (#5).
+      The onboarded and admin checks come with the first routes that
+      need them (phases 3 and 8)
+- [x] `/auth/logout`, `/auth/password` (change), `GET /me` (#5)
 
 **Mobile:** wire the existing Log in and Sign up screens, verify-email
 code screen, Forgot password → code → new password, Google Sign-In,
@@ -86,18 +88,18 @@ secure token storage, signed-in/out routing.
 **Acceptance:** sign up with email + password, sign in with Google, and
 reset a password, on a real Android phone; kill the app; it opens signed in.
 
-## Phase 3 — Gamer profile `[todo]`
+## Phase 3 — Gamer profile `[in progress]`
 
 Branch: `feature/api-profile`.
 
-- [ ] `PATCH /me`, username availability, `PUT /me/games`,
+- [x] `PATCH /me`, username availability, `PUT /me/games`,
       `/me/platforms`, `/me/tags`, `/me/gaming-ids`, `/me/status`
 - [ ] Avatar: R2 bucket, presigned upload URL, `PUT /me/avatar`
       (dev uses a local S3-compatible container, like abro)
-- [ ] `POST /me/onboard` ("Go live") rules
+- [x] `POST /me/onboard` ("Go live") rules
 - [ ] `GET /users/{username}` with gaming-ID visibility and
       `relationship`; `GET /users?query=`
-- [ ] Profile stats (connections, games, played with)
+- [x] Profile stats (connections, games, played with)
 
 **Mobile:** onboarding steps 1–3 exactly as the prototype; You tab
 (Overview + Games tabs only); Edit profile; status card on Home with

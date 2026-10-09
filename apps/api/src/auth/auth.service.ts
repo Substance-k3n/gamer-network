@@ -1,10 +1,11 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import { AppError } from '../common/app-error.js';
+import { uniqueViolation } from '../common/db-errors.js';
 import type { Db } from '../db/db.js';
 import { DB } from '../db/db.module.js';
 import { authIdentities, users } from '../db/schema/index.js';
-import { toMe } from '../me/me.dto.js';
+import { ProfileService } from '../me/profile.service.js';
 import type { AuthResponse, GoogleBody, LoginBody, SignupBody } from './auth.dto.js';
 import { burnPasswordCheck, hashPassword, verifyPassword } from './crypto.js';
 import { EmailCodesService } from './email-codes.service.js';
@@ -15,17 +16,6 @@ import { type Session, SessionsService, type User } from './sessions.service.js'
 const wrongCredentials = () =>
   new AppError(HttpStatus.UNAUTHORIZED, 'wrong_credentials', 'Wrong email or password.');
 
-/** Postgres unique violation on a named constraint. */
-function uniqueViolation(e: unknown): string | undefined {
-  const err = e as {
-    code?: string;
-    constraint_name?: string;
-    cause?: { code?: string; constraint_name?: string };
-  };
-  const c = err.cause ?? err;
-  return c.code === '23505' ? c.constraint_name : undefined;
-}
-
 @Injectable()
 export class AuthService {
   constructor(
@@ -34,11 +24,12 @@ export class AuthService {
     private readonly sessions: SessionsService,
     private readonly codes: EmailCodesService,
     private readonly throttle: LoginThrottle,
+    private readonly profiles: ProfileService,
   ) {}
 
   private async issue(user: User, isNew: boolean, userAgent?: string): Promise<AuthResponse> {
     const { token } = await this.sessions.create(user.id, userAgent);
-    return { token, user: toMe(user), isNew };
+    return { token, user: await this.profiles.me(user), isNew };
   }
 
   private async insertUser(values: typeof users.$inferInsert): Promise<User> {
@@ -260,7 +251,7 @@ export class AuthService {
     if (updated!.bannedAt)
       throw new AppError(HttpStatus.FORBIDDEN, 'banned', 'This account has been banned.');
     const { token } = await this.sessions.create(user.id, userAgent);
-    return { token, user: toMe(updated!) };
+    return { token, user: await this.profiles.me(updated!) };
   }
 
   async changePassword(

@@ -256,6 +256,12 @@ that already has a password account links to it; if that account was
 never verified, its password is cleared, so whoever created it without
 owning the email loses access.
 
+**Status expiry.** Setting a status sets `status_until`:
+`available_tonight` → 04:00 Addis time (the next morning, or this
+morning if it is still before 04:00), `playing` → now + 4 h, `looking` →
+now + 12 h, `not_available` → null (and drops `status_game_id`). Reads
+treat a passed `status_until` as `not_available`; no job is needed.
+
 **Gaming ID visibility.** `public` IDs show to everyone signed in.
 `connections` IDs show only to connected users (and the owner). Never in
 the public share page.
@@ -269,7 +275,7 @@ them are cancelled.
 counts) and their sessions are revoked.
 
 **"Looking now" counter.** Distinct users in the city with an open
-listing or `status = 'looking'` set in the last 12 h.
+listing or a `looking` status that hasn't expired (it lasts 12 h).
 
 **Profile stats.** Connections = connection rows. Games = `user_games`
 rows. **Played with** = distinct `other_user_id` with a `played` check-in.
