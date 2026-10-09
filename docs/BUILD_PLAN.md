@@ -88,14 +88,14 @@ secure token storage, signed-in/out routing.
 **Acceptance:** sign up with email + password, sign in with Google, and
 reset a password, on a real Android phone; kill the app; it opens signed in.
 
-## Phase 3 — Gamer profile `[in progress]`
+## Phase 3 — Gamer profile `[done on the API side]`
 
 Branch: `feature/api-profile`.
 
 - [x] `PATCH /me`, username availability, `PUT /me/games`,
       `/me/platforms`, `/me/tags`, `/me/gaming-ids`, `/me/status`
-- [ ] Avatar: R2 bucket, presigned upload URL, `PUT /me/avatar`
-      (dev uses a local S3-compatible container, like abro)
+- [x] Avatar: presigned upload URL, `PUT`/`DELETE /me/avatar`; RustFS in
+      dev and CI, an R2 bucket in production (phase 9)
 - [x] `POST /me/onboard` ("Go live") rules
 - [x] `GET /users/{username}` with gaming-ID visibility and
       `relationship`; `GET /users?query=`

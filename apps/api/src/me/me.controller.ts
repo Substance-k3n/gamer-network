@@ -1,4 +1,15 @@
-import { Body, Controller, Get, HttpCode, Inject, Param, Patch, Post, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Inject,
+  Param,
+  Patch,
+  Post,
+  Put,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiNoContentResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { eq } from 'drizzle-orm';
 import { BeforeOnboarding, CurrentUser, Public } from '../auth/auth.decorators.js';
@@ -8,6 +19,8 @@ import type { Db } from '../db/db.js';
 import { DB } from '../db/db.module.js';
 import { users } from '../db/schema/index.js';
 import {
+  AvatarUploadBody,
+  SetAvatarBody,
   SetGamesBody,
   SetGamingIdsBody,
   SetPlatformsBody,
@@ -16,6 +29,7 @@ import {
   UpdateMeBody,
 } from './me.body.js';
 import { MeDto } from './me.dto.js';
+import { AvatarUploadDto } from './profile.dto.js';
 import { ProfileService } from './profile.service.js';
 
 export class UsernameAvailability {
@@ -79,6 +93,30 @@ export class MeController {
   @ApiOkResponse({ type: MeDto })
   setStatus(@CurrentUser() user: User, @Body() body: SetStatusBody): Promise<MeDto> {
     return this.profiles.setStatus(user, body);
+  }
+
+  /** Where to upload a new avatar (JPEG, PNG or WebP, ≤ 2 MB). Then PUT /v1/me/avatar. */
+  @Post('avatar/upload-url')
+  @HttpCode(200)
+  @ApiOkResponse({ type: AvatarUploadDto })
+  avatarUploadUrl(
+    @CurrentUser() user: User,
+    @Body() body: AvatarUploadBody,
+  ): Promise<AvatarUploadDto> {
+    return this.profiles.avatarUploadUrl(user, body);
+  }
+
+  /** Use an uploaded avatar. The previous one is deleted. */
+  @Put('avatar')
+  @ApiOkResponse({ type: MeDto })
+  setAvatar(@CurrentUser() user: User, @Body() body: SetAvatarBody): Promise<MeDto> {
+    return this.profiles.setAvatar(user, body);
+  }
+
+  @Delete('avatar')
+  @ApiOkResponse({ type: MeDto })
+  removeAvatar(@CurrentUser() user: User): Promise<MeDto> {
+    return this.profiles.removeAvatar(user);
   }
 
   /** "Go live": finishes onboarding. 422 profile_incomplete without a game. */

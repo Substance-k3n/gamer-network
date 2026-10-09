@@ -614,6 +614,104 @@
         ]
       }
     },
+    "/v1/me/avatar/upload-url": {
+      "post": {
+        "operationId": "meAvatarUploadUrl",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AvatarUploadBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AvatarUploadDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Where to upload a new avatar (JPEG, PNG or WebP, ≤ 2 MB). Then PUT /v1/me/avatar.",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/avatar": {
+      "put": {
+        "operationId": "meSetAvatar",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAvatarBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Use an uploaded avatar. The previous one is deleted.",
+        "tags": [
+          "me"
+        ]
+      },
+      "delete": {
+        "operationId": "meRemoveAvatar",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "me"
+        ]
+      }
+    },
     "/v1/me/onboard": {
       "post": {
         "operationId": "meOnboard",
@@ -1574,6 +1672,63 @@
         "required": [
           "status"
         ]
+      },
+      "AvatarType": {
+        "type": "string",
+        "enum": [
+          "image/jpeg",
+          "image/png",
+          "image/webp"
+        ]
+      },
+      "AvatarUploadBody": {
+        "type": "object",
+        "properties": {
+          "contentType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AvatarType"
+              }
+            ]
+          }
+        },
+        "required": [
+          "contentType"
+        ]
+      },
+      "AvatarUploadDto": {
+        "type": "object",
+        "properties": {
+          "uploadUrl": {
+            "type": "string",
+            "description": "PUT the file here before `expiresAt`, with `headers`. The body must be\nexactly the `size` you asked for (the URL is signed for it); let the\nHTTP client set Content-Length."
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Send these with the upload (Content-Type)."
+          },
+          "key": {
+            "type": "string",
+            "description": "Send to PUT /v1/me/avatar once the upload succeeds."
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "uploadUrl",
+          "headers",
+          "key",
+          "expiresAt"
+        ]
+      },
+      "SetAvatarBody": {
+        "type": "object",
+        "properties": {}
       },
       "UsernameAvailability": {
         "type": "object",

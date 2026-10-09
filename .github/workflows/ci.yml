@@ -103,7 +103,27 @@ jobs:
           pnpm --filter @app/api db:migrate
           pnpm --filter @app/api db:seed
 
-      - name: Test (e2e, real Postgres)
+      # Avatars: the same RustFS as infra/docker/dev, on a throwaway tmpfs
+      # (RustFS runs as UID/GID 10001). The api's dev defaults point at it.
+      - name: Start media storage
+        run: |
+          docker run -d --name s3 -p 9470:9000 \
+            --tmpfs /data:rw,uid=10001,gid=10001 \
+            -e RUSTFS_VOLUMES=/data \
+            -e RUSTFS_ADDRESS=0.0.0.0:9000 \
+            -e RUSTFS_ACCESS_KEY=gn-media \
+            -e RUSTFS_SECRET_KEY=password123 \
+            rustfs/rustfs:1.0.0
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:9470/health && break
+            sleep 1
+          done
+          curl -fsS http://localhost:9470/health || { docker logs s3; exit 1; }
+          AWS_ACCESS_KEY_ID=gn-media AWS_SECRET_ACCESS_KEY=password123 \
+          AWS_DEFAULT_REGION=us-east-1 S3_ENDPOINT=http://localhost:9470 BUCKET=gn-media \
+            sh infra/docker/dev/setup-bucket.sh
+
+      - name: Test (e2e, real Postgres and storage)
         run: pnpm --filter @app/api test:e2e
 
       # ADR-0003: the committed spec must match the code.
