@@ -183,7 +183,8 @@ the question and their answers show in `GET /admin/metrics`.
 Branches: `feature/api-safety`, `feature/web-admin`.
 
 - [x] Blocks with every effect in DATA_MODEL.md "Blocks"; reports; waitlist
-- [ ] Admin endpoints + `admin_actions` audit log; bans revoke sessions
+- [x] Admin endpoints + `admin_actions` audit log; bans revoke sessions;
+      launch-game switch; `admin:grant` script
 - [x] `DELETE /me` + the 30-day scrub job
 - [ ] `apps/web` scaffold (Next.js), admin sign-in, reports queue,
       ban/remove, the metric on one page

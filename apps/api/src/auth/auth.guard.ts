@@ -2,6 +2,7 @@ import { CanActivate, ExecutionContext, HttpStatus, Injectable } from '@nestjs/c
 import { Reflector } from '@nestjs/core';
 import { AppError } from '../common/app-error.js';
 import {
+  ADMIN_ONLY,
   type AuthedRequest,
   BEFORE_ONBOARDING,
   IS_PUBLIC,
@@ -44,8 +45,13 @@ export class AuthGuard implements CanActivate {
       );
     }
 
+    const adminOnly = this.reflector.getAllAndOverride<boolean>(ADMIN_ONLY, targets);
+    if (adminOnly && found.user.role !== 'admin') {
+      throw new AppError(HttpStatus.FORBIDDEN, 'admin_only', 'Admins only.');
+    }
     if (
       !found.user.onboardedAt &&
+      !adminOnly &&
       !this.reflector.getAllAndOverride<boolean>(BEFORE_ONBOARDING, targets)
     ) {
       throw new AppError(

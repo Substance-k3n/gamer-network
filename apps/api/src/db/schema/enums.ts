@@ -80,4 +80,5 @@ export const adminActionKind = pgEnum('admin_action_kind', [
   'remove_listing',
   'dismiss_report',
   'warn',
+  'set_launch',
 ]);

@@ -17,6 +17,10 @@ export const BEFORE_ONBOARDING = 'beforeOnboarding';
  */
 export const BeforeOnboarding = () => SetMetadata(BEFORE_ONBOARDING, true);
 
+export const ADMIN_ONLY = 'adminOnly';
+/** role = admin, else 403 admin_only. Admin routes also work before onboarding. */
+export const AdminOnly = () => SetMetadata(ADMIN_ONLY, true);
+
 export interface AuthedRequest extends Request {
   user: User;
   session: Session;
