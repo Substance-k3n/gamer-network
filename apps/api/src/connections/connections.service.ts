@@ -1,6 +1,5 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, gt, inArray, or, type SQL, sql } from 'drizzle-orm';
-import { addisAt } from '../common/addis-time.js';
 import { AppError, notFound } from '../common/app-error.js';
 import { uniqueViolation } from '../common/db-errors.js';
 import type { User } from '../auth/sessions.service.js';
@@ -10,6 +9,7 @@ import { checkIns, connectionRequests, connections, listings, users } from '../d
 import { ListingsService } from '../listings/listings.service.js';
 import { ProfileService } from '../me/profile.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
+import { listingCheckInDueAt } from '../play/play-times.js';
 import { isLive, visibleTo } from '../users/visibility.js';
 import type {
   AcceptedRequestDto,
@@ -33,9 +33,6 @@ const pairIs = (x: string, y: string) => {
   const [a, b] = orderedPair(x, y);
   return and(eq(connections.userAId, a), eq(connections.userBId, b));
 };
-
-/** "Did you play together?" is asked at 12:00 Addis time the next day (docs/DATA_MODEL.md). */
-export const checkInDueAt = (acceptedAt: Date) => addisAt(acceptedAt, 12, 1);
 
 const conflict = (code: string, message: string, fields?: Record<string, string>) =>
   new AppError(HttpStatus.CONFLICT, code, message, fields);
@@ -272,7 +269,7 @@ export class ConnectionsService {
               userId: userId!,
               otherUserId: otherUserId!,
               listingId: req.listingId,
-              dueAt: checkInDueAt(now),
+              dueAt: listingCheckInDueAt(now),
             })),
           )
           .onConflictDoNothing();

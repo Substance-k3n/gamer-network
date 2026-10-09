@@ -163,14 +163,14 @@ badge, tapping a push opens its `route`.
 **Acceptance:** with the app closed, A gets a push for B's request within
 5 seconds; tapping it opens the request.
 
-## Phase 7 — Play together and check-ins `[todo]`
+## Phase 7 — Play together and check-ins `[done on the API side]`
 
 Branch: `feature/api-play`.
 
-- [ ] Play invites: send, accept, decline, 15-min expiry
-- [ ] Check-ins: created on accept, due 12:00 next day, `check_in_due`
-      push, `POST /check-ins/{id}`
-- [ ] "Played with" stat
+- [x] Play invites: send, list, accept, decline, 15-min expiry
+- [x] Check-ins: created on accept, due 12:00 next day, `check_in_due`
+      push (minute job), `GET /me/check-ins`, `POST /check-ins/{id}`
+- [x] "Played with" stat
 
 **Mobile:** Play together button and the invite banner with countdown;
 "Did you play with Dave?" card on Home (one tap).

@@ -9,6 +9,7 @@ import { MailModule } from './mail/mail.module.js';
 import { JobsModule } from './jobs/jobs.module.js';
 import { ListingsModule } from './listings/listings.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
+import { PlayModule } from './play/play.module.js';
 import { MeModule } from './me/me.module.js';
 import { StorageModule } from './storage/storage.module.js';
 import { UsersModule } from './users/users.module.js';
@@ -27,6 +28,7 @@ import { UsersModule } from './users/users.module.js';
     UsersModule,
     ListingsModule,
     ConnectionsModule,
+    PlayModule,
     JobsModule,
   ],
 })

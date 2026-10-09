@@ -233,13 +233,20 @@ request for a listing that filled up meanwhile still connects you.
 
 ### Play together
 
-| Method | Path                            | Body → Response                                                                                                                                    |
-| ------ | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| POST   | `/v1/play-invites`              | `{ toUserId, gameId, playWhen: "now"\|"in_30_min"\|"tonight" }` → `PlayInvite` with `startsAt` (connections only; expires 15 min after `startsAt`) |
-| POST   | `/v1/play-invites/{id}/accept`  | → `PlayInvite`                                                                                                                                     |
-| POST   | `/v1/play-invites/{id}/decline` | → `204`                                                                                                                                            |
-| GET    | `/v1/me/check-ins`              | Due, unanswered: `[{ id, other: UserCard, game: GameRef, dueAt }]`                                                                                 |
-| POST   | `/v1/check-ins/{id}`            | `{ answer: "played" \| "not_yet" \| "no" }` → `204`                                                                                                |
+| Method | Path                                  | Body → Response                                                                                                                       |
+| ------ | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/v1/play-invites`                    | `{ toUserId, gameId, playWhen: "now"\|"in_30_min"\|"tonight" }` → `201 PlayInvite`. Connections only; expires 15 min after `startsAt` |
+| GET    | `/v1/play-invites?direction=incoming` | `{ items: PlayInvite[] }`: pending, unexpired, for the invite banner. `outgoing` for yours                                            |
+| POST   | `/v1/play-invites/{id}/accept`        | → `PlayInvite`. Schedules both check-ins. `409 invite_expired`                                                                        |
+| POST   | `/v1/play-invites/{id}/decline`       | → `204`                                                                                                                               |
+| GET    | `/v1/me/check-ins`                    | `{ items: [{ id, other: UserCard, game: GameRef \| null, listingId, playInviteId, dueAt }] }`: due, unanswered, oldest first          |
+| POST   | `/v1/check-ins/{id}`                  | `{ answer: "played" \| "not_yet" \| "no" }` → `204`. Can be changed later; clears its Alert                                           |
+
+`PlayInvite { id, from: UserCard, to: UserCard, game: GameRef, playWhen, startsAt, expiresAt, status, createdAt }`.
+`tonight` means 21:00 Addis time, or right away if it's later than that
+or before 04:00. Sending needs a verified email: `403 not_connected`,
+`409 invite_pending`, `429 daily_limit` (20 a day). When a check-in is
+due, the person gets a `check_in_due` notification and push.
 
 Show due check-ins as a card on Home: "Did you play with Dave?"
 **This answer is the product's main number; make it one tap.**

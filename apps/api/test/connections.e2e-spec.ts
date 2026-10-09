@@ -2,8 +2,8 @@ import { INestApplication } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import request from 'supertest';
 import { App } from 'supertest/types.js';
-import { checkInDueAt } from '../src/connections/connections.service.js';
 import { createDb } from '../src/db/db.js';
+import { listingCheckInDueAt } from '../src/play/play-times.js';
 import {
   blocks,
   checkIns,
@@ -191,7 +191,7 @@ describe('accepting', () => {
         [joiner.id, owner.id],
       ].sort(),
     );
-    expect(rows[0]!.dueAt.getTime()).toBe(checkInDueAt(new Date(before)).getTime());
+    expect(rows[0]!.dueAt.getTime()).toBe(listingCheckInDueAt(new Date(before)).getTime());
     expect(await notified(joiner.id, 'connection_accepted')).toHaveLength(1);
   });
 
