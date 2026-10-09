@@ -106,7 +106,7 @@ skill or play-style levels, as in Minecraft),
 `max_party` smallint (5 for Valorant, 4 for PUBG squads),
 `is_launch` boolean (the 2–3 launch games appear in Find Players filters),
 `sort` smallint. Seeded from the app's catalog in
-`apps/mobile/lib/data.dart` (55 games with their rank ladders).
+`apps/mobile/lib/data.dart` (49 games with their rank ladders).
 
 **`game_ranks`**: `id` uuid, `game_id`, `name` (`Diamond`, `Div 3`,
 `Legendary`), `tier` smallint (order, low → high). Unique `(game_id, tier)`
