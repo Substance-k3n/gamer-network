@@ -6,7 +6,8 @@ import {
   ApiOkResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { MeDto, toMe } from '../me/me.dto.js';
+import { MeDto } from '../me/me.dto.js';
+import { ProfileService } from '../me/profile.service.js';
 import { CurrentSession, CurrentUser, Public } from './auth.decorators.js';
 import {
   AuthResponse,
@@ -32,6 +33,7 @@ export class AuthController {
   constructor(
     private readonly auth: AuthService,
     private readonly sessions: SessionsService,
+    private readonly profiles: ProfileService,
   ) {}
 
   /** Create an account with email + password. Sends a verification code. */
@@ -70,7 +72,7 @@ export class AuthController {
   @HttpCode(200)
   @ApiOkResponse({ type: MeDto })
   async verifyEmail(@CurrentUser() user: User, @Body() body: CodeBody): Promise<MeDto> {
-    return toMe(await this.auth.verifyEmail(user, body.code));
+    return this.profiles.me(await this.auth.verifyEmail(user, body.code));
   }
 
   /** 429 after 5 codes in an hour. */

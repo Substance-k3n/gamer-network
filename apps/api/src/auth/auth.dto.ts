@@ -8,7 +8,7 @@ const trimLower = ({ value }: { value: unknown }) =>
 const trim = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value);
 
 export const USERNAME = /^[a-z0-9._]{3,20}$/;
-const USERNAME_RULE = '3–20 characters: lowercase letters, numbers, dots and underscores';
+export const USERNAME_RULE = '3–20 characters: lowercase letters, numbers, dots and underscores';
 
 class PasswordField {
   /** 8–72 characters. */

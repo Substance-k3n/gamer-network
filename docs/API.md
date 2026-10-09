@@ -75,13 +75,20 @@ connections.
 ```ts
 UserCard {            // everywhere a person appears in a list
   id, username, displayName, avatarUrl | null, city,
-  status: PlayerStatus, statusGame: GameRef | null,
-  topGame: { game: GameRef, rank: string | null } | null
+  status: PlayerStatus,             // already not_available once statusUntil passed
+  statusGame: GameRef | null,
+  topGame: UserGame | null          // the first game on the profile
+}
+
+UserGame {            // a catalog game, or a custom one added by name
+  id, game: GameRef | null, customGameName | null,
+  rank: RankRef | null, rankText | null, role: RoleRef | null
 }
 
 Profile extends UserCard {
   bio | null, ageRange, availableDays: Day[],           // ["mon","wed"]
-  games: [{ game: GameRef, rank: RankRef | null, role: RoleRef | null }],
+  statusUntil | null,
+  games: UserGame[],                                    // profile order
   platforms: Platform[], tags: PlayTag[],
   gamingIds: [{ kind, game: GameRef | null, value, visibility }], // only those you may see
   stats: { connections, games, playedWith },
@@ -137,29 +144,32 @@ skip it and look around.
 
 ### Me and onboarding
 
-| Method | Path                       | Body → Response                                                                                                                                            |
-| ------ | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `/v1/me`                   | `Me` = `Profile` + `email`, `onboardedAt`, `role`                                                                                                          |
-| PATCH  | `/v1/me`                   | `{ displayName?, username?, bio?, ageRange?, city? }` → `Me`                                                                                               |
-| GET    | `/v1/usernames/{name}`     | `{ available: boolean, suggestion? }` (debounce while typing)                                                                                              |
-| PUT    | `/v1/me/games`             | `[{ gameId?, customGameName?, rankId?, rankText?, roleId? }]` (the full list, in order; `customGameName` + `rankText` for games not in the catalog) → `Me` |
-| PUT    | `/v1/me/platforms`         | `["pc","playstation"]` → `Me`                                                                                                                              |
-| PUT    | `/v1/me/tags`              | `["competitive","fps"]` (≤ 6) → `Me`                                                                                                                       |
-| PUT    | `/v1/me/gaming-ids`        | `[{ kind, gameId?, value, visibility }]` (full list) → `Me`                                                                                                |
-| PUT    | `/v1/me/status`            | `{ status, gameId?, availableDays? }` → `Me`                                                                                                               |
-| POST   | `/v1/me/avatar/upload-url` | `{ contentType: "image/jpeg" }` → `{ uploadUrl, key }` (PUT the file there, ≤ 2 MB)                                                                        |
-| PUT    | `/v1/me/avatar`            | `{ key }` → `Me`                                                                                                                                           |
-| POST   | `/v1/me/onboard`           | `204`. "Go live": needs display name, username, age range and ≥ 1 game                                                                                     |
-| DELETE | `/v1/me`                   | `204`. Deletes the account (Play requirement)                                                                                                              |
-| PUT    | `/v1/me/devices`           | `{ fcmToken, platform, appVersion }` → `204`. Call on every launch and on token refresh                                                                    |
-| GET    | `/v1/me/connections`       | `{ items: [{ user: UserCard, connectedAt }], nextCursor }`                                                                                                 |
-| GET    | `/v1/me/blocks`            | `{ items: UserCard[] }`                                                                                                                                    |
-| GET    | `/v1/me/listing`           | Your live `Listing` or `null`, with its pending requests                                                                                                   |
+| Method | Path                       | Body → Response                                                                                                                                                             |
+| ------ | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/v1/me`                   | `Me` = `Profile` + `email`, `emailVerified`, `hasPassword`, `country`, `onboardedAt`, `role`, `createdAt`                                                                   |
+| PATCH  | `/v1/me`                   | `{ displayName?, username?, bio?, ageRange?, city? }` → `Me`. Only fields sent change; `bio: ""` or `null` clears it. `409 username_taken`                                  |
+| GET    | `/v1/usernames/{name}`     | `{ available: boolean, suggestion? }` (debounce while typing)                                                                                                               |
+| PUT    | `/v1/me/games`             | `{ games: [{ gameId?, customGameName?, rankId?, rankText?, roleId? }] }` (≤ 20, the full list, in order; `customGameName` + `rankText` for games not in the catalog) → `Me` |
+| PUT    | `/v1/me/platforms`         | `{ platforms: ["pc","playstation"] }` → `Me`                                                                                                                                |
+| PUT    | `/v1/me/tags`              | `{ tags: ["competitive","fps"] }` (≤ 6) → `Me`                                                                                                                              |
+| PUT    | `/v1/me/gaming-ids`        | `{ gamingIds: [{ kind, gameId?, value, visibility? }] }` (full list; `gameId` only and always for `in_game`; visibility defaults to `connections`) → `Me`                   |
+| PUT    | `/v1/me/status`            | `{ status, gameId?, availableDays? }` → `Me`. `available_tonight` clears at 04:00, `playing` after 4 h, `looking` after 12 h                                                |
+| POST   | `/v1/me/avatar/upload-url` | `{ contentType: "image/jpeg" }` → `{ uploadUrl, key }` (PUT the file there, ≤ 2 MB)                                                                                         |
+| PUT    | `/v1/me/avatar`            | `{ key }` → `Me`                                                                                                                                                            |
+| POST   | `/v1/me/onboard`           | `204`. "Go live": needs ≥ 1 game, else `422 profile_incomplete`. Safe to repeat                                                                                             |
+| DELETE | `/v1/me`                   | `204`. Deletes the account (Play requirement)                                                                                                                               |
+| PUT    | `/v1/me/devices`           | `{ fcmToken, platform, appVersion }` → `204`. Call on every launch and on token refresh                                                                                     |
+| GET    | `/v1/me/connections`       | `{ items: [{ user: UserCard, connectedAt }], nextCursor }`                                                                                                                  |
+| GET    | `/v1/me/blocks`            | `{ items: UserCard[] }`                                                                                                                                                     |
+| GET    | `/v1/me/listing`           | Your live `Listing` or `null`, with its pending requests                                                                                                                    |
 
 Onboarding maps one-to-one onto the prototype: step 1 → `PATCH /me`,
 step 2 → `PUT /me/games` (no ranks yet), step 3 → `PUT /me/games` (with
 ranks), `PUT /me/platforms`, `PUT /me/gaming-ids`, then "Go live" →
 `POST /me/onboard`.
+
+List bodies are wrapped in an object (`{ games: [...] }`, not a bare
+array) so each can grow a field later without breaking old apps.
 
 ### People
 
