@@ -12,10 +12,32 @@ function required(name: string): string {
   return value;
 }
 
+// Getters, so each read sees the current environment (tests change it).
 export const env = {
   get databaseUrl() {
     return required('DATABASE_URL');
   },
-  port: Number(process.env.PORT ?? 3300),
-  production: process.env.NODE_ENV === 'production',
+  get port() {
+    return Number(process.env.PORT ?? 3300);
+  },
+  get production() {
+    return process.env.NODE_ENV === 'production';
+  },
+  /** Apps older than this get 426 update_required. */
+  get minAppVersion() {
+    return process.env.MIN_APP_VERSION ?? '0.0.0';
+  },
+  get latestAppVersion() {
+    return process.env.LATEST_APP_VERSION ?? '1.0.0';
+  },
+  get launchCity() {
+    return process.env.LAUNCH_CITY ?? 'Addis Ababa';
+  },
+  /** Browser origins allowed to call the API (the PWA, the web site). */
+  get webOrigins() {
+    return (process.env.WEB_ORIGINS ?? 'http://localhost:3000,http://localhost:8080')
+      .split(',')
+      .map((o) => o.trim())
+      .filter(Boolean);
+  },
 };
