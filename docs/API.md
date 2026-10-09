@@ -296,14 +296,23 @@ days later and the email can then sign up again.
 
 ### Admin (web only, `role = admin`)
 
-| Method | Path                             | Purpose                                                                       |
-| ------ | -------------------------------- | ----------------------------------------------------------------------------- |
-| GET    | `/v1/admin/reports?status=open`  | Reports queue                                                                 |
-| POST   | `/v1/admin/reports/{id}/resolve` | `{ action: "dismiss" \| "warn" \| "remove_listing" \| "ban", note }`          |
-| POST   | `/v1/admin/users/{id}/ban`       | `{ reason }`                                                                  |
-| POST   | `/v1/admin/users/{id}/unban`     |                                                                               |
-| POST   | `/v1/admin/listings/{id}/remove` | `{ note }`                                                                    |
-| GET    | `/v1/admin/metrics?from=&to=`    | `{ listings, listingsWithRequest, listingsPlayed, playedRate, weeklyActive }` |
+For `apps/admin`. Admins sign in with `/v1/auth/login` like anyone else;
+every route here answers `403 admin_only` to players and works without a
+gamer profile. Make an account an admin with
+`pnpm --filter @app/api admin:grant <email>` (`--revoke` to undo). Every
+action writes an `admin_actions` row.
+
+| Method | Path                             | Purpose                                                                                                          |
+| ------ | -------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| GET    | `/v1/admin/reports?status=open`  | Reports queue with reporter and target. `open` oldest first, others newest first; `limit`/`cursor`               |
+| POST   | `/v1/admin/reports/{id}/resolve` | `{ action: "dismiss" \| "warn" \| "remove_listing" \| "ban", note }` → report. Reporter is told unless dismissed |
+| GET    | `/v1/admin/users?query=&state=`  | Search by username, name or email prefix; `state` = `active` \| `banned` \| `deleted`                            |
+| GET    | `/v1/admin/users/{id}`           | The player drawer: account, main game, last seen, connections, played with, open reports                         |
+| POST   | `/v1/admin/users/{id}/ban`       | `{ reason }`. Signs them out everywhere and removes their live listing                                           |
+| POST   | `/v1/admin/users/{id}/unban`     | `{ note? }`                                                                                                      |
+| POST   | `/v1/admin/listings/{id}/remove` | `{ note? }` → `204`                                                                                              |
+| PATCH  | `/v1/admin/games/{id}`           | `{ isLaunch }` → `204`. Puts a game on Find Players or takes it off                                              |
+| GET    | `/v1/admin/metrics?from=&to=`    | `{ listings, listingsWithRequest, listingsPlayed, playedRate, weeklyActive }`, default the last 30 days          |
 
 ## Screen → endpoint map (prototype "rally")
 

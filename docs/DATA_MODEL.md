@@ -44,7 +44,7 @@ any migration.
 | `notification_type`  | `connection_request`, `connection_accepted`, `play_invite`, `play_invite_accepted`, `check_in_due`, `listing_expiring`, `report_resolved` |
 | `report_reason`      | `harassment`, `hate`, `sexual_content`, `underage`, `spam`, `impersonation`, `cheating_or_scam`, `other`                                  |
 | `report_status`      | `open`, `actioned`, `dismissed`                                                                                                           |
-| `admin_action_kind`  | `ban`, `unban`, `remove_listing`, `dismiss_report`, `warn`                                                                                |
+| `admin_action_kind`  | `ban`, `unban`, `remove_listing`, `dismiss_report`, `warn`, `set_launch`                                                                  |
 
 ## Tables
 
@@ -215,7 +215,8 @@ muted that type (later).
 
 **`admin_actions`**: audit log. `id`, `admin_id`, `kind`
 admin_action_kind, `target_user_id` null, `listing_id` null,
-`report_id` null, `note`, `created_at`. Every admin endpoint writes one.
+`report_id` null, `game_id` null (for `set_launch`), `note`,
+`created_at`. Every admin endpoint that changes something writes one.
 
 ### Growth
 

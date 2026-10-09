@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import { check, index, pgTable, primaryKey, text, uuid } from 'drizzle-orm/pg-core';
 import { adminActionKind, reportReason, reportStatus } from './enums.js';
 import { users } from './identity.js';
+import { games } from './catalog.js';
 import { listings } from './listings.js';
 import { createdAt, id, ts } from './types.js';
 
@@ -58,6 +59,8 @@ export const adminActions = pgTable('admin_actions', {
   targetUserId: uuid('target_user_id').references(() => users.id),
   listingId: uuid('listing_id').references(() => listings.id),
   reportId: uuid('report_id').references(() => reports.id),
+  /** For set_launch: the game. */
+  gameId: text('game_id').references(() => games.id),
   note: text('note').notNull().default(''),
   createdAt: createdAt(),
 });
