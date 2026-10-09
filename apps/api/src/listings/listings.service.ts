@@ -142,6 +142,13 @@ export class ListingsService {
     return (await this.build(rows, viewerId))[0] ?? null;
   }
 
+  /** Listings by id as `viewerId` sees them, for things that point at a listing (requests). */
+  async byIds(ids: string[], viewerId: string): Promise<Map<string, ListingDto>> {
+    if (ids.length === 0) return new Map();
+    const built = await this.build(await this.select(inArray(listings.id, ids)), viewerId);
+    return new Map(built.map((l) => [l.id, l]));
+  }
+
   async create(owner: User, body: CreateListingBody): Promise<ListingDto> {
     const game = await this.db.query.games.findFirst({ where: eq(games.id, body.gameId) });
     if (!game) throw invalid({ gameId: 'Unknown game' });
