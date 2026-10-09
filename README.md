@@ -11,9 +11,11 @@ together.** Everything else waits. See [docs/PRD.md](docs/PRD.md).
 ```
 gamer-network/
 ├── apps/
+│   ├── admin/          Next.js moderation dashboard (mock data until the
+│   │                   moderation endpoints land).
 │   ├── api/            NestJS + PostgreSQL. The only thing that talks to the DB.
 │   ├── mobile/         Flutter app, Android first. The product.
-│   └── web/            Next.js: listing share pages + admin (moderation).
+│   └── web/            Next.js: public listing share pages.
 ├── packages/
 │   └── api-spec/       openapi.json generated from apps/api. The contract
 │                       between the API and both clients.
@@ -22,11 +24,11 @@ gamer-network/
 └── .claude/skills/     How we work, for anyone (or any session) picking it up.
 ```
 
-| Area                                                | Owner                       |
-| --------------------------------------------------- | --------------------------- |
-| `apps/mobile`                                       | Natnael Sisay (@Natnsis)    |
-| `apps/api`, `apps/web`, `infra`, `.github`          | Kidus Ezra (@Substance-k3n) |
-| `packages/api-spec`, `docs`, `.claude`, root config | Both                        |
+| Area                                                              | Owner                       |
+| ----------------------------------------------------------------- | --------------------------- |
+| `apps/mobile`                                                     | Natnael Sisay (@Natnsis)    |
+| `apps/api`, `apps/web`, `infra`, `.github`                        | Kidus Ezra (@Substance-k3n) |
+| `apps/admin`, `packages/api-spec`, `docs`, `.claude`, root config | Both                        |
 
 `.github/CODEOWNERS` enforces this: a PR asks the owner of each folder it
 touches for review, and merging into `dev` or `main` needs one approval
