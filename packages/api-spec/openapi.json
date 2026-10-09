@@ -1458,6 +1458,212 @@
           "connections"
         ]
       }
+    },
+    "/v1/play-invites": {
+      "post": {
+        "operationId": "playInvitesSend",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendInviteBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayInviteDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "\"Play together\" with a connection. 403 not_connected, 409 invite_pending,\n429 daily_limit (20 a day).",
+        "tags": [
+          "play"
+        ]
+      },
+      "get": {
+        "operationId": "playInvitesList",
+        "parameters": [
+          {
+            "name": "direction",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "incoming",
+              "type": "string",
+              "enum": [
+                "incoming",
+                "outgoing"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayInviteListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Pending invites to you (the banner) or from you.",
+        "tags": [
+          "play"
+        ]
+      }
+    },
+    "/v1/play-invites/{id}/accept": {
+      "post": {
+        "operationId": "playInvitesAccept",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayInviteDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Schedules the check-ins. 409 invite_expired after startsAt + 15 min.",
+        "tags": [
+          "play"
+        ]
+      }
+    },
+    "/v1/play-invites/{id}/decline": {
+      "post": {
+        "operationId": "playInvitesDecline",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "play"
+        ]
+      }
+    },
+    "/v1/me/check-ins": {
+      "get": {
+        "operationId": "checkInsDue",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckInListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "\"Did you play with …?\" cards for Home.",
+        "tags": [
+          "play"
+        ]
+      }
+    },
+    "/v1/check-ins/{id}": {
+      "post": {
+        "operationId": "checkInsAnswer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswerCheckInBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One tap. The product's main number (docs/PRD.md).",
+        "tags": [
+          "play"
+        ]
+      }
     }
   },
   "info": {
@@ -3275,6 +3481,205 @@
         "required": [
           "items",
           "nextCursor"
+        ]
+      },
+      "InviteWhen": {
+        "type": "string",
+        "enum": [
+          "now",
+          "in_30_min",
+          "tonight"
+        ]
+      },
+      "SendInviteBody": {
+        "type": "object",
+        "properties": {
+          "playWhen": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InviteWhen"
+              }
+            ]
+          },
+          "toUserId": {
+            "type": "string",
+            "description": "One of your connections.",
+            "format": "uuid"
+          },
+          "gameId": {
+            "type": "string",
+            "description": "Any catalog game."
+          }
+        },
+        "required": [
+          "playWhen",
+          "toUserId",
+          "gameId"
+        ]
+      },
+      "InviteStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "accepted",
+          "declined",
+          "expired"
+        ],
+        "description": "expired as soon as expiresAt passes while pending."
+      },
+      "PlayInviteDto": {
+        "type": "object",
+        "properties": {
+          "playWhen": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InviteWhen"
+              }
+            ]
+          },
+          "status": {
+            "description": "expired as soon as expiresAt passes while pending.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InviteStatus"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "from": {
+            "$ref": "#/components/schemas/UserCardDto"
+          },
+          "to": {
+            "$ref": "#/components/schemas/UserCardDto"
+          },
+          "game": {
+            "$ref": "#/components/schemas/GameRefDto"
+          },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Count down to this; unanswered by then, it is expired."
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "playWhen",
+          "status",
+          "id",
+          "from",
+          "to",
+          "game",
+          "startsAt",
+          "expiresAt",
+          "createdAt"
+        ]
+      },
+      "PlayInviteListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "Pending and not expired, newest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayInviteDto"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "CheckInDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "other": {
+            "description": "Who you were matched with.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserCardDto"
+              }
+            ]
+          },
+          "game": {
+            "nullable": true,
+            "description": "The game of the listing or invite that led here.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GameRefDto"
+              }
+            ]
+          },
+          "listingId": {
+            "type": "string",
+            "nullable": true
+          },
+          "playInviteId": {
+            "type": "string",
+            "nullable": true
+          },
+          "dueAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "other",
+          "game",
+          "listingId",
+          "playInviteId",
+          "dueAt"
+        ]
+      },
+      "CheckInListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "Due and unanswered, oldest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CheckInDto"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "CheckInAnswer": {
+        "type": "string",
+        "enum": [
+          "played",
+          "not_yet",
+          "no"
+        ]
+      },
+      "AnswerCheckInBody": {
+        "type": "object",
+        "properties": {
+          "answer": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CheckInAnswer"
+              }
+            ]
+          }
+        },
+        "required": [
+          "answer"
         ]
       },
       "ErrorBody": {
