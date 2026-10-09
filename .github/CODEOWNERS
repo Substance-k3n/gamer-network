@@ -10,6 +10,7 @@
 
 /apps/mobile/         @Natnsis
 
+/apps/admin/          @Substance-k3n @Natnsis
 /packages/api-spec/   @Substance-k3n @Natnsis
 /docs/                @Substance-k3n @Natnsis
 /.claude/             @Substance-k3n @Natnsis
