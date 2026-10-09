@@ -5,9 +5,6 @@ built in BUILD_PLAN phase 1 with Drizzle (ADR-0006). When the migrations
 exist they are the source of truth; update this file in the same PR as
 any migration.
 
-Visual version (diagram + screen map):
-https://claude.ai/artifact/DFPiu8i5D2guzr9LgE9RHq (private; share it from its menu).
-
 ## Conventions
 
 - Postgres 17. Extensions: `citext`.
