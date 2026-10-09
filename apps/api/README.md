@@ -54,17 +54,51 @@ types aren't enough (enums, literal types, formats). Operation IDs are
 `<resource><Method>` (e.g. `healthCheck`): that's the method name the
 generated Dart client gets, so name handlers for the caller.
 
-## Planned modules
+## Modules
 
 ```
 src/
-├── auth/           email + password, Google, sessions, email codes  ✓
-├── me/             GET /me, username availability  ✓ (profile editing: phase 3)
-├── users/          gamer profile: games, ranks, platforms, gaming IDs, age range
-├── games/          the 2–3 launch games and their modes/ranks (seeded, not user-made)
-├── listings/       Find Players posts, filters, expiry
-├── connections/    join requests, accept/decline, gaming-ID unlock, next-day check-in
-├── notifications/  FCM push + in-app list
-├── moderation/     block, report, admin actions
-└── health/         GET /health (checks the database)  ✓
+├── auth/           email + password, Google, sessions, email codes, AuthGuard
+├── me/             my profile: edit, games, platforms, tags, gaming IDs, status, avatar, onboard
+├── users/          someone's profile, search; visibility.ts (live + not blocked) used everywhere
+├── games/          catalog (seeded); is_launch games are the ones on Find Players
+├── listings/       Find Players: post, feed, close, stats, public share data, expiry job
+├── connections/    requests, accept (fills the listing, creates check-ins), my connections
+├── play/           play invites (15 min), check-ins ("did you play?"), check-ins-due job
+├── notifications/  in-app list + push outbox; PushDispatcher, FCM or console
+├── safety/         blocks, reports, waitlist, DELETE /me, 30-day account-scrub job
+├── admin/          @AdminOnly: reports queue, bans, remove listing, game switch, metrics
+├── storage/        S3-compatible media (RustFS locally, R2 in production)
+├── jobs/           JobRunner: timers in the API, one advisory lock per job
+├── mail/           Resend or console
+├── common/         errors, cursor paging, Addis time helpers
+└── health/         GET /health (checks the database)
 ```
+
+## Jobs and push
+
+Timed jobs (`listing-expiry`, `check-ins-due` every minute,
+`account-scrub` hourly, `push-sweep`) run inside the API. Each run takes a
+Postgres advisory lock, so a second instance never doubles up.
+`JOBS_ENABLED=false` turns them off (tests run them with
+`JobRunner.runOnce`).
+
+`NotificationsService.notify(tx, rows)` writes notifications in the
+caller's transaction and fires `pg_notify`; `PushDispatcher` listens and
+pushes within a second, marking rows `pushed_at`. Without
+`FIREBASE_SERVICE_ACCOUNT` pushes are printed to the console.
+
+## Admins
+
+```bash
+pnpm --filter @app/api admin:grant you@example.com           # make admin
+pnpm --filter @app/api admin:grant you@example.com --revoke  # undo
+```
+
+## Production keys
+
+Everything in `.env.example` has a dev default except these, which must
+be set in production (the API refuses to start without the `S3_*` and
+URL ones): `GOOGLE_CLIENT_IDS`, `RESEND_API_KEY` + `MAIL_FROM`,
+`FIREBASE_SERVICE_ACCOUNT`, `S3_*`, `MEDIA_PUBLIC_URL`, `PUBLIC_WEB_URL`,
+`WEB_ORIGINS`.
