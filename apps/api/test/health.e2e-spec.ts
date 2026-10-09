@@ -5,7 +5,7 @@ import { createTestApp } from './app.js';
 
 describe('GET /health', () => {
   let app: INestApplication<App>;
-  beforeAll(async () => (app = await createTestApp()));
+  beforeAll(async () => ({ app } = await createTestApp()));
   afterAll(() => app.close());
 
   it('answers 200 once the database answers, outside /v1', () =>

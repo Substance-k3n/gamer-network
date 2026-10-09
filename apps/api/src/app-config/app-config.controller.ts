@@ -1,4 +1,5 @@
 import { Controller, Get, Header } from '@nestjs/common';
+import { Public } from '../auth/auth.decorators.js';
 import { ApiTags } from '@nestjs/swagger';
 import { env } from '../env.js';
 
@@ -17,12 +18,13 @@ export class AppConfigResponse {
 }
 
 @ApiTags('app')
+@Public()
 @Controller('app')
 export class AppConfigController {
   /** What the app needs before anything else: version gate and launch settings. */
   @Get('config')
   @Header('Cache-Control', 'public, max-age=300')
-  config(): AppConfigResponse {
+  get(): AppConfigResponse {
     return {
       minSupportedVersion: env.minAppVersion,
       latestVersion: env.latestAppVersion,

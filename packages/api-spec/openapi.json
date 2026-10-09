@@ -1,6 +1,302 @@
 {
   "openapi": "3.0.0",
   "paths": {
+    "/v1/auth/signup": {
+      "post": {
+        "operationId": "authSignup",
+        "parameters": [
+          {
+            "name": "user-agent",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignupBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create an account with email + password. Sends a verification code.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/login": {
+      "post": {
+        "operationId": "authLogin",
+        "parameters": [
+          {
+            "name": "user-agent",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          }
+        },
+        "summary": "401 wrong_credentials for any mismatch; 429 after 10 wrong passwords in 15 min.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/google": {
+      "post": {
+        "operationId": "authGoogle",
+        "parameters": [
+          {
+            "name": "user-agent",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Sign in or sign up with Google. For a new account without `username`\nand `ageRange`, answers 422 signup_details_required: ask for them and\ncall again with the same idToken.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/verify-email": {
+      "post": {
+        "operationId": "authVerifyEmail",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CodeBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Enter the code sent after sign-up.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/verify-email/resend": {
+      "post": {
+        "operationId": "authResendVerification",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "429 after 5 codes in an hour.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/password/forgot": {
+      "post": {
+        "operationId": "authForgotPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Always 204, whether or not the email has an account.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/password/reset": {
+      "post": {
+        "operationId": "authResetPassword",
+        "parameters": [
+          {
+            "name": "user-agent",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResetResponse"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Sets a new password with the emailed code. Signs out every other device.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/password": {
+      "post": {
+        "operationId": "authChangePassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change (or, for Google-only accounts, set) the password. Signs out other devices.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/logout": {
+      "post": {
+        "operationId": "authLogout",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ends this session.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "healthCheck",
@@ -28,7 +324,7 @@
     },
     "/v1/app/config": {
       "get": {
-        "operationId": "appConfigConfig",
+        "operationId": "appConfigGet",
         "parameters": [],
         "responses": {
           "200": {
@@ -72,6 +368,64 @@
           "games"
         ]
       }
+    },
+    "/v1/me": {
+      "get": {
+        "operationId": "meGet",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The signed-in user.",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/usernames/{name}": {
+      "get": {
+        "operationId": "usernamesCheck",
+        "parameters": [
+          {
+            "name": "name",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsernameAvailability"
+                }
+              }
+            }
+          }
+        },
+        "summary": "For the sign-up form while typing (debounce it). Case-insensitive.",
+        "tags": [
+          "me"
+        ]
+      }
     }
   },
   "info": {
@@ -91,6 +445,293 @@
       }
     },
     "schemas": {
+      "AgeRange": {
+        "type": "string",
+        "enum": [
+          "16_17",
+          "18_24",
+          "25_34",
+          "35_plus"
+        ]
+      },
+      "SignupBody": {
+        "type": "object",
+        "properties": {
+          "ageRange": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgeRange"
+              }
+            ]
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email"
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 30
+          },
+          "username": {
+            "type": "string",
+            "description": "Stored lowercase."
+          },
+          "password": {
+            "type": "string",
+            "description": "8–72 characters.",
+            "minLength": 8,
+            "maxLength": 72
+          }
+        },
+        "required": [
+          "ageRange",
+          "email",
+          "displayName",
+          "username",
+          "password"
+        ]
+      },
+      "PlayerStatus": {
+        "type": "string",
+        "enum": [
+          "looking",
+          "playing",
+          "available_tonight",
+          "not_available"
+        ]
+      },
+      "UserRole": {
+        "type": "string",
+        "enum": [
+          "player",
+          "admin"
+        ]
+      },
+      "MeDto": {
+        "type": "object",
+        "properties": {
+          "ageRange": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgeRange"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayerStatus"
+              }
+            ]
+          },
+          "role": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserRole"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "hasPassword": {
+            "type": "boolean",
+            "description": "False for Google-only accounts, so Settings can offer \"Set a password\"."
+          },
+          "username": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "onboardedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "Null until \"Go live\"; route to onboarding while null."
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ageRange",
+          "status",
+          "role",
+          "id",
+          "email",
+          "emailVerified",
+          "hasPassword",
+          "username",
+          "displayName",
+          "country",
+          "city",
+          "onboardedAt",
+          "avatarUrl",
+          "createdAt"
+        ]
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Send as `Authorization: Bearer <token>`. Keep it in secure storage."
+          },
+          "user": {
+            "$ref": "#/components/schemas/MeDto"
+          },
+          "isNew": {
+            "type": "boolean",
+            "description": "True when this call created the account: go to onboarding."
+          }
+        },
+        "required": [
+          "token",
+          "user",
+          "isNew"
+        ]
+      },
+      "LoginBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 72
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "GoogleBody": {
+        "type": "object",
+        "properties": {
+          "ageRange": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgeRange"
+              }
+            ]
+          },
+          "idToken": {
+            "type": "string",
+            "description": "From Google Sign-In on the device, or Google Identity Services on the web.",
+            "minLength": 10,
+            "maxLength": 4096
+          },
+          "username": {
+            "type": "string",
+            "description": "Only for a new account: send after a 422 signup_details_required."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Defaults to the name on the Google account.",
+            "minLength": 1,
+            "maxLength": 30
+          }
+        },
+        "required": [
+          "idToken"
+        ]
+      },
+      "CodeBody": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "The 6 digits from the email.",
+            "pattern": "^\\d{6}$"
+          }
+        },
+        "required": [
+          "code"
+        ]
+      },
+      "ForgotPasswordBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "ResetPasswordBody": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "The 6 digits from the email.",
+            "pattern": "^\\d{6}$"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 72
+          }
+        },
+        "required": [
+          "code",
+          "email",
+          "newPassword"
+        ]
+      },
+      "ResetResponse": {
+        "type": "object",
+        "properties": {}
+      },
+      "ChangePasswordBody": {
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "description": "Required unless the account has no password yet (Google-only).",
+            "minLength": 1,
+            "maxLength": 72
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 72
+          }
+        },
+        "required": [
+          "newPassword"
+        ]
+      },
       "HealthResponse": {
         "type": "object",
         "properties": {
@@ -246,6 +887,10 @@
           "roles",
           "modes"
         ]
+      },
+      "UsernameAvailability": {
+        "type": "object",
+        "properties": {}
       },
       "ErrorBody": {
         "type": "object",

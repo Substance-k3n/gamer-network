@@ -9,7 +9,7 @@ describe('GET /v1/games', () => {
   let body: GameDto[];
 
   beforeAll(async () => {
-    app = await createTestApp();
+    ({ app } = await createTestApp());
     const res = await request(app.getHttpServer()).get('/v1/games').expect(200);
     expect(res.headers['cache-control']).toBe('public, max-age=3600');
     body = res.body;
