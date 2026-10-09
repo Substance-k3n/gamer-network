@@ -129,3 +129,17 @@ export class ProfileDto extends UserCardDto {
   /** Set when relationship is incoming_request, to accept from the profile. */
   incomingRequestId: string | null;
 }
+
+export class AvatarUploadDto {
+  /**
+   * PUT the file here before `expiresAt`, with `headers`. The body must be
+   * exactly the `size` you asked for (the URL is signed for it); let the
+   * HTTP client set Content-Length.
+   */
+  uploadUrl: string;
+  /** Send these with the upload (Content-Type). */
+  headers: Record<string, string>;
+  /** Send to PUT /v1/me/avatar once the upload succeeds. */
+  key: string;
+  expiresAt: Date;
+}

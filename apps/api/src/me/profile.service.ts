@@ -1,4 +1,5 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { uuidv7 } from 'uuidv7';
 import { and, asc, countDistinct, eq, inArray, or, type SQL, sql } from 'drizzle-orm';
 import { endOfTonight, hoursFrom } from '../common/addis-time.js';
 import { AppError } from '../common/app-error.js';
@@ -6,6 +7,7 @@ import { uniqueViolation } from '../common/db-errors.js';
 import type { User } from '../auth/sessions.service.js';
 import type { Db } from '../db/db.js';
 import { DB } from '../db/db.module.js';
+import { MEDIA_STORAGE, type MediaStorage } from '../storage/storage.js';
 import {
   checkIns,
   connectionRequests,
@@ -19,16 +21,21 @@ import {
   users,
   userTags,
 } from '../db/schema/index.js';
-import type {
-  SetGamesBody,
-  SetGamingIdsBody,
-  SetPlatformsBody,
-  SetStatusBody,
-  SetTagsBody,
-  UpdateMeBody,
+import {
+  AVATAR_MAX_BYTES,
+  AVATAR_TYPES,
+  type AvatarUploadBody,
+  type SetAvatarBody,
+  type SetGamesBody,
+  type SetGamingIdsBody,
+  type SetPlatformsBody,
+  type SetStatusBody,
+  type SetTagsBody,
+  type UpdateMeBody,
 } from './me.body.js';
 import type { MeDto } from './me.dto.js';
 import {
+  type AvatarUploadDto,
   daysToMask,
   type GameRefDto,
   type GamingIdDto,
@@ -69,7 +76,14 @@ export function statusUntil(status: PlayerStatus, now: Date): Date | null {
 /** Builds profiles and owns every write to the profile tables. */
 @Injectable()
 export class ProfileService {
-  constructor(@Inject(DB) private readonly db: Db) {}
+  constructor(
+    @Inject(DB) private readonly db: Db,
+    @Inject(MEDIA_STORAGE) private readonly storage: MediaStorage,
+  ) {}
+
+  private avatarUrl(key: string | null) {
+    return key && this.storage.publicUrl(key);
+  }
 
   async me(user: User): Promise<MeDto> {
     return {
@@ -112,7 +126,7 @@ export class ProfileService {
       id: user.id,
       username: user.username,
       displayName: user.displayName,
-      avatarUrl: null,
+      avatarUrl: this.avatarUrl(user.avatarKey),
       city: user.city,
       status: expired ? 'not_available' : user.status,
       statusGame: gameRef(statusGame ?? null),
@@ -161,7 +175,7 @@ export class ProfileService {
       id: u.id,
       username: u.username,
       displayName: u.displayName,
-      avatarUrl: null,
+      avatarUrl: this.avatarUrl(u.avatarKey),
       city: u.city,
       status: live(u) ? u.status : 'not_available',
       statusGame: live(u) && u.statusGameId ? (gameById.get(u.statusGameId) ?? null) : null,
@@ -449,5 +463,49 @@ export class ProfileService {
       );
     }
     await this.touch(user.id, { onboardedAt: new Date() });
+  }
+
+  /** Step 1 of changing the avatar: where to upload it. */
+  async avatarUploadUrl(user: User, body: AvatarUploadBody): Promise<AvatarUploadDto> {
+    const ext = body.contentType.split('/')[1]!.replace('jpeg', 'jpg');
+    const key = `avatars/${user.id}/${uuidv7()}.${ext}`;
+    const expiresIn = 5 * 60;
+    return {
+      uploadUrl: await this.storage.uploadUrl(key, body.contentType, body.size, expiresIn),
+      headers: { 'Content-Type': body.contentType },
+      key,
+      expiresAt: new Date(Date.now() + expiresIn * 1000),
+    };
+  }
+
+  /** Step 2: use the uploaded file. The previous one is deleted. */
+  async setAvatar(user: User, { key }: SetAvatarBody): Promise<MeDto> {
+    if (!key.startsWith(`avatars/${user.id}/`) || key.includes('..')) {
+      throw invalid({ key: 'Not one of your uploads' });
+    }
+    const stored = await this.storage.head(key);
+    if (!stored) throw invalid({ key: 'Nothing was uploaded there yet' });
+    if (
+      stored.size > AVATAR_MAX_BYTES ||
+      !AVATAR_TYPES.includes(stored.contentType as (typeof AVATAR_TYPES)[number])
+    ) {
+      await this.storage.delete(key);
+      throw invalid({ key: 'Use a JPEG, PNG or WebP image up to 2 MB' });
+    }
+    await this.touch(user.id, { avatarKey: key });
+    await this.dropAvatar(user.avatarKey, key);
+    return this.reload(user.id);
+  }
+
+  async removeAvatar(user: User): Promise<MeDto> {
+    await this.touch(user.id, { avatarKey: null });
+    await this.dropAvatar(user.avatarKey);
+    return this.reload(user.id);
+  }
+
+  /** Best effort: a leftover file costs a few KB, a failed request costs the user. */
+  private async dropAvatar(key: string | null, unless?: string) {
+    if (!key || key === unless) return;
+    await this.storage.delete(key).catch(() => undefined);
   }
 }

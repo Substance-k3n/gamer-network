@@ -5,12 +5,15 @@ import {
   ArrayUnique,
   IsArray,
   IsIn,
+  IsInt,
   IsOptional,
   IsString,
   IsUUID,
   Length,
   Matches,
+  Max,
   MaxLength,
+  Min,
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
@@ -184,4 +187,27 @@ export class SetStatusBody {
   @ArrayUnique()
   @IsIn(DAYS, { each: true })
   availableDays?: Day[];
+}
+
+export const AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
+export type AvatarType = (typeof AVATAR_TYPES)[number];
+export const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+
+export class AvatarUploadBody {
+  @ApiProperty({ enum: AVATAR_TYPES, enumName: 'AvatarType' })
+  @IsIn(AVATAR_TYPES, { message: 'Use a JPEG, PNG or WebP image' })
+  contentType: AvatarType;
+
+  /** The file's exact size in bytes, at most 2 MB. Resize on the phone first. */
+  @IsInt()
+  @Min(1)
+  @Max(AVATAR_MAX_BYTES, { message: 'Images can be up to 2 MB' })
+  size: number;
+}
+
+export class SetAvatarBody {
+  /** The key from POST /v1/me/avatar/upload-url, after the upload finished. */
+  @IsString()
+  @MaxLength(200)
+  key: string;
 }

@@ -61,9 +61,16 @@ show. `fields` (on `422`) maps a field name to its problem, for forms.
 **Lists.** Cursor pagination: `?limit=20&cursor=<opaque>` →
 `{ "items": [...], "nextCursor": "..." | null }`. No page numbers.
 
-**Images.** Avatars upload straight to storage: ask the API for an upload
-URL, `PUT` the file there, then tell the API the key. Responses give
-ready-to-use `avatarUrl`s.
+**Images.** Avatars upload straight to storage, never through the API:
+
+1. Resize and compress on the phone (≤ 2 MB; 512 × 512 JPEG is plenty).
+2. `POST /v1/me/avatar/upload-url` with `{ contentType, size }` (the exact
+   byte count) → `{ uploadUrl, headers, key, expiresAt }`.
+3. `PUT` the bytes to `uploadUrl` with `headers` within 5 minutes. The URL
+   is signed for that type and size; anything else gets `403`.
+4. `PUT /v1/me/avatar` with `{ key }` → `Me` with the new `avatarUrl`.
+
+Responses give ready-to-use public `avatarUrl`s.
 
 **Idempotency.** `POST` that creates something (listings, requests,
 invites, reports) accepts `Idempotency-Key: <uuid>`. Retrying with the
@@ -154,8 +161,9 @@ skip it and look around.
 | PUT    | `/v1/me/tags`              | `{ tags: ["competitive","fps"] }` (≤ 6) → `Me`                                                                                                                              |
 | PUT    | `/v1/me/gaming-ids`        | `{ gamingIds: [{ kind, gameId?, value, visibility? }] }` (full list; `gameId` only and always for `in_game`; visibility defaults to `connections`) → `Me`                   |
 | PUT    | `/v1/me/status`            | `{ status, gameId?, availableDays? }` → `Me`. `available_tonight` clears at 04:00, `playing` after 4 h, `looking` after 12 h                                                |
-| POST   | `/v1/me/avatar/upload-url` | `{ contentType: "image/jpeg" }` → `{ uploadUrl, key }` (PUT the file there, ≤ 2 MB)                                                                                         |
-| PUT    | `/v1/me/avatar`            | `{ key }` → `Me`                                                                                                                                                            |
+| POST   | `/v1/me/avatar/upload-url` | `{ contentType: "image/jpeg" \| "image/png" \| "image/webp", size }` → `{ uploadUrl, headers, key, expiresAt }` (see "Images")                                              |
+| PUT    | `/v1/me/avatar`            | `{ key }` → `Me`. The previous avatar is deleted                                                                                                                            |
+| DELETE | `/v1/me/avatar`            | → `Me` without an avatar                                                                                                                                                    |
 | POST   | `/v1/me/onboard`           | `204`. "Go live": needs ≥ 1 game, else `422 profile_incomplete`. Safe to repeat                                                                                             |
 | DELETE | `/v1/me`                   | `204`. Deletes the account (Play requirement)                                                                                                                               |
 | PUT    | `/v1/me/devices`           | `{ fcmToken, platform, appVersion }` → `204`. Call on every launch and on token refresh                                                                                     |
