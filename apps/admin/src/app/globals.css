@@ -1,0 +1,21 @@
+body {
+  margin: 0;
+  background: #0c0c0c;
+  font-family: var(--font-grotesk), system-ui, sans-serif;
+  color: #ededed;
+  -webkit-font-smoothing: antialiased;
+}
+a {
+  color: #ededed;
+}
+a:hover {
+  color: #ff4d2a;
+}
+input,
+textarea {
+  font-family: inherit;
+}
+input::placeholder,
+textarea::placeholder {
+  color: #6e6e6e;
+}
