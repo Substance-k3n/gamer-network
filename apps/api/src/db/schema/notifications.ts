@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { index, pgTable, uuid } from 'drizzle-orm/pg-core';
 import { notificationType } from './enums.js';
 import { users } from './identity.js';
@@ -23,7 +24,14 @@ export const notifications = pgTable(
     }),
     checkInId: uuid('check_in_id').references(() => checkIns.id, { onDelete: 'cascade' }),
     readAt: ts('read_at'),
+    /** Set once handed to push (or skipped). Null rows are the push outbox. */
+    pushedAt: ts('pushed_at'),
     createdAt: createdAt(),
   },
-  (t) => [index().on(t.userId, t.id.desc())],
+  (t) => [
+    index().on(t.userId, t.id.desc()),
+    index('notifications_unpushed')
+      .on(t.id)
+      .where(sql`${t.pushedAt} is null`),
+  ],
 );

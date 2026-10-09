@@ -90,7 +90,9 @@ per email per hour.
 token; unique), `created_at`, `last_seen_at`, `expires_at` (90 days,
 sliding), `user_agent`, `revoked_at`.
 
-**`devices`**: push targets. `user_id`, `fcm_token` (unique), `platform`
+**`devices`**: push targets. `user_id`, `session_id` null → sessions
+(cascade; signing out or a password reset removes it), `fcm_token`
+(unique; moves to whoever registered it last), `platform`
 (`android`|`ios`|`web`), `app_version`, `last_seen_at`. A token that FCM
 reports as invalid is deleted.
 
@@ -195,7 +197,10 @@ Unique `(user_id, other_user_id, listing_id)` and
 
 **`notifications`**: the Alerts list. `id`, `user_id`, `type`,
 `actor_id` null, `listing_id` / `connection_request_id` /
-`play_invite_id` / `check_in_id` null, `read_at` null, `created_at`.
+`play_invite_id` / `check_in_id` null, `read_at` null, `pushed_at` null,
+`created_at`. Rows with `pushed_at` null are the push outbox: they are
+written in the same transaction as the event, a `NOTIFY` on commit wakes
+the API to push them, and a sweep every minute catches any it missed.
 Index `(user_id, id DESC)`. A push is sent for each row unless the user
 muted that type (later).
 

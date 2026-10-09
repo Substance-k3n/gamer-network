@@ -91,6 +91,8 @@ export const devices = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
+    /** The sign-in that registered it: signing out (or a password reset) stops its pushes. */
+    sessionId: uuid('session_id').references(() => sessions.id, { onDelete: 'cascade' }),
     fcmToken: text('fcm_token').notNull().unique(),
     platform: text('platform').notNull(), // android | ios | web
     appVersion: text('app_version'),

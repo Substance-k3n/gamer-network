@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { and, eq, gt, isNull, ne } from 'drizzle-orm';
 import type { Db } from '../db/db.js';
 import { DB } from '../db/db.module.js';
-import { sessions, users } from '../db/schema/index.js';
+import { devices, sessions, users } from '../db/schema/index.js';
 import { newSessionToken, sha256 } from './crypto.js';
 
 const TTL_MS = 90 * 24 * 3600_000; // 90 days, extended by use
@@ -55,8 +55,10 @@ export class SessionsService {
     return row;
   }
 
+  /** Signs this session out and forgets the device it registered for push. */
   async revoke(sessionId: string) {
     await this.db.update(sessions).set({ revokedAt: new Date() }).where(eq(sessions.id, sessionId));
+    await this.db.delete(devices).where(eq(devices.sessionId, sessionId));
   }
 
   /** Signs the user out everywhere, except `keepSessionId` when given. */
@@ -69,6 +71,14 @@ export class SessionsService {
           eq(sessions.userId, userId),
           isNull(sessions.revokedAt),
           keepSessionId ? ne(sessions.id, keepSessionId) : undefined,
+        ),
+      );
+    await this.db
+      .delete(devices)
+      .where(
+        and(
+          eq(devices.userId, userId),
+          keepSessionId ? ne(devices.sessionId, keepSessionId) : undefined,
         ),
       );
   }
