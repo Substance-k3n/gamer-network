@@ -25,17 +25,71 @@
           "health"
         ]
       }
+    },
+    "/v1/app/config": {
+      "get": {
+        "operationId": "appConfigConfig",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppConfigResponse"
+                }
+              }
+            }
+          }
+        },
+        "summary": "What the app needs before anything else: version gate and launch settings.",
+        "tags": [
+          "app"
+        ]
+      }
+    },
+    "/v1/games": {
+      "get": {
+        "operationId": "gamesList",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GameDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "The full game catalog with ranks, roles and modes. Cache it; it rarely changes.",
+        "tags": [
+          "games"
+        ]
+      }
     }
   },
   "info": {
     "title": "gamer-network API",
-    "description": "",
+    "description": "Conventions: docs/API.md. Every non-2xx response is an ErrorResponse.",
     "version": "0.0.0",
     "contact": {}
   },
   "tags": [],
   "servers": [],
   "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
     "schemas": {
       "HealthResponse": {
         "type": "object",
@@ -56,6 +110,176 @@
         "required": [
           "status",
           "database"
+        ]
+      },
+      "AppConfigResponse": {
+        "type": "object",
+        "properties": {}
+      },
+      "Platform": {
+        "type": "string",
+        "enum": [
+          "pc",
+          "playstation",
+          "xbox",
+          "mobile",
+          "switch"
+        ]
+      },
+      "RankDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "e.g. \"Diamond\", \"Div 3\""
+          },
+          "tier": {
+            "type": "number",
+            "description": "Position on the ladder, 0 = lowest."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "tier"
+        ]
+      },
+      "RoleDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "ModeDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "Ranked, Unrated or Casual"
+          },
+          "isRanked": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "isRanked"
+        ]
+      },
+      "GameDto": {
+        "type": "object",
+        "properties": {
+          "platforms": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Platform"
+            }
+          },
+          "id": {
+            "type": "string",
+            "description": "Short id shared with the app's catalog, e.g. \"val\"."
+          },
+          "name": {
+            "type": "string"
+          },
+          "shortCode": {
+            "type": "string",
+            "description": "Tile label, e.g. \"VAL\"."
+          },
+          "hasRanks": {
+            "type": "boolean",
+            "description": "False when the ladder is play-style levels rather than ranks."
+          },
+          "maxParty": {
+            "type": "number",
+            "description": "Largest party a listing can ask for: 2 = Duo … 5 = 5-stack."
+          },
+          "isLaunch": {
+            "type": "boolean",
+            "description": "Launch games are the ones Find Players offers."
+          },
+          "ranks": {
+            "description": "Lowest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RankDto"
+            }
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoleDto"
+            }
+          },
+          "modes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModeDto"
+            }
+          }
+        },
+        "required": [
+          "platforms",
+          "id",
+          "name",
+          "shortCode",
+          "hasRanks",
+          "maxParty",
+          "isLaunch",
+          "ranks",
+          "roles",
+          "modes"
+        ]
+      },
+      "ErrorBody": {
+        "type": "object",
+        "properties": {
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Field name → problem, on 422"
+          },
+          "code": {
+            "type": "string",
+            "description": "Stable machine code, e.g. `listing_already_open`."
+          },
+          "message": {
+            "type": "string",
+            "description": "Safe to show to the user."
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "required": [
+          "error"
         ]
       }
     }
