@@ -43,6 +43,7 @@ calls:
 4. [ADR-0004](docs/decisions/0004-paid-vps-hosting.md) A paid VPS from day one, so the app never "doesn't open".
 5. [ADR-0005](docs/decisions/0005-safety-defaults.md) 16+, block and report, gaming IDs private by default.
 6. [ADR-0006](docs/decisions/0006-drizzle-orm.md) Drizzle for the database, migrations reviewed as SQL.
+7. [ADR-0007](docs/decisions/0007-email-password-and-google.md) Sign in with email + password or Google.
 
 ## Docs
 

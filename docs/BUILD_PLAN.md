@@ -67,19 +67,24 @@ games from the real API.
 
 Branch: `feature/api-auth`.
 
-- [ ] Email code: `/auth/email/start` + `/verify`, hashed codes, 10 min
-      expiry, 5 attempts, 5 sends/hour. Email via Resend (Brevo fallback,
-      as in abro)
-- [ ] Google: `/auth/google` verifies the ID token server side
+- [ ] Email + password: `/auth/signup`, `/auth/login`, argon2id hashes,
+      lockout after 10 failures in 15 min (ADR-0007)
+- [ ] Email codes: verify email, forgot/reset password; hashed codes,
+      10 min expiry, 5 attempts, 5 sends/hour. Email via Resend (Brevo
+      fallback, as in abro)
+- [ ] Google: `/auth/google` verifies the ID token server side; links to
+      an existing account with the same email
 - [ ] Sessions: opaque token, sha-256 stored, 90-day sliding expiry,
-      `AuthGuard`, `@CurrentUser()`, `OnboardedGuard`, `AdminGuard`
-- [ ] `/auth/logout`, `GET /me`
+      `AuthGuard`, `@CurrentUser()`, `OnboardedGuard`, `VerifiedGuard`,
+      `AdminGuard`
+- [ ] `/auth/logout`, `/auth/password` (change), `GET /me`
 
-**Mobile:** sign-in screen, code screen (auto-advance, paste), Google
-Sign-In, secure token storage, signed-in/out routing.
+**Mobile:** wire the existing Log in and Sign up screens, verify-email
+code screen, Forgot password → code → new password, Google Sign-In,
+secure token storage, signed-in/out routing.
 
-**Acceptance:** sign in with Google and with an email code on a real
-Android phone; kill the app; it opens signed in.
+**Acceptance:** sign up with email + password, sign in with Google, and
+reset a password, on a real Android phone; kill the app; it opens signed in.
 
 ## Phase 3 — Gamer profile `[todo]`
 

@@ -116,35 +116,45 @@ than `/me*`, `/auth/*` and `/app/*` also need a finished onboarding.
 
 ### Sign-in
 
-| Method  | Path                    | Body → Response                                                                  |
-| ------- | ----------------------- | -------------------------------------------------------------------------------- |
-| POST 🔓 | `/v1/auth/email/start`  | `{ email }` → `204`. Sends a 6-digit code. Always 204, even for unknown emails   |
-| POST 🔓 | `/v1/auth/email/verify` | `{ email, code }` → `{ token, user: Me, isNew }`                                 |
-| POST 🔓 | `/v1/auth/google`       | `{ idToken }` (from Google Sign-In on the device) → `{ token, user: Me, isNew }` |
-| POST    | `/v1/auth/logout`       | `204`. Revokes this token and unregisters this device                            |
+| Method  | Path                       | Body → Response                                                                                                          |
+| ------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| POST 🔓 | `/v1/auth/signup`          | `{ email, password, displayName, username, ageRange }` → `{ token, user: Me, isNew: true }`. Sends a verification code   |
+| POST 🔓 | `/v1/auth/login`           | `{ email, password }` → `{ token, user: Me, isNew: false }`. `401 wrong_credentials` for any mismatch                    |
+| POST 🔓 | `/v1/auth/google`          | `{ idToken }` (from Google Sign-In on the device, or Google Identity Services on the web) → `{ token, user: Me, isNew }` |
+| POST    | `/v1/auth/verify-email`    | `{ code }` → `Me`. `POST /v1/auth/verify-email/resend` sends a new one                                                   |
+| POST 🔓 | `/v1/auth/password/forgot` | `{ email }` → `204`, always, even for unknown emails. Sends a reset code                                                 |
+| POST 🔓 | `/v1/auth/password/reset`  | `{ email, code, newPassword }` → `{ token, user: Me }`. Signs out every other device                                     |
+| POST    | `/v1/auth/password`        | `{ currentPassword, newPassword }` → `204`. Change password from Settings                                                |
+| POST    | `/v1/auth/logout`          | `204`. Revokes this token and unregisters this device                                                                    |
+
+Sign-up covers onboarding step 1 (the app's sign-up screen already asks
+for email, display name, username, password and age range). Listings
+and connection requests return `403 email_not_verified` until the code
+is entered, so show the code screen right after sign-up but let people
+skip it and look around.
 
 `isNew` or `user.onboardedAt == null` → onboarding. Otherwise → Home.
 
 ### Me and onboarding
 
-| Method | Path                       | Body → Response                                                                         |
-| ------ | -------------------------- | --------------------------------------------------------------------------------------- |
-| GET    | `/v1/me`                   | `Me` = `Profile` + `email`, `onboardedAt`, `role`                                       |
-| PATCH  | `/v1/me`                   | `{ displayName?, username?, bio?, ageRange?, city? }` → `Me`                            |
-| GET    | `/v1/usernames/{name}`     | `{ available: boolean, suggestion? }` (debounce while typing)                           |
-| PUT    | `/v1/me/games`             | `[{ gameId, rankId?, roleId? }]` (the full list, in order) → `Me`                       |
-| PUT    | `/v1/me/platforms`         | `["pc","playstation"]` → `Me`                                                           |
-| PUT    | `/v1/me/tags`              | `["competitive","fps"]` (≤ 6) → `Me`                                                    |
-| PUT    | `/v1/me/gaming-ids`        | `[{ kind, gameId?, value, visibility }]` (full list) → `Me`                             |
-| PUT    | `/v1/me/status`            | `{ status, gameId?, availableDays? }` → `Me`                                            |
-| POST   | `/v1/me/avatar/upload-url` | `{ contentType: "image/jpeg" }` → `{ uploadUrl, key }` (PUT the file there, ≤ 2 MB)     |
-| PUT    | `/v1/me/avatar`            | `{ key }` → `Me`                                                                        |
-| POST   | `/v1/me/onboard`           | `204`. "Go live": needs display name, username, age range and ≥ 1 game                  |
-| DELETE | `/v1/me`                   | `204`. Deletes the account (Play requirement)                                           |
-| PUT    | `/v1/me/devices`           | `{ fcmToken, platform, appVersion }` → `204`. Call on every launch and on token refresh |
-| GET    | `/v1/me/connections`       | `{ items: [{ user: UserCard, connectedAt }], nextCursor }`                              |
-| GET    | `/v1/me/blocks`            | `{ items: UserCard[] }`                                                                 |
-| GET    | `/v1/me/listing`           | Your live `Listing` or `null`, with its pending requests                                |
+| Method | Path                       | Body → Response                                                                                                                                            |
+| ------ | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/v1/me`                   | `Me` = `Profile` + `email`, `onboardedAt`, `role`                                                                                                          |
+| PATCH  | `/v1/me`                   | `{ displayName?, username?, bio?, ageRange?, city? }` → `Me`                                                                                               |
+| GET    | `/v1/usernames/{name}`     | `{ available: boolean, suggestion? }` (debounce while typing)                                                                                              |
+| PUT    | `/v1/me/games`             | `[{ gameId?, customGameName?, rankId?, rankText?, roleId? }]` (the full list, in order; `customGameName` + `rankText` for games not in the catalog) → `Me` |
+| PUT    | `/v1/me/platforms`         | `["pc","playstation"]` → `Me`                                                                                                                              |
+| PUT    | `/v1/me/tags`              | `["competitive","fps"]` (≤ 6) → `Me`                                                                                                                       |
+| PUT    | `/v1/me/gaming-ids`        | `[{ kind, gameId?, value, visibility }]` (full list) → `Me`                                                                                                |
+| PUT    | `/v1/me/status`            | `{ status, gameId?, availableDays? }` → `Me`                                                                                                               |
+| POST   | `/v1/me/avatar/upload-url` | `{ contentType: "image/jpeg" }` → `{ uploadUrl, key }` (PUT the file there, ≤ 2 MB)                                                                        |
+| PUT    | `/v1/me/avatar`            | `{ key }` → `Me`                                                                                                                                           |
+| POST   | `/v1/me/onboard`           | `204`. "Go live": needs display name, username, age range and ≥ 1 game                                                                                     |
+| DELETE | `/v1/me`                   | `204`. Deletes the account (Play requirement)                                                                                                              |
+| PUT    | `/v1/me/devices`           | `{ fcmToken, platform, appVersion }` → `204`. Call on every launch and on token refresh                                                                    |
+| GET    | `/v1/me/connections`       | `{ items: [{ user: UserCard, connectedAt }], nextCursor }`                                                                                                 |
+| GET    | `/v1/me/blocks`            | `{ items: UserCard[] }`                                                                                                                                    |
+| GET    | `/v1/me/listing`           | Your live `Listing` or `null`, with its pending requests                                                                                                   |
 
 Onboarding maps one-to-one onto the prototype: step 1 → `PATCH /me`,
 step 2 → `PUT /me/games` (no ranks yet), step 3 → `PUT /me/games` (with
@@ -160,14 +170,14 @@ ranks), `PUT /me/platforms`, `PUT /me/gaming-ids`, then "Go live" →
 
 ### Find Players
 
-| Method | Path                       | Body → Response                                                                                                                                                                                                  |
-| ------ | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `/v1/listings`             | Filters: `game`, `rank` (min tier), `platform`, `mode`, `voice=required`, `when=now\|tonight`, `style`, `partySize`. Newest first → `{ items: Listing[], nextCursor }`. Your own and blocked users' are excluded |
-| GET    | `/v1/listings/stats`       | `{ lookingNow: 43 }` for the Home counter                                                                                                                                                                        |
-| POST   | `/v1/listings`             | `{ gameId, modeId?, rankId?, platform, partySize, voice, style, playWhen, startsAt?, note? }` → `Listing`. `409 listing_already_open` if you have one                                                            |
-| GET    | `/v1/listings/{id}`        | `Listing`                                                                                                                                                                                                        |
-| POST   | `/v1/listings/{id}/close`  | Owner only → `Listing` (status `closed`)                                                                                                                                                                         |
-| GET 🔓 | `/v1/public/listings/{id}` | For share pages: owner display name, game, rank, platform, party, when, note, expiresAt. No IDs or gaming IDs                                                                                                    |
+| Method | Path                       | Body → Response                                                                                                                                                                                                                                                        |
+| ------ | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/v1/listings`             | Filters: `game`, `rank` (min tier), `platform`, `mode`, `voice=required`, `when=now\|tonight`, `style`, `partySize`. Newest first → `{ items: Listing[], nextCursor }`. Your own and blocked users' are excluded                                                       |
+| GET    | `/v1/listings/stats`       | `{ lookingNow: 43 }` for the Home counter                                                                                                                                                                                                                              |
+| POST   | `/v1/listings`             | `{ gameId, modeId?, rankId?, platform, partySize, voice: "required"\|"optional", style, playWhen: "now"\|"tonight"\|"weekend", durationHours: 2\|6\|24, note? }`. The API works out `startsAt` and `expiresAt` → `Listing`. `409 listing_already_open` if you have one |
+| GET    | `/v1/listings/{id}`        | `Listing`                                                                                                                                                                                                                                                              |
+| POST   | `/v1/listings/{id}/close`  | Owner only → `Listing` (status `closed`)                                                                                                                                                                                                                               |
+| GET 🔓 | `/v1/public/listings/{id}` | For share pages: owner display name, game, rank, platform, party, when, note, expiresAt. No IDs or gaming IDs                                                                                                                                                          |
 
 ### Connections
 
@@ -185,13 +195,13 @@ ranks), `PUT /me/platforms`, `PUT /me/gaming-ids`, then "Go live" →
 
 ### Play together
 
-| Method | Path                            | Body → Response                                                             |
-| ------ | ------------------------------- | --------------------------------------------------------------------------- |
-| POST   | `/v1/play-invites`              | `{ toUserId, gameId }` → `PlayInvite` (connections only; expires in 15 min) |
-| POST   | `/v1/play-invites/{id}/accept`  | → `PlayInvite`                                                              |
-| POST   | `/v1/play-invites/{id}/decline` | → `204`                                                                     |
-| GET    | `/v1/me/check-ins`              | Due, unanswered: `[{ id, other: UserCard, game: GameRef, dueAt }]`          |
-| POST   | `/v1/check-ins/{id}`            | `{ answer: "played" \| "not_yet" \| "no" }` → `204`                         |
+| Method | Path                            | Body → Response                                                                                                                                    |
+| ------ | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/v1/play-invites`              | `{ toUserId, gameId, playWhen: "now"\|"in_30_min"\|"tonight" }` → `PlayInvite` with `startsAt` (connections only; expires 15 min after `startsAt`) |
+| POST   | `/v1/play-invites/{id}/accept`  | → `PlayInvite`                                                                                                                                     |
+| POST   | `/v1/play-invites/{id}/decline` | → `204`                                                                                                                                            |
+| GET    | `/v1/me/check-ins`              | Due, unanswered: `[{ id, other: UserCard, game: GameRef, dueAt }]`                                                                                 |
+| POST   | `/v1/check-ins/{id}`            | `{ answer: "played" \| "not_yet" \| "no" }` → `204`                                                                                                |
 
 Show due check-ins as a card on Home: "Did you play with Dave?"
 **This answer is the product's main number; make it one tap.**
@@ -244,8 +254,8 @@ Every profile and listing card needs "Block" and "Report" in its menu
 | Screen                           | Calls                                                                                                                         |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | Splash / onboarding carousel     | `GET /app/config`                                                                                                             |
-| Sign in, code                    | `POST /auth/email/start`, `/auth/email/verify`, `/auth/google`                                                                |
-| Step 1 "Who are you as a gamer?" | `PATCH /me`, `GET /usernames/{name}`                                                                                          |
+| Landing, Log in, Sign up         | `POST /auth/login`, `/auth/signup`, `/auth/google`, `/auth/password/forgot`, `/auth/password/reset`, `/auth/verify-email`     |
+| Step 1 "Who are you as a gamer?" | Part of sign-up; `GET /usernames/{name}` while typing                                                                         |
 | Step 2 "What do you play?"       | `GET /games`, `PUT /me/games`                                                                                                 |
 | Step 3 "Ranks, platforms & IDs"  | `PUT /me/games`, `/me/platforms`, `/me/gaming-ids`, `POST /me/onboard`                                                        |
 | Home (no feed in the MVP)        | `GET /me`, `PUT /me/status`, `GET /listings/stats`, `GET /me/check-ins`, `GET /me/listing`, `GET /notifications/unread-count` |

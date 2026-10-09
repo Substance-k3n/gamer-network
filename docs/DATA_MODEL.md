@@ -26,26 +26,28 @@ https://claude.ai/artifact/DFPiu8i5D2guzr9LgE9RHq (private; share it from its me
 
 ## Enums
 
-| Enum                | Values                                                                                                                                    |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `age_range`         | `16_17`, `18_24`, `25_34`, `35_plus`                                                                                                      |
-| `user_role`         | `player`, `admin`                                                                                                                         |
-| `player_status`     | `looking`, `playing`, `available_tonight`, `not_available`                                                                                |
-| `platform`          | `pc`, `playstation`, `xbox`, `mobile`, `switch`                                                                                           |
-| `play_tag`          | `competitive`, `casual`, `fps`, `rpg`, `strategy`, `co_op`, `ranked`, `achievement_hunter`, `story`                                       |
-| `gaming_id_kind`    | `riot`, `steam`, `discord`, `playstation`, `xbox`, `epic`, `ea`, `activision`, `in_game`                                                  |
-| `id_visibility`     | `public`, `connections`                                                                                                                   |
-| `voice`             | `required`, `preferred`, `off`                                                                                                            |
-| `play_style`        | `competitive`, `casual`                                                                                                                   |
-| `play_when`         | `now`, `tonight`, `scheduled`                                                                                                             |
-| `listing_status`    | `open`, `full`, `closed`, `expired`, `removed`                                                                                            |
-| `request_status`    | `pending`, `accepted`, `declined`, `cancelled`, `expired`                                                                                 |
-| `invite_status`     | `pending`, `accepted`, `declined`, `expired`                                                                                              |
-| `check_in_answer`   | `played`, `not_yet`, `no`                                                                                                                 |
-| `notification_type` | `connection_request`, `connection_accepted`, `play_invite`, `play_invite_accepted`, `check_in_due`, `listing_expiring`, `report_resolved` |
-| `report_reason`     | `harassment`, `hate`, `sexual_content`, `underage`, `spam`, `impersonation`, `cheating_or_scam`, `other`                                  |
-| `report_status`     | `open`, `actioned`, `dismissed`                                                                                                           |
-| `admin_action_kind` | `ban`, `unban`, `remove_listing`, `dismiss_report`, `warn`                                                                                |
+| Enum                 | Values                                                                                                                                    |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `age_range`          | `16_17`, `18_24`, `25_34`, `35_plus`                                                                                                      |
+| `user_role`          | `player`, `admin`                                                                                                                         |
+| `player_status`      | `looking`, `playing`, `available_tonight`, `not_available`                                                                                |
+| `platform`           | `pc`, `playstation`, `xbox`, `mobile`, `switch`                                                                                           |
+| `play_tag`           | `competitive`, `casual`, `fps`, `rpg`, `strategy`, `co_op`, `ranked`, `achievement_hunter`, `story`                                       |
+| `gaming_id_kind`     | `riot`, `steam`, `discord`, `playstation`, `xbox`, `epic`, `ea`, `activision`, `in_game`                                                  |
+| `id_visibility`      | `public`, `connections`                                                                                                                   |
+| `voice`              | `required`, `optional`                                                                                                                    |
+| `play_style`         | `competitive`, `casual`                                                                                                                   |
+| `play_when`          | `now`, `tonight`, `weekend`                                                                                                               |
+| `listing_status`     | `open`, `full`, `closed`, `expired`, `removed`                                                                                            |
+| `request_status`     | `pending`, `accepted`, `declined`, `cancelled`, `expired`                                                                                 |
+| `invite_status`      | `pending`, `accepted`, `declined`, `expired`                                                                                              |
+| `invite_when`        | `now`, `in_30_min`, `tonight`                                                                                                             |
+| `email_code_purpose` | `verify_email`, `reset_password`                                                                                                          |
+| `check_in_answer`    | `played`, `not_yet`, `no`                                                                                                                 |
+| `notification_type`  | `connection_request`, `connection_accepted`, `play_invite`, `play_invite_accepted`, `check_in_due`, `listing_expiring`, `report_resolved` |
+| `report_reason`      | `harassment`, `hate`, `sexual_content`, `underage`, `spam`, `impersonation`, `cheating_or_scam`, `other`                                  |
+| `report_status`      | `open`, `actioned`, `dismissed`                                                                                                           |
+| `admin_action_kind`  | `ban`, `unban`, `remove_listing`, `dismiss_report`, `warn`                                                                                |
 
 ## Tables
 
@@ -58,6 +60,8 @@ form, the status card.
 | -------------------------- | ----------------- | -------------------------------------------------------------------- |
 | `id`                       | uuid PK           |                                                                      |
 | `email`                    | citext unique     | Never shown to other users                                           |
+| `email_verified_at`        | timestamptz null  | Set by the verification code, a password reset, or Google sign-in    |
+| `password_hash`            | text null         | argon2id. Null for Google-only accounts (ADR-0007)                   |
 | `username`                 | citext unique     | `^[a-z0-9._]{3,20}$`, e.g. `kaleb.gg`                                |
 | `display_name`             | text              | 1–30 chars                                                           |
 | `bio`                      | text null         | ≤ 160 chars                                                          |
@@ -75,11 +79,13 @@ form, the status card.
 | `created_at`, `updated_at` | timestamptz       |                                                                      |
 | `deleted_at`               | timestamptz null  | Account deletion. Personal fields scrubbed 30 days later by a job    |
 
-**`auth_identities`**: how a user signs in. `(provider, subject)` unique.
-`provider` is `google` (subject = Google `sub`) or `email` (subject = the
-email). One user can have both.
+**`auth_identities`**: linked outside sign-ins. `(provider, subject)`
+unique. For now only `provider = google` (subject = Google `sub`).
+Email + password lives on `users` itself (ADR-0007). One user can have
+both.
 
-**`email_codes`**: 6-digit sign-in codes. `email`, `code_hash` (never the
+**`email_codes`**: 6-digit codes for verifying an email and resetting a
+password. `email`, `purpose` email_code_purpose, `code_hash` (never the
 code), `expires_at` (10 min), `attempts` (max 5), `consumed_at`. Max 5 sent
 per email per hour.
 
@@ -93,11 +99,14 @@ reports as invalid is deleted.
 
 ### Game catalog (seeded, not user-made)
 
-**`games`**: `id` text PK (`valorant`, `codm`, `pubg_mobile`, `ea_fc`, …),
-`name`, `short_code` (`VAL`, the tile label), `platforms` platform[],
+**`games`**: `id` text PK, the same short ids the app uses (`val`,
+`codm`, `pubg`, `fc`, …), `name`, `short_code` (`VAL`, the tile label),
+`platforms` platform[], `has_ranks` boolean (false = the ladder is
+skill or play-style levels, as in Minecraft),
 `max_party` smallint (5 for Valorant, 4 for PUBG squads),
 `is_launch` boolean (the 2–3 launch games appear in Find Players filters),
-`sort` smallint.
+`sort` smallint. Seeded from the app's catalog in
+`apps/mobile/lib/data.dart` (55 games with their rank ladders).
 
 **`game_ranks`**: `id` uuid, `game_id`, `name` (`Diamond`, `Div 3`,
 `Legendary`), `tier` smallint (order, low → high). Unique `(game_id, tier)`
@@ -110,8 +119,13 @@ Royale`), `is_ranked` boolean.
 
 ### Gamer profile
 
-**`user_games`**: PK `(user_id, game_id)`. `rank_id` null, `role_id` null,
-`position` smallint (order on the profile). Composite FKs
+**`user_games`**: `id` uuid PK, `user_id`, `game_id` null,
+`custom_game_name` null (≤ 40; a game not in the catalog, which the app
+lets you add by name; exactly one of the two is set), `rank_id` null,
+`rank_text` null (≤ 30, free text for custom games), `role_id` null,
+`position` smallint (order on the profile). Unique `(user_id, game_id)`
+and `(user_id, lower(custom_game_name))`. Custom games show on profiles
+but can't have listings. Composite FKs
 `(game_id, rank_id) → game_ranks(game_id, id)` and the same for roles, so a
 Valorant row can't hold an FC rank. Ranks are self-reported (ADR-0005);
 the app says so ("Self-reported" on the Games tab).
@@ -139,11 +153,12 @@ Unique `(user_id, kind, game_id)`.
 | `platform`                | platform       |                                                                                      |
 | `party_size`              | smallint       | Whole party incl. owner: 2 = Duo, 3 = Trio, 4 = Squad, 5 = Five. ≤ `games.max_party` |
 | `filled`                  | smallint       | Accepted players so far (owner not counted). `filled = party_size - 1` → `full`      |
-| `voice`                   | voice          | `required` = "Mic required"                                                          |
+| `voice`                   | voice          | `required` = "Mic required", or `optional`                                           |
 | `style`                   | play_style     |                                                                                      |
 | `play_when`               | play_when      |                                                                                      |
-| `starts_at`               | timestamptz    | `now` → created time; `tonight` → 20:00 local or now if later; `scheduled` → chosen  |
-| `expires_at`              | timestamptz    | See expiry rules                                                                     |
+| `starts_at`               | timestamptz    | Worked out by the API from `play_when`; see expiry rules                             |
+| `duration_hours`          | smallint       | What the poster picked: 2, 6 or 24 ("Expires after")                                 |
+| `expires_at`              | timestamptz    | `created_at + duration_hours`                                                        |
 | `note`                    | text null      | ≤ 140 chars                                                                          |
 | `city`                    | text           | Copied from the owner at creation, for filtering                                     |
 | `status`                  | listing_status | Default `open`                                                                       |
@@ -168,8 +183,10 @@ WHERE status = 'pending'`.
 connection deletes the row.
 
 **`play_invites`**: the "Play together" button between connections.
-`id`, `from_user_id`, `to_user_id`, `game_id`, `status` invite_status,
-`created_at`, `expires_at` (created + 15 min), `responded_at`.
+`id`, `from_user_id`, `to_user_id`, `game_id`, `play_when` invite_when,
+`starts_at` (now, now + 30 min, or 21:00 local tonight), `status`
+invite_status, `created_at`, `expires_at` (`starts_at` + 15 min: an
+invite nobody answered by then is stale), `responded_at`.
 
 **`check_ins`**: the metric (PRD). `id`, `user_id` (who is asked),
 `other_user_id`, `listing_id` null, `play_invite_id` null, `due_at`,
@@ -207,9 +224,13 @@ for the Groups "Notify me" button; free text so we can test other ideas.
 
 These live in the services and each has a test.
 
-**Listing expiry.** `now` → starts_at + 2 h. `tonight` → 02:00 local the
-next morning. `scheduled` → starts_at + 2 h, starts_at at most 7 days
-ahead. Never more than 24 h after creation. A job every minute sets
+**Listing times.** The app sends `playWhen` and `durationHours`; the API
+works out the rest, in Addis time. `starts_at`: `now` → created time;
+`tonight` → 20:00 today, or the created time if later; `weekend` → 10:00
+the coming Saturday, or the created time if it is already the weekend.
+`expires_at` = created + 2, 6 or 24 h, whatever the poster picked. A
+`weekend` listing posted on Monday with 24 h would expire before it
+starts, so `weekend` listings get at least until `starts_at` + 6 h. A job every minute sets
 `status = 'expired'` on passed listings and `expired` on their pending
 requests; reads also filter on `expires_at > now()` so a late job never
 shows a dead listing. 15 min before expiry the owner gets
@@ -226,6 +247,17 @@ and `full` if reached, notify the requester, and create two `check_ins`
 
 **Accepting a play invite.** Creates the same pair of check-ins for that
 invite, due 12:00 local the next day (or in 6 h if accepted before 06:00).
+
+**Passwords and accounts.** Passwords are 8–72 characters, hashed with
+argon2id. Sign-in failures say "Wrong email or password" whichever part
+was wrong; 10 failures in 15 min lock that email for 15 min. Sign-up
+sends a `verify_email` code; the account works before it is verified,
+but listings and requests need a verified email. "Forgot password"
+sends a `reset_password` code; using it sets the new password, verifies
+the email and revokes all other sessions. Google sign-in with an email
+that already has a password account links to it; if that account was
+never verified, its password is cleared, so whoever created it without
+owning the email loses access.
 
 **Gaming ID visibility.** `public` IDs show to everyone signed in.
 `connections` IDs show only to connected users (and the owner). Never in
