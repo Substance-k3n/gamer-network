@@ -1,39 +1,57 @@
+import { useEffect, useState } from 'react';
+import { api, type AdminUser } from '../api';
+import { lastSeen, shortDate, STATE_LABEL } from '../data';
 import type { Admin } from '../state';
 import { btnPrimary, btnSecondary } from '../ui';
-import {
-  ACC,
-  C1,
-  DOTO,
-  LINE,
-  MUT,
-  PANEL,
-  RULE,
-  SOFT,
-  ST,
-  TX,
-  grot,
-  label,
-  mono,
-  pad2,
-  pill,
-} from '../tokens';
+import { ACC, C1, DOTO, LINE, MUT, PANEL, SOFT, ST, TX, label, mono, pad2, pill } from '../tokens';
 
 export function UserDrawer({ admin }: { admin: Admin }) {
-  const { s, set, toast, setUser } = admin;
-  const u = s.users.find((x) => x.id === s.userSel);
-  if (!u) return null;
+  const { s, set, toast, fail, changed } = admin;
+  const [u, setU] = useState<AdminUser | null>(null);
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  const history = s.history[u.id] ?? [];
-  const [gameName, rank] = u.main.split(' · ');
-  const wasReset = !!s.rankReset[u.id];
-  const restricted = u.status === 'Suspended' || u.status === 'Banned';
+  // Keyed by the user id (AdminDashboard), so state starts fresh per user.
+  useEffect(() => {
+    if (s.userSel) api<AdminUser>(`admin/users/${s.userSel}`).then(setU).catch(fail);
+  }, [s.userSel, fail]);
+
+  if (!s.userSel) return null;
   const close = () => set({ userSel: null });
-  const stats = [
-    { v: pad2(u.conn), l: 'CONNECTIONS' },
-    { v: pad2(u.played), l: 'PLAYED WITH' },
-    { v: pad2(u.reports), l: 'REPORTS' },
-  ];
-  const fill = { ...btnSecondary, flex: 1, padding: undefined };
+
+  const act = async (kind: 'ban' | 'unban') => {
+    if (!u) return;
+    const note = reason.trim();
+    if (kind === 'ban' && !note) {
+      toast('Write why first. Only admins see it.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const next = await api<AdminUser>(`admin/users/${u.id}/${kind}`, {
+        method: 'POST',
+        body: kind === 'ban' ? { reason: note } : note ? { note } : {},
+      });
+      setU(next);
+      setReason('');
+      changed();
+      toast(
+        kind === 'ban' ? `${u.displayName} banned and signed out` : `${u.displayName} restored`,
+      );
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const stats = u
+    ? [
+        { v: pad2(u.connections), l: 'CONNECTIONS' },
+        { v: pad2(u.playedWith), l: 'PLAYED WITH' },
+        { v: pad2(u.openReports), l: 'OPEN REPORTS' },
+      ]
+    : [];
 
   return (
     <>
@@ -61,7 +79,9 @@ export function UserDrawer({ admin }: { admin: Admin }) {
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ font: mono(400, 11), color: MUT }}>PLAYER · JOINED {u.joined}</span>
+          <span style={{ font: mono(400, 11), color: MUT }}>
+            PLAYER{u ? ` · JOINED ${shortDate(u.createdAt).toUpperCase()}` : ''}
+          </span>
           <button
             type="button"
             onClick={close}
@@ -79,154 +99,124 @@ export function UserDrawer({ admin }: { admin: Admin }) {
             ×
           </button>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div
-            style={{
-              width: 64,
-              height: 64,
-              borderRadius: '50%',
-              background: SOFT,
-              border: `1.5px solid ${ACC}`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 700,
-              fontSize: 26,
-              flex: 'none',
-              boxSizing: 'border-box',
-            }}
-          >
-            {u.name[0]}
-          </div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontFamily: DOTO, fontWeight: 900, fontSize: 28, lineHeight: 1 }}>
-              {u.name}
+        {!u ? (
+          <div style={{ color: MUT, fontSize: 14 }}>Loading…</div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: '50%',
+                  background: SOFT,
+                  border: `1.5px solid ${ACC}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 700,
+                  fontSize: 26,
+                  flex: 'none',
+                  boxSizing: 'border-box',
+                }}
+              >
+                {u.displayName[0]?.toUpperCase()}
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontFamily: DOTO, fontWeight: 900, fontSize: 28, lineHeight: 1 }}>
+                  {u.displayName}
+                </div>
+                <div style={{ fontSize: 14, color: MUT, marginTop: 4 }}>
+                  @{u.username} · {u.city}
+                </div>
+              </div>
             </div>
-            <div style={{ fontSize: 14, color: MUT, marginTop: 4 }}>
-              @{u.handle} · {u.city}
-            </div>
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span style={pill(ST[u.status].bg, ST[u.status].fg, '4px 10px')}>
-            {u.status.toUpperCase()}
-          </span>
-          <span style={{ fontSize: 13, color: MUT }}>Last active {u.last}</span>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
-          {stats.map((k) => (
-            <div key={k.l} style={{ border: `1px solid ${LINE}`, borderRadius: 14, padding: 10 }}>
-              <div style={{ fontFamily: DOTO, fontWeight: 900, fontSize: 24 }}>{k.v}</div>
-              <div style={{ ...label, marginTop: 2 }}>{k.l}</div>
-            </div>
-          ))}
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={label}>GAMES · SELF-REPORTED RANKS</span>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              border: `1px solid ${LINE}`,
-              background: C1,
-              borderRadius: 14,
-              padding: '10px 12px',
-            }}
-          >
-            <span style={{ flex: 1, fontWeight: 600, fontSize: 14 }}>{gameName}</span>
-            <span style={{ font: mono(700, 12) }}>{wasReset ? 'Unranked' : rank}</span>
-            <button
-              type="button"
-              onClick={() => {
-                if (wasReset) return;
-                set((st) => ({ rankReset: { ...st.rankReset, [u.id]: true } }));
-                toast(`Rank reset — ${u.name} must re-enter it`);
-              }}
-              style={{
-                height: 28,
-                padding: '0 10px',
-                borderRadius: 99,
-                border: `1px solid ${LINE}`,
-                background: 'transparent',
-                color: MUT,
-                font: grot(600, 12),
-                cursor: 'pointer',
-              }}
-            >
-              {wasReset ? 'Reset' : 'Reset rank'}
-            </button>
-          </div>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={label}>MODERATION HISTORY</span>
-          {history.map((h, i) => (
-            <div
-              key={i}
-              style={{
-                display: 'flex',
-                gap: 10,
-                fontSize: 13,
-                padding: '6px 0',
-                borderTop: `1px solid ${RULE}`,
-              }}
-            >
-              <span style={{ font: mono(400, 11), color: MUT, width: 62, flex: 'none' }}>
-                {h.t}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={pill(ST[u.state].bg, ST[u.state].fg, '4px 10px')}>
+                {STATE_LABEL[u.state].toUpperCase()}
               </span>
-              <span>{h.text}</span>
+              <span style={{ fontSize: 13, color: MUT }}>Last active {lastSeen(u)}</span>
             </div>
-          ))}
-          {!history.length && <div style={{ fontSize: 13, color: MUT }}>Clean record.</div>}
-        </div>
-        <div style={{ flex: 1 }} />
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {restricted ? (
-            <button
-              type="button"
-              onClick={() => {
-                setUser(u.id, 'Active', 'Account restored');
-                toast(`${u.name} restored`);
-              }}
-              style={{ ...btnPrimary, flex: 1, padding: undefined }}
-            >
-              Restore account
-            </button>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => {
-                  setUser(u.id, 'Warned', 'Warned by admin');
-                  toast(`${u.name} warned`);
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
+              {stats.map((k) => (
+                <div
+                  key={k.l}
+                  style={{ border: `1px solid ${LINE}`, borderRadius: 14, padding: 10 }}
+                >
+                  <div style={{ fontFamily: DOTO, fontWeight: 900, fontSize: 24 }}>{k.v}</div>
+                  <div style={{ ...label, marginTop: 2 }}>{k.l}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={label}>ACCOUNT</span>
+              <div
+                style={{
+                  border: `1px solid ${LINE}`,
+                  background: C1,
+                  borderRadius: 14,
+                  padding: '10px 12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6,
+                  fontSize: 14,
                 }}
-                style={fill}
               >
-                Warn
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setUser(u.id, 'Suspended', 'Suspended 7d by admin');
-                  toast(`${u.name} suspended for 7 days`);
-                }}
-                style={fill}
-              >
-                Suspend 7d
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setUser(u.id, 'Banned', 'Banned by admin');
-                  toast(`${u.name} banned`);
-                }}
-                style={{ ...btnPrimary, flex: 1, padding: undefined }}
-              >
-                Ban
-              </button>
-            </>
-          )}
-        </div>
+                <span style={{ overflowWrap: 'anywhere' }}>{u.email}</span>
+                <span style={{ color: MUT }}>
+                  Main game: {u.mainGame ?? '—'} · {u.onboarded ? 'Profile live' : 'Not onboarded'}
+                </span>
+                {u.banReason && <span style={{ color: ACC }}>Banned: {u.banReason}</span>}
+              </div>
+            </div>
+            <div style={{ flex: 1 }} />
+            {u.state !== 'deleted' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <span style={label}>
+                  {u.state === 'banned' ? 'NOTE (OPTIONAL)' : 'WHY · ADMINS ONLY'}
+                </span>
+                <textarea
+                  rows={2}
+                  maxLength={500}
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder={
+                    u.state === 'banned' ? 'Why they get another chance' : 'Keep it factual'
+                  }
+                  style={{
+                    border: `1px solid ${LINE}`,
+                    borderRadius: 14,
+                    background: C1,
+                    color: TX,
+                    padding: '10px 12px',
+                    fontSize: 14,
+                    outline: 'none',
+                    resize: 'vertical',
+                  }}
+                />
+                {u.state === 'banned' ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => act('unban')}
+                    style={{ ...btnSecondary, width: '100%' }}
+                  >
+                    Restore account
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => act('ban')}
+                    style={{ ...btnPrimary, width: '100%' }}
+                  >
+                    Ban · signs them out everywhere
+                  </button>
+                )}
+              </div>
+            )}
+          </>
+        )}
       </div>
     </>
   );

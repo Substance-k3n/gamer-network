@@ -1,25 +1,81 @@
-import type { Report } from '../data';
+import { useEffect, useState } from 'react';
+import { api, query, type AdminReport, type Page, type ResolveAction } from '../api';
+import { ago, REASON, SEV_ORDER, severity, STATE_LABEL } from '../data';
 import type { Admin } from '../state';
 import { Chip, btnPrimary, btnSecondary } from '../ui';
 import { ACC, C1, DOTO, LINE, MUT, PANEL, SEV, TX, card, grot, label, mono, pill } from '../tokens';
 
-const SEV_ORDER = { HIGH: 0, MED: 1, LOW: 2 } as const;
-const stLabel = (r: Report) =>
-  r.status === 'open' ? 'OPEN' : r.status === 'dismissed' ? 'DISMISSED' : 'RESOLVED';
-const stFg = (r: Report) => (r.status === 'open' ? ACC : MUT);
+const stLabel = (r: AdminReport) =>
+  r.status === 'open' ? 'OPEN' : r.status === 'dismissed' ? 'DISMISSED' : 'ACTIONED';
+const stFg = (r: AdminReport) => (r.status === 'open' ? ACC : MUT);
+
+const DONE: Record<ResolveAction, string> = {
+  dismiss: 'Dismissed',
+  warn: 'User warned',
+  remove_listing: 'Listing removed',
+  ban: 'User banned',
+};
+
+/** Closed = actioned + dismissed, newest decision first (the API lists one status at a time). */
+async function loadClosed(): Promise<AdminReport[]> {
+  const [a, d] = await Promise.all(
+    (['actioned', 'dismissed'] as const).map((status) =>
+      api<Page<AdminReport>>(`admin/reports${query({ status, limit: 50 })}`),
+    ),
+  );
+  return [...a.items, ...d.items].sort((x, y) =>
+    (y.resolvedAt ?? '').localeCompare(x.resolvedAt ?? ''),
+  );
+}
 
 export function Reports({ admin }: { admin: Admin }) {
-  const { s, set, go, closeRep } = admin;
-  const openCount = s.reports.filter((r) => r.status === 'open').length;
-  const list = s.reports
-    .filter(
-      (r) =>
-        (s.repStatus === 'open' ? r.status === 'open' : r.status !== 'open') &&
-        (s.repSev === 'ALL' || r.sev === s.repSev),
+  const { s, set, toast, fail, changed } = admin;
+  const [closed, setClosed] = useState<AdminReport[]>([]);
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (s.repStatus === 'closed') loadClosed().then(setClosed).catch(fail);
+  }, [s.repStatus, fail]);
+
+  const all = s.repStatus === 'open' ? s.openReports : closed;
+  const list = all
+    .filter((r) => s.repSev === 'ALL' || severity(r) === s.repSev)
+    // Most severe first; within a level, the API's order (open: oldest first).
+    .sort((a, b) => SEV_ORDER[severity(a)] - SEV_ORDER[severity(b)]);
+  const rep = list.find((r) => r.id === s.repSel) ?? list[0];
+  const openCount = s.openMore ? `${s.openReports.length}+` : s.openReports.length;
+
+  const resolve = async (r: AdminReport, action: ResolveAction) => {
+    const note = (notes[r.id] ?? '').trim();
+    if (action === 'ban' && !note) {
+      toast('Write the reason in the note first. It is kept with the ban.');
+      return;
+    }
+    setBusy(true);
+    try {
+      await api(`admin/reports/${r.id}/resolve`, { method: 'POST', body: { action, note } });
+      const next = list.find((x) => x.id !== r.id);
+      set({ repSel: next?.id ?? null });
+      changed();
+      toast(`${DONE[action]} · @${r.target.username}`);
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const loadMore = () => {
+    if (!s.openMore) return;
+    api<Page<AdminReport>>(
+      `admin/reports${query({ status: 'open', limit: 50, cursor: s.openMore })}`,
     )
-    .sort((a, b) => SEV_ORDER[a.sev] - SEV_ORDER[b.sev]);
-  const rep = s.reports.find((r) => r.id === s.repSel && list.includes(r)) ?? list[0];
-  const target = rep && s.users.find((u) => u.handle === rep.target);
+      .then((p) =>
+        set((st) => ({ openReports: [...st.openReports, ...p.items], openMore: p.nextCursor })),
+      )
+      .catch(fail);
+  };
 
   return (
     <>
@@ -62,7 +118,8 @@ export function Reports({ admin }: { admin: Admin }) {
           }}
         >
           {list.map((r) => {
-            const sel = r.id === s.repSel;
+            const sel = r.id === rep?.id;
+            const sev = severity(r);
             return (
               <div
                 key={r.id}
@@ -79,7 +136,7 @@ export function Reports({ admin }: { admin: Admin }) {
                   cursor: 'pointer',
                 }}
               >
-                <span style={pill(SEV[r.sev].bg, SEV[r.sev].fg)}>{r.sev}</span>
+                <span style={pill(SEV[sev].bg, SEV[sev].fg)}>{sev}</span>
                 <div style={{ minWidth: 0 }}>
                   <div
                     style={{
@@ -90,7 +147,7 @@ export function Reports({ admin }: { admin: Admin }) {
                       textOverflow: 'ellipsis',
                     }}
                   >
-                    {r.reason}
+                    {REASON[r.reason]}
                   </div>
                   <div
                     style={{
@@ -101,11 +158,11 @@ export function Reports({ admin }: { admin: Admin }) {
                       textOverflow: 'ellipsis',
                     }}
                   >
-                    {r.kind} by @{r.target} · {r.count} reports
+                    {r.listingId ? 'Listing' : 'Profile'} by @{r.target.username}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ font: mono(700, 11) }}>{r.age}</div>
+                  <div style={{ font: mono(700, 11) }}>{ago(r.createdAt)}</div>
                   <div style={{ font: mono(400, 10), color: stFg(r), marginTop: 3 }}>
                     {stLabel(r)}
                   </div>
@@ -115,23 +172,32 @@ export function Reports({ admin }: { admin: Admin }) {
           })}
           {!list.length && (
             <div style={{ padding: 36, textAlign: 'center', color: MUT, fontSize: 14 }}>
-              No reports match these filters.
+              {s.repStatus === 'open' && s.repSev === 'ALL'
+                ? 'Queue is clear.'
+                : 'No reports match these filters.'}
             </div>
+          )}
+          {s.repStatus === 'open' && s.openMore && (
+            <button type="button" onClick={loadMore} style={{ ...btnSecondary, margin: 4 }}>
+              Load more
+            </button>
           )}
         </div>
 
         {rep && (
           <div style={{ ...card, padding: 20, gap: 16, position: 'sticky', top: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <span style={pill(SEV[rep.sev].bg, SEV[rep.sev].fg, '3px 9px')}>{rep.sev}</span>
+              <span style={pill(SEV[severity(rep)].bg, SEV[severity(rep)].fg, '3px 9px')}>
+                {severity(rep)}
+              </span>
               <span style={{ font: mono(400, 11), color: MUT }}>
-                #{rep.id} · {rep.kind} · {rep.age} ago
+                {rep.listingId ? 'Listing' : 'Profile'} · {ago(rep.createdAt)}
               </span>
               <span style={{ flex: 1 }} />
               <span style={{ font: mono(700, 11), color: stFg(rep) }}>{stLabel(rep)}</span>
             </div>
             <div style={{ fontFamily: DOTO, fontWeight: 900, fontSize: 28, lineHeight: 1.05 }}>
-              {rep.reason}
+              {REASON[rep.reason]}
             </div>
             <div
               style={{
@@ -144,153 +210,127 @@ export function Reports({ admin }: { admin: Admin }) {
                 gap: 8,
               }}
             >
-              <div style={{ ...label, letterSpacing: '.04em' }}>REPORTED CONTENT</div>
+              <div style={{ ...label, letterSpacing: '.04em' }}>WHAT THE REPORTER WROTE</div>
               <div style={{ fontSize: 15, lineHeight: 1.45, textWrap: 'pretty' }}>
-                “{rep.excerpt}”
+                {rep.details ? `“${rep.details}”` : <span style={{ color: MUT }}>No details.</span>}
               </div>
-              {rep.clip && (
-                <div
-                  style={{
-                    height: 120,
-                    borderRadius: 12,
-                    background: '#0E0E0E',
-                    backgroundImage:
-                      'repeating-linear-gradient(135deg,rgba(237,237,237,.05) 0 10px,transparent 10px 20px)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    font: mono(400, 11),
-                    color: '#6E6E6E',
-                  }}
-                >
-                  clip preview
-                </div>
-              )}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div
-                onClick={() => target && go('users', { userSel: target.id })}
-                style={{
-                  border: `1px solid ${LINE}`,
-                  borderRadius: 16,
-                  padding: 12,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 6,
-                }}
-              >
-                <div style={label}>REPORTED USER</div>
-                <div style={{ fontWeight: 700, fontSize: 15 }}>@{rep.target}</div>
-                <div style={{ fontSize: 12, color: MUT }}>
-                  {target ? `${target.status} · ${target.reports} prior reports` : ''}
+              {(
+                [
+                  ['REPORTED USER', rep.target],
+                  ['REPORTED BY', rep.reporter],
+                ] as const
+              ).map(([title, u]) => (
+                <div
+                  key={title}
+                  onClick={() => set({ userSel: u.id })}
+                  style={{
+                    border: `1px solid ${LINE}`,
+                    borderRadius: 16,
+                    padding: 12,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6,
+                    minWidth: 0,
+                  }}
+                >
+                  <div style={label}>{title}</div>
+                  <div
+                    style={{
+                      fontWeight: 700,
+                      fontSize: 15,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    @{u.username}
+                  </div>
+                  <div style={{ fontSize: 12, color: MUT }}>
+                    {STATE_LABEL[u.state]} · {u.openReports} open reports
+                  </div>
                 </div>
-              </div>
-              <div
-                style={{
-                  border: `1px solid ${LINE}`,
-                  borderRadius: 16,
-                  padding: 12,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 6,
-                }}
-              >
-                <div style={label}>FIRST REPORTED BY</div>
-                <div style={{ fontWeight: 700, fontSize: 15 }}>@{rep.reporter}</div>
-                <div style={{ fontSize: 12, color: MUT }}>+{rep.count - 1} others</div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={label}>INTERNAL NOTE</div>
-              <textarea
-                rows={2}
-                placeholder="Visible to admins only"
-                value={rep.note}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  set((st) => ({
-                    reports: st.reports.map((x) => (x.id === rep.id ? { ...x, note: v } : x)),
-                  }));
-                }}
-                style={{
-                  border: `1px solid ${LINE}`,
-                  borderRadius: 14,
-                  background: PANEL,
-                  color: TX,
-                  padding: '10px 12px',
-                  fontSize: 14,
-                  outline: 'none',
-                  resize: 'vertical',
-                }}
-              />
+              ))}
             </div>
             {rep.status === 'open' ? (
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  onClick={() => closeRep(rep.id, 'Content removed', null)}
-                  style={btnPrimary}
-                >
-                  Remove content
-                </button>
-                <button
-                  type="button"
-                  onClick={() => closeRep(rep.id, 'User warned', 'Warned')}
-                  style={btnSecondary}
-                >
-                  Warn user
-                </button>
-                <button
-                  type="button"
-                  onClick={() => closeRep(rep.id, 'Suspended 7 days', 'Suspended')}
-                  style={btnSecondary}
-                >
-                  Suspend 7d
-                </button>
-                <button
-                  type="button"
-                  onClick={() => closeRep(rep.id, 'Dismissed', null)}
-                  style={{ ...btnSecondary, background: 'transparent', color: MUT }}
-                >
-                  Dismiss
-                </button>
-              </div>
+              <>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={label}>NOTE · KEPT IN THE AUDIT LOG; THE BAN REASON WHEN BANNING</div>
+                  <textarea
+                    rows={2}
+                    maxLength={500}
+                    placeholder="Visible to admins only"
+                    value={notes[rep.id] ?? ''}
+                    onChange={(e) => setNotes((n) => ({ ...n, [rep.id]: e.target.value }))}
+                    style={{
+                      border: `1px solid ${LINE}`,
+                      borderRadius: 14,
+                      background: PANEL,
+                      color: TX,
+                      padding: '10px 12px',
+                      fontSize: 14,
+                      outline: 'none',
+                      resize: 'vertical',
+                    }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {rep.listingId && (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => resolve(rep, 'remove_listing')}
+                      style={btnPrimary}
+                    >
+                      Remove listing
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => resolve(rep, 'warn')}
+                    style={btnSecondary}
+                  >
+                    Warn user
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => resolve(rep, 'ban')}
+                    style={rep.listingId ? btnSecondary : btnPrimary}
+                  >
+                    Ban user
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => resolve(rep, 'dismiss')}
+                    style={{ ...btnSecondary, background: 'transparent', color: MUT }}
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </>
             ) : (
               <div
                 style={{
                   display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
+                  flexDirection: 'column',
+                  gap: 4,
                   border: `1px solid ${LINE}`,
                   borderRadius: 14,
                   padding: '10px 12px',
+                  font: grot(500, 14),
                 }}
               >
-                <span style={{ flex: 1, fontSize: 14 }}>{rep.outcome ?? ''}</span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    set((st) => ({
-                      reports: st.reports.map((x) =>
-                        x.id === rep.id ? { ...x, status: 'open', outcome: null } : x,
-                      ),
-                      repStatus: 'open',
-                    }))
-                  }
-                  style={{
-                    height: 34,
-                    padding: '0 12px',
-                    borderRadius: 99,
-                    border: `1px solid ${LINE}`,
-                    background: 'transparent',
-                    color: TX,
-                    font: grot(600, 13),
-                    cursor: 'pointer',
-                  }}
-                >
-                  Reopen
-                </button>
+                <span>
+                  {stLabel(rep) === 'DISMISSED' ? 'Dismissed' : 'Actioned'}
+                  {rep.resolvedAt ? ` ${ago(rep.resolvedAt)}` : ''}
+                </span>
+                {rep.resolutionNote && (
+                  <span style={{ color: MUT, fontSize: 13 }}>{rep.resolutionNote}</span>
+                )}
               </div>
             )}
           </div>

@@ -11,8 +11,7 @@ together.** Everything else waits. See [docs/PRD.md](docs/PRD.md).
 ```
 gamer-network/
 ├── apps/
-│   ├── admin/          Next.js moderation dashboard (mock data; the admin
-│   │                   endpoints exist, wiring is next).
+│   ├── admin/          Next.js moderation dashboard on the admin API.
 │   ├── api/            NestJS + PostgreSQL. The only thing that talks to the DB.
 │   ├── mobile/         Flutter app, Android first. The product.
 │   └── web/            Next.js: public listing share pages.

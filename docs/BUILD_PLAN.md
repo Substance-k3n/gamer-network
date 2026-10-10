@@ -8,23 +8,23 @@ is the map, not a one-time plan. Scope: [PRD.md](PRD.md). Tables:
 ## Where we are (2026-10-10)
 
 **The API for phases 1–8 is merged into `dev`** (#3–#18), plus
-`Idempotency-Key` on the four create endpoints (`feature/api-idempotency`):
-155 e2e tests against Postgres and 31 unit tests, CI green. The app and
-the admin dashboard can build against every endpoint in [API.md](API.md).
+`Idempotency-Key` on the create endpoints (#20): 155 e2e tests against
+Postgres and 31 unit tests, CI green. **Phase 9's code is in too:** the
+share pages and privacy policy (`apps/web`, #21), the production stack
+and backups (`infra/docker/prod`, `docs/DEPLOY.md`, #22, tested on a
+laptop), and the admin dashboard on the real API (`feature/admin-api`).
+
+**The app (`apps/mobile`) still runs on mock data:** it has no HTTP
+client yet. That is the biggest gap before the beta.
 
 **Next, in order:**
 
-1. **Phase 9 share page:** scaffold `apps/web` (Next.js), `/l/[id]` from
-   `GET /v1/public/listings/{id}` with Open Graph tags, privacy policy
-   page, `/.well-known/assetlinks.json` (needs the app's signing SHA-256
-   from Natnael).
-2. **Phase 9 deploy setup:** Dockerfiles for api, web and admin;
-   `infra/docker/prod` (Caddy, api, web, admin, Postgres 17, migrate
-   step, daily `pg_dump` + off-server copy); `docs/DEPLOY.md`. Can be
-   written and tested locally before there is a server.
-3. **Wire `apps/admin`** to the admin endpoints (Natnael's dashboard,
-   still on mock data): sign in with `/v1/auth/login`, then Reports,
-   Users, Games and Overview (metric). Groups stays mock.
+1. **Wire `apps/mobile`** to the API (Natnael; [API.md](API.md) "Wiring
+   the app" and the screen → endpoint map). Sign-in first, then
+   onboarding, Find Players, connections, check-ins.
+2. **Deploy** when the VPS, domain and keys below exist: follow
+   [DEPLOY.md](DEPLOY.md) §1–2, then make the first admin.
+3. **Release** `dev` → `main` (`release/YYYY-MM-DD`) once the deploy works.
 
 **Waiting on Kidus (keys come last, by choice):**
 
@@ -232,8 +232,9 @@ Branches: `feature/api-safety`, `feature/api-admin`, then
 - [x] Admin endpoints + `admin_actions` audit log; bans revoke sessions;
       launch-game switch; `admin:grant` script
 - [x] `DELETE /me` + the 30-day scrub job
-- [ ] `apps/admin` (Natnael's dashboard, #8) wired to the admin
+- [x] `apps/admin` (Natnael's dashboard, #8) wired to the admin
       endpoints: sign-in, reports queue, ban/remove, the metric
+      (`feature/admin-api`)
 
 **Mobile:** Block / Report in every profile and listing menu, Blocked
 users in Settings, Delete account in Settings.

@@ -1,56 +1,50 @@
-import type { Admin } from '../state';
-import { Chip } from '../ui';
-import { ACC, C1, DOTO, LINE, MUT, PINK, RULE, ST, TX, fmt, mono, pad2, pill } from '../tokens';
+import { useEffect, useState } from 'react';
+import { api, query, type AccountState, type AdminUser, type Page } from '../api';
+import { shortDate, STATE_LABEL } from '../data';
+import type { Admin, UserFilter } from '../state';
+import { Chip, btnSecondary } from '../ui';
+import { ACC, C1, LINE, MUT, PINK, RULE, ST, TX, mono, pad2, pill } from '../tokens';
 
 const COLS = 'minmax(200px,2fr) 1.1fr 1.4fr 0.9fr 0.7fr 0.9fr';
-const FILTERS = ['All', 'Flagged', 'Active', 'Warned', 'Suspended', 'Banned'];
+const FILTERS: UserFilter[] = ['All', 'Active', 'Banned', 'Deleted'];
+
+function usersPath(q: string, f: UserFilter, cursor?: string) {
+  const state = f === 'All' ? undefined : (f.toLowerCase() as AccountState);
+  return `admin/users${query({ query: q.trim(), state, limit: 50, cursor })}`;
+}
 
 export function Users({ admin }: { admin: Admin }) {
-  const { s, set } = admin;
-  const q = s.userQ.trim().toLowerCase();
-  const rows = s.users.filter(
-    (u) =>
-      (s.userF === 'All' || (s.userF === 'Flagged' ? u.reports > 0 : u.status === s.userF)) &&
-      (!q || `${u.name} ${u.handle} ${u.city} ${u.main}`.toLowerCase().includes(q)),
-  );
-  const cnt = (st: string) => s.users.filter((u) => u.status === st).length;
-  const total = s.users.length * 1450 + 16580;
-  const stats = [
-    { label: 'TOTAL PLAYERS', value: fmt(total), fg: TX },
-    { label: 'ACTIVE TODAY', value: fmt(4910), fg: TX },
-    { label: 'WARNED', value: pad2(cnt('Warned')), fg: PINK },
-    { label: 'SUSPENDED / BANNED', value: pad2(cnt('Suspended') + cnt('Banned')), fg: ACC },
-  ];
+  const { s, set, fail } = admin;
+  const [rows, setRows] = useState<AdminUser[]>([]);
+  const [more, setMore] = useState<string | null>(null);
+  const [q, setQ] = useState(s.userQ);
+
+  // Search as you type, a beat after the last key.
+  useEffect(() => {
+    const t = setTimeout(() => set({ userQ: q }), 250);
+    return () => clearTimeout(t);
+  }, [q, set]);
+
+  useEffect(() => {
+    api<Page<AdminUser>>(usersPath(s.userQ, s.userF))
+      .then((p) => {
+        setRows(p.items);
+        setMore(p.nextCursor);
+      })
+      .catch(fail);
+  }, [s.userQ, s.userF, fail]);
+
+  const loadMore = () =>
+    more &&
+    api<Page<AdminUser>>(usersPath(s.userQ, s.userF, more))
+      .then((p) => {
+        setRows((r) => [...r, ...p.items]);
+        setMore(p.nextCursor);
+      })
+      .catch(fail);
 
   return (
     <>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))',
-          gap: 12,
-        }}
-      >
-        {stats.map((k) => (
-          <div
-            key={k.label}
-            style={{
-              background: C1,
-              border: `1px solid ${LINE}`,
-              borderRadius: 20,
-              padding: '14px 16px',
-            }}
-          >
-            <div style={{ font: mono(400, 11), color: MUT }}>{k.label}</div>
-            <div
-              style={{ fontFamily: DOTO, fontWeight: 900, fontSize: 30, marginTop: 6, color: k.fg }}
-            >
-              {k.value}
-            </div>
-          </div>
-        ))}
-      </div>
-
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         {FILTERS.map((f) => (
           <Chip key={f} on={s.userF === f} onClick={() => set({ userF: f })}>
@@ -59,9 +53,9 @@ export function Users({ admin }: { admin: Admin }) {
         ))}
         <span style={{ flex: 1 }} />
         <input
-          placeholder="Filter by name, handle, city…"
-          value={s.userQ}
-          onChange={(e) => set({ userQ: e.target.value })}
+          placeholder="Username, name or email…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
           style={{
             height: 38,
             width: 260,
@@ -98,7 +92,7 @@ export function Users({ admin }: { admin: Admin }) {
             <span>CITY</span>
             <span>MAIN GAME</span>
             <span>JOINED</span>
-            <span>REPORTS</span>
+            <span>OPEN REPORTS</span>
             <span>STATUS</span>
           </div>
           {rows.map((u, i) => (
@@ -131,31 +125,31 @@ export function Users({ admin }: { admin: Admin }) {
                     flex: 'none',
                   }}
                 >
-                  {u.name[0]}
+                  {u.displayName[0]?.toUpperCase()}
                 </div>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>{u.name}</div>
-                  <div style={{ fontSize: 12, color: MUT }}>@{u.handle}</div>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>{u.displayName}</div>
+                  <div style={{ fontSize: 12, color: MUT }}>@{u.username}</div>
                 </div>
               </div>
               <span style={{ fontSize: 14 }}>{u.city}</span>
-              <span style={{ fontSize: 14 }}>{u.main}</span>
-              <span style={{ font: mono(400, 12) }}>{u.joined}</span>
+              <span style={{ fontSize: 14 }}>{u.mainGame ?? '—'}</span>
+              <span style={{ font: mono(400, 12) }}>{shortDate(u.createdAt)}</span>
               <span
                 style={{
                   font: mono(700, 12),
-                  color: u.reports >= 3 ? ACC : u.reports ? PINK : MUT,
+                  color: u.openReports >= 3 ? ACC : u.openReports ? PINK : MUT,
                 }}
               >
-                {pad2(u.reports)}
+                {pad2(u.openReports)}
               </span>
               <span
                 style={{
-                  ...pill(ST[u.status].bg, ST[u.status].fg, '4px 9px'),
+                  ...pill(ST[u.state].bg, ST[u.state].fg, '4px 9px'),
                   justifySelf: 'start',
                 }}
               >
-                {u.status.toUpperCase()}
+                {STATE_LABEL[u.state].toUpperCase()}
               </span>
             </div>
           ))}
@@ -166,6 +160,11 @@ export function Users({ admin }: { admin: Admin }) {
           )}
         </div>
       </div>
+      {more && (
+        <button type="button" onClick={loadMore} style={{ ...btnSecondary, alignSelf: 'center' }}>
+          Load more
+        </button>
+      )}
     </>
   );
 }

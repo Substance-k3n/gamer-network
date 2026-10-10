@@ -3,10 +3,11 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "dev": "next dev --port 3001",
-    "build": "next build",
+    "api-types": "openapi-typescript ../../packages/api-spec/openapi.json -o src/admin/api.gen.ts",
+    "dev": "pnpm api-types && next dev --port 3001",
+    "build": "pnpm api-types && next build",
     "start": "next start --port 3001",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "pnpm api-types && tsc --noEmit"
   },
   "dependencies": {
     "next": "16.4.0",
@@ -14,9 +15,11 @@
     "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@app/api-spec": "workspace:*",
     "@types/node": "22.20.5",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "openapi-typescript": "7.13.0",
     "typescript": "5.9.3"
   }
 }

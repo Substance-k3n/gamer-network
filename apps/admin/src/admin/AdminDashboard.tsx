@@ -3,7 +3,6 @@
 import type { Screen } from './data';
 import { RANGES } from './data';
 import { Games } from './screens/Games';
-import { Groups } from './screens/Groups';
 import { Overview } from './screens/Overview';
 import { Reports } from './screens/Reports';
 import { UserDrawer } from './screens/UserDrawer';
@@ -17,21 +16,18 @@ const TITLES: Record<Screen, [string, string]> = {
   reports: ['TRUST & SAFETY', 'Reports'],
   users: ['COMMUNITY', 'Users'],
   games: ['CATALOG', 'Games & ranks'],
-  groups: ['COMMUNITY', 'Groups'],
 };
 
 export function AdminDashboard({ startScreen = 'overview' }: { startScreen?: Screen }) {
   const admin = useAdmin(startScreen);
-  const { s, set, go } = admin;
+  const { s, set, go, signOut } = admin;
   const scr = s.screen;
-  const openReps = s.reports.filter((r) => r.status === 'open').length;
-  const pendingG = s.groups.filter((g) => g.status === 'Pending').length;
-  const nav: [Screen, string, number | null][] = [
+  const openReps = s.openReports.length;
+  const nav: [Screen, string, string | null][] = [
     ['overview', 'Overview', null],
-    ['reports', 'Reports', openReps || null],
+    ['reports', 'Reports', openReps ? `${openReps}${s.openMore ? '+' : ''}` : null],
     ['users', 'Users', null],
     ['games', 'Games & ranks', null],
-    ['groups', 'Groups', pendingG || null],
   ];
 
   return (
@@ -141,13 +137,36 @@ export function AdminDashboard({ startScreen = 'overview' }: { startScreen?: Scr
               boxSizing: 'border-box',
             }}
           >
-            S
+            {s.me?.[0]?.toUpperCase() ?? ''}
           </div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>Selam T.</div>
-            <div style={{ font: mono(400, 10), letterSpacing: '.04em', color: MUT }}>
-              TRUST &amp; SAFETY
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div
+              style={{
+                fontWeight: 700,
+                fontSize: 14,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {s.me ?? '…'}
             </div>
+            <button
+              type="button"
+              onClick={signOut}
+              style={{
+                font: mono(400, 10),
+                letterSpacing: '.04em',
+                color: MUT,
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer',
+                textDecoration: 'underline',
+              }}
+            >
+              SIGN OUT
+            </button>
           </div>
         </div>
       </aside>
@@ -211,7 +230,8 @@ export function AdminDashboard({ startScreen = 'overview' }: { startScreen?: Scr
               value={s.globalQ}
               onChange={(e) => set({ globalQ: e.target.value })}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') go('users', { userQ: s.globalQ, userF: 'All' });
+                if (e.key === 'Enter')
+                  go('users', { userQ: s.globalQ, userF: 'All', searchSeq: s.searchSeq + 1 });
               }}
               style={{
                 flex: 1,
@@ -261,14 +281,14 @@ export function AdminDashboard({ startScreen = 'overview' }: { startScreen?: Scr
 
         <Toast message={s.toast} />
 
-        {scr === 'overview' && <Overview admin={admin} />}
-        {scr === 'reports' && <Reports admin={admin} />}
-        {scr === 'users' && <Users admin={admin} />}
+        {/* Keyed by version: after a moderation action the screen remounts and refetches. */}
+        {scr === 'overview' && <Overview key={s.version} admin={admin} />}
+        {scr === 'reports' && <Reports key={s.version} admin={admin} />}
+        {scr === 'users' && <Users key={`${s.version}-${s.searchSeq}`} admin={admin} />}
         {scr === 'games' && <Games admin={admin} />}
-        {scr === 'groups' && <Groups admin={admin} />}
       </main>
 
-      <UserDrawer admin={admin} />
+      <UserDrawer key={s.userSel ?? 'none'} admin={admin} />
     </div>
   );
 }

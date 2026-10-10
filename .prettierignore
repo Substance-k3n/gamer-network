@@ -6,3 +6,5 @@ coverage
 apps/mobile
 packages/api-spec/openapi.json
 apps/api/drizzle
+# generated from packages/api-spec
+**/api.gen.ts
