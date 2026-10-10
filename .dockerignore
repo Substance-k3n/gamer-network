@@ -1,0 +1,11 @@
+**/node_modules
+**/.next
+**/dist
+**/*.tsbuildinfo
+**/.env
+**/.env*.local
+.git
+.turbo
+apps/mobile
+infra/docker/prod/backups
+infra/docker/prod/.env

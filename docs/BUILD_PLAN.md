@@ -253,9 +253,10 @@ Branches: `feature/web-share`, `chore/infra-prod`.
       Android App Links; `/privacy`. Before launch: the release key's
       SHA-256 and the real package name (still `com.example.rally`), a
       privacy contact email, the brand name
-- [ ] Dockerfiles, `infra/docker/prod` (Caddy, api, web, Postgres,
-      migrate, backups) on the VPS; uptime check on `/health`
-- [ ] Off-server backup copy; `docs/DEPLOY.md`
+- [x] Dockerfiles, `infra/docker/prod` (Caddy, api, web, admin,
+      Postgres, migrate, backups), off-server copy to R2,
+      `docs/DEPLOY.md`; tested on a laptop (`chore/infra-prod`)
+- [ ] On the VPS, with the keys; uptime check on `/health`
 
 **Mobile:** release signing, app icon and name, Play Console internal
 testing track, privacy policy URL (served by `apps/web`), data safety

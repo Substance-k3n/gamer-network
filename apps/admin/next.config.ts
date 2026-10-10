@@ -1,5 +1,6 @@
 import type { NextConfig } from 'next';
 
-const nextConfig: NextConfig = {};
+// Standalone: the Docker image runs .next/standalone without node_modules.
+const nextConfig: NextConfig = { output: 'standalone' };
 
 export default nextConfig;

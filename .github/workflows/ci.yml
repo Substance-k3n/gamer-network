@@ -155,3 +155,15 @@ jobs:
             echo "::error::packages/api-spec/openapi.json is stale. Run 'pnpm --filter @app/api spec' and commit it."
             exit 1
           }
+
+  # The production images (docs/DEPLOY.md) must keep building.
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build api, web and admin images
+        working-directory: infra/docker/prod
+        run: |
+          cp .env.example .env
+          docker compose build api web admin

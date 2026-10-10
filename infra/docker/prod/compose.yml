@@ -1,0 +1,166 @@
+# Production stack for one VPS (ADR-0004, docs/DEPLOY.md). Only Caddy
+# publishes ports (80/443, automatic HTTPS):
+#   https://$WEB_DOMAIN    -> web    (share pages, privacy policy, App Links)
+#   https://$API_DOMAIN    -> api    (the app and the admin call this)
+#   https://$ADMIN_DOMAIN  -> admin  (moderation dashboard)
+# Postgres is never exposed. Avatars live in Cloudflare R2, not here.
+#
+# Usage (from this directory, with .env filled in from .env.example):
+#   docker compose up -d --build
+
+name: gamer-network
+
+x-database-url: &database-url postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+
+x-api-image: &api-image
+  image: ${API_IMAGE:-gamer-network-api:latest}
+  build:
+    context: ../../..
+    dockerfile: apps/api/Dockerfile
+
+services:
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      - WEB_DOMAIN
+      - API_DOMAIN
+      - ADMIN_DOMAIN
+      - ACME_EMAIL
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - web
+      - api
+      - admin
+
+  api:
+    <<: *api-image
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: *database-url
+      NODE_ENV: production
+      PORT: '3300'
+      WEB_ORIGINS: https://${WEB_DOMAIN},https://${ADMIN_DOMAIN}
+      PUBLIC_WEB_URL: https://${WEB_DOMAIN}
+      LAUNCH_CITY: ${LAUNCH_CITY:-Addis Ababa}
+      MIN_APP_VERSION: ${MIN_APP_VERSION:-0.0.0}
+      LATEST_APP_VERSION: ${LATEST_APP_VERSION:-1.0.0}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      MAIL_FROM: ${MAIL_FROM}
+      GOOGLE_CLIENT_IDS: ${GOOGLE_CLIENT_IDS:-}
+      FIREBASE_SERVICE_ACCOUNT: ${FIREBASE_SERVICE_ACCOUNT}
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_REGION: auto
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+      S3_BUCKET: ${S3_BUCKET}
+      MEDIA_PUBLIC_URL: ${MEDIA_PUBLIC_URL}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # One-shot: applies the migrations baked into the api image and seeds
+  # the game catalog (safe to repeat), then exits. The api only starts
+  # once this succeeded, so code and schema come from the same image.
+  migrate:
+    <<: *api-image
+    command: ['sh', '-c', 'node dist/db/migrate.js && node dist/db/seed.js']
+    environment:
+      DATABASE_URL: *database-url
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    image: ${WEB_IMAGE:-gamer-network-web:latest}
+    build:
+      context: ../../..
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    environment:
+      API_URL: http://api:3300
+      PUBLIC_WEB_URL: https://${WEB_DOMAIN}
+      ANDROID_PACKAGE: ${ANDROID_PACKAGE:-com.example.rally}
+      ANDROID_CERT_SHA256: ${ANDROID_CERT_SHA256:-}
+      PLAY_STORE_URL: ${PLAY_STORE_URL:-}
+      CONTACT_EMAIL: ${CONTACT_EMAIL:-}
+
+  admin:
+    image: ${ADMIN_IMAGE:-gamer-network-admin:latest}
+    build:
+      context: ../../..
+      dockerfile: apps/admin/Dockerfile
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_DB
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - database:/var/lib/postgresql/data
+
+  # Daily pg_dump into ./backups on the server, keeping 14 days.
+  backup:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      - PGHOST=postgres
+      - PGUSER=${POSTGRES_USER}
+      - PGPASSWORD=${POSTGRES_PASSWORD}
+      - PGDATABASE=${POSTGRES_DB}
+    volumes:
+      - ./backups:/backups
+    entrypoint: >
+      /bin/sh -c '
+      while true; do
+        pg_dump -Fc -f /backups/gn-$$(date +%Y%m%d-%H%M).dump &&
+        find /backups -name "gn-*.dump" -mtime +14 -delete;
+        sleep 86400;
+      done'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # The off-server copy (ADR-0004): every 6 hours, uploads new dumps to a
+  # private R2 bucket. Old copies expire by the bucket's lifecycle rule
+  # (docs/DEPLOY.md), so a dump deleted here stays there.
+  backup-offsite:
+    image: amazon/aws-cli:2.27.0
+    restart: unless-stopped
+    environment:
+      - AWS_ACCESS_KEY_ID=${BACKUP_S3_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${BACKUP_S3_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=auto
+      - S3_ENDPOINT=${S3_ENDPOINT}
+      - BACKUP_BUCKET=${BACKUP_S3_BUCKET}
+    volumes:
+      - ./backups:/backups:ro
+    entrypoint: >
+      /bin/sh -c '
+      while true; do
+        aws --endpoint-url "$$S3_ENDPOINT" s3 sync /backups "s3://$$BACKUP_BUCKET/postgres/" --exclude "*" --include "gn-*.dump" --only-show-errors &&
+        echo "backups copied $$(date -u +%FT%TZ)";
+        sleep 21600;
+      done'
+    depends_on:
+      - backup
+
+volumes:
+  database:
+  caddy-data:
+  caddy-config:
