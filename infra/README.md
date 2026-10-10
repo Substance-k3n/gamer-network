@@ -5,5 +5,6 @@
   console on 9471, user `gn-media` / `password123`).
   `setup-bucket.sh` creates the `gn-media` bucket with public reads under
   `avatars/`; compose and CI both run it.
-- `docker/prod/` — added with the first deploy: Caddy + api + web +
-  Postgres + daily backups on one VPS, same pattern as abro (ADR-0004).
+- `docker/prod/` — the production stack on one VPS: Caddy, api (+ a
+  migrate step), web, admin, Postgres, daily backups and their off-server
+  copy to R2 (ADR-0004). How to run it: [docs/DEPLOY.md](../docs/DEPLOY.md).

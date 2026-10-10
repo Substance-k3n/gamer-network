@@ -56,6 +56,7 @@ calls:
 | [docs/DATA_MODEL.md](docs/DATA_MODEL.md)           | Every table, enum and rule                              |
 | [docs/API.md](docs/API.md)                         | Endpoints, conventions and how to wire the app          |
 | [docs/validation-test.md](docs/validation-test.md) | The manual Telegram test                                |
+| [docs/DEPLOY.md](docs/DEPLOY.md)                   | The production server: setup, updates, backups          |
 
 ## Getting started
 
