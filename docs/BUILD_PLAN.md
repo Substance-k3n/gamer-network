@@ -245,9 +245,11 @@ out and gone from A's lists.
 
 Branches: `feature/web-share`, `chore/infra-prod`.
 
-- [ ] `/l/[id]` share page from `/public/listings/{id}` with Open Graph
+- [x] `/l/[id]` share page from `/public/listings/{id}` with Open Graph
       preview, "Open in app" / "Get the app"; `assetlinks.json` for
-      Android App Links
+      Android App Links; `/privacy`. Before launch: the release key's
+      SHA-256 and the real package name (still `com.example.rally`), a
+      privacy contact email, the brand name
 - [ ] Dockerfiles, `infra/docker/prod` (Caddy, api, web, Postgres,
       migrate, backups) on the VPS; uptime check on `/health`
 - [ ] Off-server backup copy; `docs/DEPLOY.md`
