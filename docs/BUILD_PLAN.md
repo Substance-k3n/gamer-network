@@ -5,27 +5,24 @@ The map from an empty repo to a closed beta. Update the status marks
 is the map, not a one-time plan. Scope: [PRD.md](PRD.md). Tables:
 [DATA_MODEL.md](DATA_MODEL.md). Endpoints: [API.md](API.md).
 
-## Where we are (2026-10-09)
+## Where we are (2026-10-10)
 
-**The API for phases 1–8 is merged into `dev`** (#3–#18): 145 e2e tests
-against Postgres and 31 unit tests, CI green. The app and the admin
-dashboard can build against every endpoint in [API.md](API.md).
+**The API for phases 1–8 is merged into `dev`** (#3–#18), plus
+`Idempotency-Key` on the four create endpoints (`feature/api-idempotency`):
+155 e2e tests against Postgres and 31 unit tests, CI green. The app and
+the admin dashboard can build against every endpoint in [API.md](API.md).
 
 **Next, in order:**
 
-1. **`Idempotency-Key`** on the create endpoints (listings, connection
-   requests, play invites, reports). API.md promises it and CORS allows
-   the header, but no handler reads it yet. Small PR: a
-   `idempotency_keys` table (user, key, response, 24 h), an interceptor.
-2. **Phase 9 share page:** scaffold `apps/web` (Next.js), `/l/[id]` from
+1. **Phase 9 share page:** scaffold `apps/web` (Next.js), `/l/[id]` from
    `GET /v1/public/listings/{id}` with Open Graph tags, privacy policy
    page, `/.well-known/assetlinks.json` (needs the app's signing SHA-256
    from Natnael).
-3. **Phase 9 deploy setup:** Dockerfiles for api, web and admin;
+2. **Phase 9 deploy setup:** Dockerfiles for api, web and admin;
    `infra/docker/prod` (Caddy, api, web, admin, Postgres 17, migrate
    step, daily `pg_dump` + off-server copy); `docs/DEPLOY.md`. Can be
    written and tested locally before there is a server.
-4. **Wire `apps/admin`** to the admin endpoints (Natnael's dashboard,
+3. **Wire `apps/admin`** to the admin endpoints (Natnael's dashboard,
    still on mock data): sign in with `/v1/auth/login`, then Reports,
    Users, Games and Overview (metric). Groups stays mock.
 

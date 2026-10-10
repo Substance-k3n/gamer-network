@@ -72,10 +72,20 @@ show. `fields` (on `422`) maps a field name to its problem, for forms.
 
 Responses give ready-to-use public `avatarUrl`s.
 
-**Idempotency.** `POST` that creates something (listings, requests,
-invites, reports) accepts `Idempotency-Key: <uuid>`. Retrying with the
-same key returns the first result instead of a duplicate. Use it on bad
-connections.
+**Idempotency.** `POST` that creates something (`/listings`,
+`/connection-requests`, `/play-invites`, `/reports`) accepts
+`Idempotency-Key: <uuid>`. Retrying with the same key returns the first
+result instead of a duplicate. Use it on bad connections: make one key
+per thing the user creates and reuse it for every retry of that tap.
+
+- Keys are per user and kept 24 hours.
+- Only successes are kept. After an error the same key can be sent
+  again, for example with the fields fixed.
+- `400 bad_idempotency_key`: not a UUID.
+- `409 idempotency_in_progress`: the first request is still running; try
+  again in a moment.
+- `422 idempotency_key_reused`: the key was used for a different request
+  (another path or body).
 
 ## Shared shapes
 

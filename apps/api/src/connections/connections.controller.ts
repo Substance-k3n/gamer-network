@@ -29,6 +29,7 @@ import {
   SendRequestBody,
 } from './connections.dto.js';
 import { ConnectionsService } from './connections.service.js';
+import { Idempotent } from '../idempotency/idempotency.js';
 
 const requestId = new ParseUUIDPipe({ exceptionFactory: () => notFound('That request') });
 const userId = new ParseUUIDPipe({ exceptionFactory: () => notFound('That connection') });
@@ -49,6 +50,7 @@ export class ConnectionRequestsController {
    * listing_not_open; 429 request_cooldown, daily_limit.
    */
   @Post()
+  @Idempotent()
   @RequireVerifiedEmail()
   @ApiCreatedResponse({ type: ConnectionRequestDto })
   send(@CurrentUser() user: User, @Body() body: SendRequestBody): Promise<ConnectionRequestDto> {

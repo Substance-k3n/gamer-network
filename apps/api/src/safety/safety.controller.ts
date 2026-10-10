@@ -20,6 +20,7 @@ import {
   WaitlistBody,
 } from './safety.dto.js';
 import { SafetyService } from './safety.service.js';
+import { Idempotent } from '../idempotency/idempotency.js';
 
 const userId = new ParseUUIDPipe({ exceptionFactory: () => notFound('That block') });
 
@@ -56,6 +57,7 @@ export class SafetyController {
 
   /** Goes to the admin reports queue. */
   @Post('reports')
+  @Idempotent()
   @HttpCode(204)
   @ApiNoContentResponse()
   report(@CurrentUser() user: User, @Body() body: ReportBody): Promise<void> {

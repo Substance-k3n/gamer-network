@@ -17,6 +17,7 @@ import {
   PublicListingDto,
 } from './listings.dto.js';
 import { ListingsService } from './listings.service.js';
+import { Idempotent } from '../idempotency/idempotency.js';
 
 /** A malformed id is just a listing that doesn't exist. */
 const listingId = new ParseUUIDPipe({ exceptionFactory: () => notFound('That listing') });
@@ -39,6 +40,7 @@ export class ListingsController {
 
   /** Post a listing. One live listing each: 409 listing_already_open. */
   @Post()
+  @Idempotent()
   @RequireVerifiedEmail()
   @ApiCreatedResponse({ type: ListingDto })
   create(@CurrentUser() user: User, @Body() body: CreateListingBody): Promise<ListingDto> {
