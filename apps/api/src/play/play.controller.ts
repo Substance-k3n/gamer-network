@@ -18,6 +18,7 @@ import {
   SendInviteBody,
 } from './play.dto.js';
 import { PlayService } from './play.service.js';
+import { Idempotent } from '../idempotency/idempotency.js';
 
 const inviteId = new ParseUUIDPipe({ exceptionFactory: () => notFound('That invite') });
 const checkInId = new ParseUUIDPipe({ exceptionFactory: () => notFound('That check-in') });
@@ -36,6 +37,7 @@ export class PlayInvitesController {
    * 429 daily_limit (20 a day).
    */
   @Post()
+  @Idempotent()
   @RequireVerifiedEmail()
   @ApiCreatedResponse({ type: PlayInviteDto })
   send(@CurrentUser() user: User, @Body() body: SendInviteBody): Promise<PlayInviteDto> {

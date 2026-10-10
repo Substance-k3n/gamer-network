@@ -218,6 +218,13 @@ admin_action_kind, `target_user_id` null, `listing_id` null,
 `report_id` null, `game_id` null (for `set_launch`), `note`,
 `created_at`. Every admin endpoint that changes something writes one.
 
+### Requests
+
+**`idempotency_keys`**: PK `(user_id, key)`, `request_hash` (sha256 of
+method, path and body), `response` null (the JSON sent; null for `204`),
+`completed_at` null (null while the first request runs), `created_at`.
+Index `(created_at)`. Successes only; deleted after 24 hours by a job.
+
 ### Growth
 
 **`waitlist`**: PK `(user_id, topic)`, `created_at`. `topic` is `groups`
