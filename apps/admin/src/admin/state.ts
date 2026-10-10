@@ -1,78 +1,48 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  GAMES,
-  GROUPS,
-  HISTORY,
-  REPORTS,
-  USERS,
-  type Game,
-  type Group,
-  type GroupType,
-  type HistoryEntry,
-  type Range,
-  type Report,
-  type Screen,
-  type Severity,
-  type User,
-  type UserStatus,
-} from './data';
+import { api, ApiError, query, type AdminReport, type Page } from './api';
+import type { Range, Screen, Severity } from './data';
+
+export type UserFilter = 'All' | 'Active' | 'Banned' | 'Deleted';
 
 export type State = {
   screen: Screen;
   range: Range;
   toast: string | null;
   globalQ: string;
-  reports: Report[];
+  me: string | null;
+  /** The open queue, oldest first, as the API sends it. Also feeds the badge and Overview. */
+  openReports: AdminReport[];
+  openMore: string | null;
   repStatus: 'open' | 'closed';
   repSev: 'ALL' | Severity;
   repSel: string | null;
-  users: User[];
-  userF: string;
+  userF: UserFilter;
   userQ: string;
   userSel: string | null;
-  history: Record<string, HistoryEntry[]>;
-  rankReset: Record<string, boolean>;
-  games: Game[];
-  gameSel: string;
-  newG: Omit<Game, 'id' | 'players'>;
-  rankDraft: string;
-  groups: Group[];
-  groupF: string;
-  gDraft: { name: string; type: GroupType };
+  /** Bumped by the header search, which remounts Users with the new query. */
+  searchSeq: number;
+  /** Bumped after a moderation action; screens are keyed by it, so they refetch. */
+  version: number;
 };
-
-export const emptyGame = (): State['newG'] => ({
-  name: '',
-  short: '',
-  ranks: [],
-  platforms: ['PC'],
-  enabled: true,
-});
 
 const initial = (screen: Screen): State => ({
   screen,
   range: '30D',
   toast: null,
   globalQ: '',
-  reports: REPORTS,
+  me: null,
+  openReports: [],
+  openMore: null,
   repStatus: 'open',
   repSev: 'ALL',
-  repSel: 'R-2041',
-  users: USERS,
+  repSel: null,
   userF: 'All',
   userQ: '',
   userSel: null,
-  history: HISTORY,
-  rankReset: {},
-  games: GAMES,
-  gameSel: 'val',
-  newG: emptyGame(),
-  rankDraft: '',
-  groups: GROUPS,
-  groupF: 'All',
-  gDraft: { name: '', type: 'Game' },
+  searchSeq: 0,
+  version: 0,
 });
 
 export type Patch = Partial<State> | ((s: State) => Partial<State>);
@@ -82,8 +52,11 @@ export type Admin = {
   set: (p: Patch) => void;
   go: (screen: Screen, extra?: Partial<State>) => void;
   toast: (msg: string) => void;
-  setUser: (id: string, status: UserStatus, note: string) => void;
-  closeRep: (id: string, outcome: string, userAct: UserStatus | null) => void;
+  /** Toasts the API's message; for catch handlers. */
+  fail: (e: unknown) => void;
+  /** After a ban, resolve… so every screen refetches. */
+  changed: () => void;
+  signOut: () => Promise<void>;
 };
 
 export function useAdmin(startScreen: Screen): Admin {
@@ -97,41 +70,49 @@ export function useAdmin(startScreen: Screen): Admin {
 
   useEffect(() => () => clearTimeout(timer.current), []);
 
-  const toast = (msg: string) => {
-    clearTimeout(timer.current);
-    set({ toast: msg });
-    timer.current = setTimeout(() => set({ toast: null }), 2600);
-  };
+  const toast = useCallback(
+    (msg: string) => {
+      clearTimeout(timer.current);
+      set({ toast: msg });
+      timer.current = setTimeout(() => set({ toast: null }), 2600);
+    },
+    [set],
+  );
+
+  const fail = useCallback(
+    (e: unknown) => toast(e instanceof ApiError ? e.message : 'Something went wrong. Try again.'),
+    [toast],
+  );
+
+  // Who is signed in, for the sidebar card.
+  useEffect(() => {
+    api<{ displayName: string }>('me')
+      .then((me) => set({ me: me.displayName }))
+      .catch(fail);
+  }, [set, fail]);
+
+  // The open queue: the nav badge, Overview and the Reports screen share it.
+  const loadOpen = useCallback(() => {
+    api<Page<AdminReport>>(`admin/reports${query({ status: 'open', limit: 50 })}`)
+      .then((p) => set({ openReports: p.items, openMore: p.nextCursor }))
+      .catch(fail);
+  }, [set, fail]);
+  useEffect(loadOpen, [loadOpen]);
 
   const go = (screen: Screen, extra?: Partial<State>) => {
     set({ screen, ...extra });
     window.scrollTo(0, 0);
   };
 
-  const setUser = (id: string, status: UserStatus, note: string) => {
-    const t = new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
-    set((st) => ({
-      users: st.users.map((u) => (u.id === id ? { ...u, status } : u)),
-      history: { ...st.history, [id]: [{ t, text: note }, ...(st.history[id] ?? [])] },
-    }));
+  const changed = () => {
+    set((st) => ({ version: st.version + 1 }));
+    loadOpen();
   };
 
-  const closeRep = (id: string, outcome: string, userAct: UserStatus | null) => {
-    const r = s.reports.find((x) => x.id === id);
-    if (!r) return;
-    const u = s.users.find((x) => x.handle === r.target);
-    set((st) => ({
-      reports: st.reports.map((x) =>
-        x.id === id
-          ? { ...x, status: outcome === 'Dismissed' ? 'dismissed' : 'resolved', outcome }
-          : x,
-      ),
-    }));
-    if (userAct && u) setUser(u.id, userAct, `${outcome} — ${r.reason.toLowerCase()}`);
-    const next = s.reports.find((x) => x.id !== id && x.status === 'open');
-    set({ repSel: next ? next.id : id });
-    toast(`${outcome} · ${id}`);
+  const signOut = async () => {
+    await fetch('/api/session', { method: 'DELETE' });
+    window.location.href = '/login';
   };
 
-  return { s, set, go, toast, setUser, closeRep };
+  return { s, set, go, toast, fail, changed, signOut };
 }

@@ -98,6 +98,12 @@ services:
       context: ../../..
       dockerfile: apps/admin/Dockerfile
     restart: unless-stopped
+    # The browser only talks to admin; admin calls the api with the token
+    # from its httpOnly cookie.
+    environment:
+      API_URL: http://api:3300
+    depends_on:
+      - api
 
   postgres:
     image: postgres:17-alpine

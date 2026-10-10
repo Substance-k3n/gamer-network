@@ -66,16 +66,9 @@ export const SEV = {
 } as const;
 
 export const ST = {
-  Active: { bg: C2, fg: TX },
-  Warned: { bg: SOFT, fg: PINK },
-  Suspended: { bg: ACC, fg: DK },
-  Banned: { bg: TX, fg: DK },
-} as const;
-
-export const GST = {
-  Live: { bg: ACC, fg: DK },
-  Pending: { bg: SOFT, fg: PINK },
-  Paused: { bg: C2, fg: MUT },
+  active: { bg: C2, fg: TX },
+  banned: { bg: ACC, fg: DK },
+  deleted: { bg: C2, fg: MUT },
 } as const;
 
 export const fmt = (n: number) => Math.round(n).toLocaleString('en-US');

@@ -20,8 +20,9 @@ const field: CSSProperties = {
 
 export default function LoginPage() {
   const router = useRouter();
-  const [user, setUser] = useState('');
+  const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
+  const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -48,9 +49,26 @@ export default function LoginPage() {
       }}
     >
       <form
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
-          router.push('/');
+          setBusy(true);
+          try {
+            const res = await fetch('/api/session', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ email: email.trim(), password: pass }),
+            });
+            if (res.ok) {
+              router.replace('/');
+              router.refresh();
+              return;
+            }
+            const body = await res.json().catch(() => null);
+            showToast(body?.error?.message ?? 'Could not sign in. Try again.');
+          } catch {
+            showToast('Could not reach the server. Try again.');
+          }
+          setBusy(false);
         }}
         style={{
           width: 390,
@@ -98,36 +116,30 @@ export default function LoginPage() {
         <div style={{ fontSize: 15, color: MUT }}>Your squad&apos;s been busy.</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 14 }}>
           <input
-            placeholder="Email or username"
+            type="email"
+            placeholder="Email"
             autoComplete="username"
-            value={user}
-            onChange={(e) => setUser(e.target.value)}
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             style={field}
           />
           <input
             type="password"
             placeholder="Password"
             autoComplete="current-password"
+            required
             value={pass}
             onChange={(e) => setPass(e.target.value)}
             style={field}
           />
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <span
-              onClick={() => showToast('Reset link sent to your email')}
-              style={{
-                fontSize: 13,
-                fontWeight: 600,
-                textDecoration: 'underline',
-                cursor: 'pointer',
-              }}
-            >
-              Forgot password?
-            </span>
+            <span style={{ fontSize: 13, color: MUT }}>Forgot it? Reset it in the app.</span>
           </div>
         </div>
         <button
           type="submit"
+          disabled={busy}
           style={{
             marginTop: 28,
             height: 56,
@@ -137,10 +149,11 @@ export default function LoginPage() {
             boxShadow: RING,
             font: grot(700, 17),
             color: TX,
-            cursor: 'pointer',
+            cursor: busy ? 'wait' : 'pointer',
+            opacity: busy ? 0.7 : 1,
           }}
         >
-          Log in
+          {busy ? 'Signing in…' : 'Log in'}
         </button>
         <div style={{ textAlign: 'center', fontSize: 14, color: MUT }}>
           Admin access is invite-only.

@@ -1,4 +1,6 @@
-import { CITIES, POST_MIX, RANGES } from '../data';
+import { useEffect, useState } from 'react';
+import { api, query, type Metrics } from '../api';
+import { ago, RANGES, REASON, SEV_ORDER, severity } from '../data';
 import type { Admin } from '../state';
 import {
   ACC,
@@ -8,7 +10,6 @@ import {
   MUT,
   PANEL,
   PINK,
-  RULE,
   SEV,
   SHADOW,
   TX,
@@ -21,55 +22,57 @@ import {
   pill,
 } from '../tokens';
 
-const SEV_ORDER = { HIGH: 0, MED: 1, LOW: 2 } as const;
+const pct = (part: number, whole: number) => (whole ? Math.round((part / whole) * 100) : 0);
 
 export function Overview({ admin }: { admin: Admin }) {
-  const { s, go } = admin;
-  const R = RANGES[s.range];
-  const m = R.mult;
-  const openReps = s.reports.filter((r) => r.status === 'open');
-  const total = s.users.length * 1450 + 16580;
+  const { s, go, fail } = admin;
+  const days = RANGES[s.range];
+  const [m, setM] = useState<Metrics | null>(null);
+
+  useEffect(() => {
+    const from = new Date(Date.now() - days * 86_400_000).toISOString();
+    api<Metrics>(`admin/metrics${query({ from })}`)
+      .then(setM)
+      .catch(fail);
+  }, [days, fail]);
+
+  const open = s.openReports;
+  const openCount = s.openMore ? `${open.length}+` : pad2(open.length);
+  const high = open.filter((r) => severity(r) === 'HIGH').length;
 
   const kpis = [
     {
-      label: 'TOTAL PLAYERS',
-      value: fmt(total),
-      delta: `+${fmt(212 * m)} THIS PERIOD`,
-      onClick: () => go('users'),
+      label: 'PLAYED TOGETHER',
+      value: m ? `${Math.round(m.playedRate * 100)}%` : '—',
+      delta: m ? `${fmt(m.listingsPlayed)} OF ${fmt(m.listings)} LISTINGS` : '',
+      accent: true,
     },
-    { label: 'DAILY ACTIVE', value: fmt(4870 + s.range.length * 40), delta: '+6.2% VS PREV' },
-    { label: 'CONNECTIONS MADE', value: fmt(1340 * m), delta: '+11% VS PREV' },
-    { label: 'SESSIONS PLAYED', value: fmt(960 * m), delta: '+8% VS PREV' },
-    { label: 'LIVE LISTINGS', value: fmt(412), delta: 'AVG 4H 12M LIFETIME' },
+    { label: 'LISTINGS', value: m ? fmt(m.listings) : '—', delta: `LAST ${days} DAYS` },
+    {
+      label: 'GOT A REQUEST',
+      value: m ? fmt(m.listingsWithRequest) : '—',
+      delta: m ? `${pct(m.listingsWithRequest, m.listings)}% OF LISTINGS` : '',
+    },
+    { label: 'WEEKLY ACTIVE', value: m ? fmt(m.weeklyActive) : '—', delta: 'LAST 7 DAYS' },
     {
       label: 'OPEN REPORTS',
-      value: pad2(openReps.length),
-      delta: `${openReps.filter((r) => r.sev === 'HIGH').length} HIGH SEVERITY`,
+      value: openCount,
+      delta: `${high} HIGH SEVERITY`,
       onClick: () => go('reports', { repStatus: 'open' }),
       hot: true,
     },
   ];
 
-  // Synthetic sign-up curve from the design; swap for real daily counts.
-  const vals = Array.from({ length: R.bars }, (_, i) => {
-    const x = i / (R.bars - 1 || 1);
-    return 0.45 + 0.35 * Math.sin(i * 1.7 + R.days) * 0.5 + 0.4 * x + 0.12 * Math.cos(i * 2.9);
-  });
-  const mx = Math.max(...vals);
-  const per = R.days / R.bars;
-  const bars = vals.map((v, i) => ({
-    h: `${Math.round((v / mx) * 100)}%`,
-    bg: i === vals.length - 1 ? ACC : '#3A3A3A',
-    tip: `${fmt(v * 28 * per)} sign-ups`,
-  }));
-
-  const top = s.games
-    .filter((g) => g.enabled)
-    .sort((a, b) => b.players - a.players)
-    .slice(0, 6);
-  const urgent = openReps
+  const funnel = m
+    ? [
+        { label: 'Posted', n: m.listings },
+        { label: 'Got a request', n: m.listingsWithRequest },
+        { label: 'Played together', n: m.listingsPlayed },
+      ]
+    : [];
+  const urgent = open
     .slice()
-    .sort((a, b) => SEV_ORDER[a.sev] - SEV_ORDER[b.sev])
+    .sort((a, b) => SEV_ORDER[severity(a)] - SEV_ORDER[severity(b)])
     .slice(0, 3);
 
   return (
@@ -94,7 +97,7 @@ export function Overview({ admin }: { admin: Admin }) {
               display: 'flex',
               flexDirection: 'column',
               gap: 10,
-              cursor: 'pointer',
+              cursor: k.onClick ? 'pointer' : 'default',
             }}
           >
             <div style={{ font: mono(400, 11), letterSpacing: '.04em', color: MUT }}>{k.label}</div>
@@ -104,7 +107,7 @@ export function Overview({ admin }: { admin: Admin }) {
                 fontWeight: 900,
                 fontSize: 34,
                 lineHeight: 1,
-                color: k.hot ? ACC : TX,
+                color: k.hot || k.accent ? ACC : TX,
               }}
             >
               {k.value}
@@ -123,99 +126,45 @@ export function Overview({ admin }: { admin: Admin }) {
       >
         <div style={{ ...card, gap: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <span style={heading(22)}>Sign-ups</span>
-            <span style={{ font: mono(400, 11), color: MUT }}>LAST {R.days} DAYS</span>
+            <span style={heading(22)}>Listings → played</span>
+            <span style={{ font: mono(400, 11), color: MUT }}>LAST {days} DAYS</span>
           </div>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'flex-end',
-              gap: 5,
-              height: 190,
-              borderBottom: `1px solid ${LINE}`,
-              paddingBottom: 2,
-            }}
-          >
-            {bars.map((b, i) => (
-              <div
-                key={i}
-                title={b.tip}
-                style={{
-                  flex: 1,
-                  height: b.h,
-                  backgroundColor: b.bg,
-                  backgroundImage: 'radial-gradient(rgba(0,0,0,.35) 1px,transparent 1.2px)',
-                  backgroundSize: '5px 5px',
-                  borderRadius: '6px 6px 2px 2px',
-                  minWidth: 4,
-                }}
-              />
-            ))}
+          <div style={{ fontSize: 13, color: MUT, lineHeight: 1.45 }}>
+            Listings posted in this period, how many got a connection request, and how many ended
+            with someone answering &ldquo;we played&rdquo;. The last one is the number that decides
+            the MVP.
           </div>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              font: mono(400, 11),
-              color: MUT,
-            }}
-          >
-            <span>{R.days} DAYS AGO</span>
-            <span>TODAY · {bars.length ? bars[bars.length - 1].tip.toUpperCase() : ''}</span>
-          </div>
-        </div>
-
-        <div style={{ ...card, gap: 12 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <span style={heading(22)}>Players by game</span>
-            <span
-              onClick={() => go('games')}
-              style={{
-                fontSize: 13,
-                fontWeight: 600,
-                textDecoration: 'underline',
-                cursor: 'pointer',
-              }}
-            >
-              Manage games
-            </span>
-          </div>
-          {top.map((g, i) => (
+          {funnel.map((f, i) => (
             <div
-              key={g.id}
+              key={f.label}
               style={{
                 display: 'grid',
-                gridTemplateColumns: '130px minmax(0,1fr) 60px',
+                gridTemplateColumns: '130px minmax(0,1fr) 90px',
                 alignItems: 'center',
                 gap: 12,
               }}
             >
-              <span
-                style={{
-                  fontWeight: 600,
-                  fontSize: 14,
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {g.name}
-              </span>
+              <span style={{ fontWeight: 600, fontSize: 14 }}>{f.label}</span>
               <div
                 style={{ height: 14, borderRadius: 99, overflow: 'hidden', background: '#232323' }}
               >
                 <div
                   style={{
                     height: '100%',
-                    width: `${Math.round((g.players / top[0].players) * 100)}%`,
-                    background: i === 0 ? ACC : '#5A5A5A',
+                    width: `${pct(f.n, funnel[0].n)}%`,
+                    background: i === funnel.length - 1 ? ACC : '#5A5A5A',
                     borderRadius: 99,
                   }}
                 />
               </div>
-              <span style={{ font: mono(700, 12), textAlign: 'right' }}>{fmt(g.players)}</span>
+              <span style={{ font: mono(700, 12), textAlign: 'right' }}>
+                {fmt(f.n)} · {pct(f.n, funnel[0].n)}%
+              </span>
             </div>
           ))}
+          {m && !m.listings && (
+            <div style={{ fontSize: 14, color: MUT }}>No listings in this period yet.</div>
+          )}
         </div>
 
         <div style={{ ...cardHot, gap: 10 }}>
@@ -234,88 +183,46 @@ export function Overview({ admin }: { admin: Admin }) {
               All reports
             </span>
           </div>
-          {urgent.map((r) => (
-            <div
-              key={r.id}
-              onClick={() => go('reports', { repSel: r.id, repStatus: 'open', repSev: 'ALL' })}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                border: `1px solid ${LINE}`,
-                background: PANEL,
-                borderRadius: 14,
-                padding: '10px 12px',
-                cursor: 'pointer',
-              }}
-            >
-              <span style={{ ...pill(SEV[r.sev].bg, SEV[r.sev].fg), flex: 'none' }}>{r.sev}</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div
-                  style={{
-                    fontWeight: 600,
-                    fontSize: 14,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {r.reason} · @{r.target}
-                </div>
-                <div style={{ fontSize: 12, color: MUT }}>
-                  {r.kind} · {r.count} reports · {r.age}
+          {urgent.map((r) => {
+            const sev = severity(r);
+            return (
+              <div
+                key={r.id}
+                onClick={() => go('reports', { repSel: r.id, repStatus: 'open', repSev: 'ALL' })}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  border: `1px solid ${LINE}`,
+                  background: PANEL,
+                  borderRadius: 14,
+                  padding: '10px 12px',
+                  cursor: 'pointer',
+                }}
+              >
+                <span style={{ ...pill(SEV[sev].bg, SEV[sev].fg), flex: 'none' }}>{sev}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontWeight: 600,
+                      fontSize: 14,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {REASON[r.reason]} · @{r.target.username}
+                  </div>
+                  <div style={{ fontSize: 12, color: MUT }}>
+                    {r.listingId ? 'Listing' : 'Profile'} · {ago(r.createdAt)}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           {!urgent.length && (
             <div style={{ fontSize: 14, color: MUT, padding: '8px 0' }}>Queue is clear.</div>
           )}
-        </div>
-
-        <div style={{ ...card, gap: 6 }}>
-          <div style={{ ...heading(22), marginBottom: 6 }}>Top cities</div>
-          {CITIES.map(([name, users], i) => (
-            <div
-              key={name}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '8px 0',
-                borderTop: i ? `1px solid ${RULE}` : 'none',
-              }}
-            >
-              <span style={{ font: mono(700, 11), color: MUT, width: 22 }}>{pad2(i + 1)}</span>
-              <span style={{ flex: 1, fontWeight: 600, fontSize: 14 }}>{name}</span>
-              <span style={{ font: mono(700, 12) }}>{fmt(users)}</span>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ ...card, gap: 12 }}>
-          <div style={heading(22)}>Posts by type</div>
-          <div
-            style={{ display: 'flex', height: 22, borderRadius: 99, overflow: 'hidden', gap: 2 }}
-          >
-            {POST_MIX.map(([label, pct, bg]) => (
-              <div key={label} style={{ width: `${pct}%`, background: bg }} />
-            ))}
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px' }}>
-            {POST_MIX.map(([label, pct, bg]) => (
-              <div
-                key={label}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}
-              >
-                <span
-                  style={{ width: 10, height: 10, borderRadius: 3, background: bg, flex: 'none' }}
-                />
-                <span style={{ flex: 1 }}>{label}</span>
-                <span style={{ font: mono(700, 12) }}>{pct}%</span>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
     </>

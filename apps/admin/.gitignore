@@ -1,0 +1,2 @@
+# Generated from packages/api-spec by `pnpm api-types`.
+src/admin/api.gen.ts
