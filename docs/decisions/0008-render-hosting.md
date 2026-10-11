@@ -13,23 +13,28 @@ work neither of us wants before the beta.
 
 API, share pages, admin and Postgres run on Render, described by
 `render.yaml` at the repo root (a Blueprint), in the Frankfurt region
-(closest to Ethiopia). `main` auto-deploys; migrations and the game seed
-run as the API's pre-deploy command, from the same image. Services are on
-paid instances (`starter`), so nothing sleeps: ADR-0004's reason still
-holds, it is just met differently. Avatars stay on Cloudflare R2.
+(closest to Ethiopia). `main` auto-deploys; the API runs the migrations
+and the game seed when it starts, from the same image as the code.
+Everything starts on the **free tier**, to pay nothing until there are
+users. Avatars stay on Cloudflare R2.
 
 ## Alternatives considered
 
 - **Keep the VPS (ADR-0004).** Cheaper, but we own the server.
-- **Render free instances.** They sleep after 15 minutes, and free
-  Postgres expires after 30 days: the exact problem ADR-0004 avoided.
+- **Render paid instances from day one** (`starter`, about $27/month
+  with Postgres). Nothing sleeps, but it costs money before there are
+  any users. It's a plan change away when the beta starts.
 
 ## Consequences
 
-- About $27/month (three `starter` services + `basic-256mb` Postgres)
-  instead of $5–10. Plans can change per service in the dashboard; admin
-  is the first to drop to free if we need to save money.
-- Backups are Render's daily Postgres backups; the R2 off-site copy from
-  ADR-0004 is not running. Add a Render cron job if we want one.
+- $0 for now, with the cost ADR-0004 warned about: services sleep after
+  15 minutes and take about a minute to wake, and timed jobs pause while
+  the API sleeps. Before real users arrive, move `gn-api` and `gn-web`
+  to `starter` (about $7/month each).
+- The free database expires 30 days after creation and has no backups.
+  Upgrading `gn-db` (from about $6/month) is required before then; until
+  then we take `pg_dump`s by hand (docs/DEPLOY.md §3).
+- Free services can't receive private-network traffic, so web and admin
+  call the API on its public URL.
 - `infra/docker/prod` stays for running the production images locally,
   and as the way back to a VPS.

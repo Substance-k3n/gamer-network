@@ -5,13 +5,16 @@
 #   gn-api    the app and the admin call this; /health, /openapi.json
 #   gn-web    share pages, privacy policy, App Links
 #   gn-admin  moderation dashboard
-#   gn-db     Postgres (daily backups by Render)
+#   gn-db     Postgres
 #
-# web and admin reach the API over Render's private network.
+# Everything is on Render's free tier: services sleep after 15 minutes
+# idle (the next request wakes them in about a minute) and the free
+# database expires 30 days after it is created unless upgraded. Moving
+# up is a plan change per service in the dashboard (ADR-0008).
 
 databases:
   - name: gn-db
-    plan: basic-256mb
+    plan: free
     region: frankfurt
     databaseName: gn
     user: gn
@@ -22,14 +25,15 @@ services:
   - type: web
     name: gn-api
     runtime: docker
-    plan: starter # always on: the expiry jobs run in-process
+    plan: free
     region: frankfurt
     branch: main
     dockerContext: .
     dockerfilePath: apps/api/Dockerfile
     healthCheckPath: /health
-    # Same image, so code and schema always match. Seeding is safe to repeat.
-    preDeployCommand: node dist/db/migrate.js && node dist/db/seed.js
+    # Free instances have no pre-deploy step, so migrations and the seed
+    # (safe to repeat) run on start, from the same image as the code.
+    dockerCommand: sh -c "node dist/db/migrate.js && node dist/db/seed.js && node dist/main.js"
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -75,7 +79,7 @@ services:
   - type: web
     name: gn-web
     runtime: docker
-    plan: starter # share links must open fast, no cold starts
+    plan: free
     region: frankfurt
     branch: main
     dockerContext: .
@@ -83,11 +87,10 @@ services:
     envVars:
       - key: PORT
         value: '3000'
+      # Free services can't be reached privately: the API's public URL,
+      # https://gn-api.onrender.com
       - key: API_URL
-        fromService:
-          type: web
-          name: gn-api
-          property: hostport
+        sync: false
       - key: PUBLIC_WEB_URL
         sync: false
       - key: ANDROID_PACKAGE
@@ -102,7 +105,7 @@ services:
   - type: web
     name: gn-admin
     runtime: docker
-    plan: starter
+    plan: free
     region: frankfurt
     branch: main
     dockerContext: .
@@ -110,8 +113,7 @@ services:
     envVars:
       - key: PORT
         value: '3001'
+      # Free services can't be reached privately: the API's public URL,
+      # https://gn-api.onrender.com
       - key: API_URL
-        fromService:
-          type: web
-          name: gn-api
-          property: hostport
+        sync: false

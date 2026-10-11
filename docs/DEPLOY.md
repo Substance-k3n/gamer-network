@@ -1,16 +1,31 @@
 # Deploying
 
-Production runs on Render (ADR-0008), described by `render.yaml` at the
-repo root. `main` deploys itself: merging a release is the deploy.
+Production runs on Render's free tier (ADR-0008), described by
+`render.yaml` at the repo root. `main` deploys itself: merging a release
+is the deploy.
 
-| Render service | What it does                                                          |
-| -------------- | --------------------------------------------------------------------- |
-| `gn-api`       | NestJS API. Pre-deploy runs the migrations and seeds the game catalog |
-| `gn-web`       | Share pages, privacy policy, App Links                                |
-| `gn-admin`     | Moderation dashboard                                                  |
-| `gn-db`        | Postgres 17, private, daily backups by Render                         |
+**Free-tier limits, know them before the beta:**
 
-`gn-web` and `gn-admin` call the API over Render's private network.
+- A service sleeps after 15 minutes without requests; the next request
+  waits about a minute while it wakes. Timed jobs (the "ending soon"
+  push and the like) don't run while the API sleeps. Listings still read
+  correctly because expiry is checked on every read.
+- **The free database expires 30 days after it is created.** Render
+  emails before then. Upgrade `gn-db` (from about $6/month) before that
+  date or the data goes; take a dump first either way (§3).
+- No Render backups and no Shell on free plans.
+
+Moving off any limit is a plan change on that service in the dashboard.
+
+| Render service | What it does                                                        |
+| -------------- | ------------------------------------------------------------------- |
+| `gn-api`       | NestJS API. Runs the migrations and seeds the game catalog on start |
+| `gn-web`       | Share pages, privacy policy, App Links                              |
+| `gn-admin`     | Moderation dashboard                                                |
+| `gn-db`        | Postgres 17, no outside access                                      |
+
+`gn-web` and `gn-admin` call the API on its public URL (free services
+can't be reached over Render's private network).
 Avatars go straight from the phone to Cloudflare R2 (API.md "Images").
 
 ## 1. One-time setup on Render
@@ -37,10 +52,11 @@ Avatars go straight from the phone to Cloudflare R2 (API.md "Images").
    names, so fill them in as:
    - `PUBLIC_WEB_URL` (on `gn-api` and `gn-web`): `https://gn-web.onrender.com`
    - `WEB_ORIGINS`: `https://gn-web.onrender.com,https://gn-admin.onrender.com`
+   - `API_URL` (on `gn-web` and `gn-admin`): `https://gn-api.onrender.com`
 
    If Render gives a service a different `onrender.com` name, or you add
    your own domains later (service → Settings → Custom Domains), change
-   these two to match and redeploy.
+   these to match and redeploy.
 
 4. **Check it.**
 
@@ -49,9 +65,19 @@ Avatars go straight from the phone to Cloudflare R2 (API.md "Images").
    curl https://gn-api.onrender.com/openapi.json  # the contract, for the app
    ```
 
-5. **Admin account.** Sign up in the app (or with `POST /v1/auth/signup`),
-   then in `gn-api` → Shell: `node dist/db/grant-admin.js <email>`, and
-   sign in at `https://gn-admin.onrender.com`.
+5. **Admin account.** Sign up in the app (or with `POST /v1/auth/signup`).
+   Free services have no Shell, so grant it from your laptop: add your IP
+   under `gn-db` → Networking, copy the **External** connection string,
+   then
+
+   ```sh
+   DATABASE_URL='<external connection string>?sslmode=require' \
+     pnpm --filter @app/api admin:grant <email>
+   ```
+
+   Remove your IP again afterwards. Sign in at
+   `https://gn-admin.onrender.com`.
+
 6. **Uptime check.** Add `https://gn-api.onrender.com/health` to a free
    monitor (UptimeRobot, Better Stack) with email alerts. It answers 503
    when the database is down.
@@ -59,9 +85,10 @@ Avatars go straight from the phone to Cloudflare R2 (API.md "Images").
 ## 2. Updating
 
 Release `dev` → `main` (`release/YYYY-MM-DD`). Render builds the three
-images, runs the pre-deploy step and switches over only if `/health`
-answers. A failed migration stops the deploy and the old version keeps
-running. Roll back from the service's Events page ("Rollback").
+images and switches over only once the new API answers `/health`. The
+API migrates before it starts listening, so a failed migration fails the
+deploy and the old version keeps running. Roll back from the service's
+Events page ("Rollback").
 
 **Check the new code is really live**, not just that the server
 answers: the deploy in the service's Events page should show the merge
@@ -70,11 +97,12 @@ way.
 
 ## 3. Backups and restore
 
-Render backs up `gn-db` daily (paid plans) and restores from the
-database's Recovery page. For a copy to keep elsewhere:
+The free database has no backups: take your own, at least weekly and
+before the 30-day expiry. Restore with `pg_restore --clean --if-exists
+-d "<external connection string>" <file>`.
 
 ```sh
-pg_dump -Fc "<external connection string>" -f gn-$(date +%Y%m%d).dump
+pg_dump -Fc "<external connection string>?sslmode=require" -f gn-$(date +%Y%m%d).dump
 ```
 
 (The database has no outside access by default: add your IP under
