@@ -1,5 +1,5392 @@
 {
-  "openapi": "3.1.0",
-  "info": { "title": "gamer-network API", "version": "0.0.0" },
-  "paths": {}
+  "openapi": "3.0.0",
+  "paths": {
+    "/v1/notifications": {
+      "get": {
+        "operationId": "notificationsList",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPageDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Alerts, newest first.",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/v1/notifications/unread-count": {
+      "get": {
+        "operationId": "notificationsUnreadCount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadCountDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "For the bell badge.",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/v1/notifications/read": {
+      "post": {
+        "operationId": "notificationsMarkRead",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkReadBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "`{ ids }` or `{ all: true }`.",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/v1/me/devices": {
+      "put": {
+        "operationId": "devicesRegister",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDeviceBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Where to push. Call on every launch and when the FCM token changes.\nTied to this sign-in: logging out stops pushes to the device.",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/v1/auth/signup": {
+      "post": {
+        "operationId": "authSignup",
+        "parameters": [
+          {
+            "name": "user-agent",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignupBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create an account with email + password. Sends a verification code.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/login": {
+      "post": {
+        "operationId": "authLogin",
+        "parameters": [
+          {
+            "name": "user-agent",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "summary": "401 wrong_credentials for any mismatch; 429 after 10 wrong passwords in 15 min.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/google": {
+      "post": {
+        "operationId": "authGoogle",
+        "parameters": [
+          {
+            "name": "user-agent",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Sign in or sign up with Google. For a new account without `username`\nand `ageRange`, answers 422 signup_details_required: ask for them and\ncall again with the same idToken.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/verify-email": {
+      "post": {
+        "operationId": "authVerifyEmail",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CodeBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Enter the code sent after sign-up.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/verify-email/resend": {
+      "post": {
+        "operationId": "authResendVerification",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "429 after 5 codes in an hour.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/password/forgot": {
+      "post": {
+        "operationId": "authForgotPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Always 204, whether or not the email has an account.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/password/reset": {
+      "post": {
+        "operationId": "authResetPassword",
+        "parameters": [
+          {
+            "name": "user-agent",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResetResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Sets a new password with the emailed code. Signs out every other device.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/password": {
+      "post": {
+        "operationId": "authChangePassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change (or, for Google-only accounts, set) the password. Signs out other devices.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/logout": {
+      "post": {
+        "operationId": "authLogout",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ends this session.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "healthCheck",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database is unreachable"
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Liveness and database check for uptime monitors and the deploy.",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/v1/app/config": {
+      "get": {
+        "operationId": "appConfigGet",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppConfigResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "summary": "What the app needs before anything else: version gate and launch settings.",
+        "tags": [
+          "app"
+        ]
+      }
+    },
+    "/v1/games": {
+      "get": {
+        "operationId": "gamesList",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GameDto"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "summary": "The full game catalog with ranks, roles and modes. Cache it; it rarely changes.",
+        "tags": [
+          "games"
+        ]
+      }
+    },
+    "/v1/me": {
+      "get": {
+        "operationId": "meGet",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The signed-in user.",
+        "tags": [
+          "me"
+        ]
+      },
+      "patch": {
+        "operationId": "meUpdate",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMeBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Onboarding step 1 and Edit profile. Only the fields sent change.",
+        "tags": [
+          "me"
+        ]
+      },
+      "delete": {
+        "operationId": "accountDelete",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAccountBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete your account (Settings). Needs your password if you have one\n(401 wrong_password). Signs out everywhere; personal data is erased\nafter 30 days.",
+        "tags": [
+          "safety"
+        ]
+      }
+    },
+    "/v1/me/games": {
+      "put": {
+        "operationId": "meSetGames",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetGamesBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Replaces the games list. Onboarding steps 2 and 3.",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/platforms": {
+      "put": {
+        "operationId": "meSetPlatforms",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPlatformsBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Replace the platforms the player plays on.",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/tags": {
+      "put": {
+        "operationId": "meSetTags",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetTagsBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Replace the player's play-style tags.",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/gaming-ids": {
+      "put": {
+        "operationId": "meSetGamingIds",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetGamingIdsBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Replaces the gaming IDs list. New IDs show to connections only unless marked public.",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/status": {
+      "put": {
+        "operationId": "meSetStatus",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetStatusBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The status card: what you're up to and which days you usually play.",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/avatar/upload-url": {
+      "post": {
+        "operationId": "meAvatarUploadUrl",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AvatarUploadBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AvatarUploadDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Where to upload a new avatar (JPEG, PNG or WebP, ≤ 2 MB). Then PUT /v1/me/avatar.",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/avatar": {
+      "put": {
+        "operationId": "meSetAvatar",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAvatarBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Use an uploaded avatar. The previous one is deleted.",
+        "tags": [
+          "me"
+        ]
+      },
+      "delete": {
+        "operationId": "meRemoveAvatar",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove the profile picture.",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/onboard": {
+      "post": {
+        "operationId": "meOnboard",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "\"Go live\": finishes onboarding. 422 profile_incomplete without a game.",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/usernames/{name}": {
+      "get": {
+        "operationId": "usernamesCheck",
+        "parameters": [
+          {
+            "name": "name",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsernameAvailability"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "summary": "For the sign-up form while typing (debounce it). Case-insensitive.",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/users/{username}": {
+      "get": {
+        "operationId": "usersGet",
+        "parameters": [
+          {
+            "name": "username",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Someone's profile. 404 if they don't exist, aren't live, or either of you blocked the other.",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/v1/users": {
+      "get": {
+        "operationId": "usersSearch",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSearchResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Find people by username or display name prefix.",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/v1/listings": {
+      "get": {
+        "operationId": "listingsFeed",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "platform",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/Platform"
+            }
+          },
+          {
+            "name": "voice",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "required"
+              ]
+            }
+          },
+          {
+            "name": "when",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "now",
+                "tonight"
+              ]
+            }
+          },
+          {
+            "name": "style",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/PlayStyle"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingPageDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Find Players. Open listings in your city, newest first; yours and blocked people's left out.",
+        "tags": [
+          "listings"
+        ]
+      },
+      "post": {
+        "operationId": "listingsCreate",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "A UUID per create. A retry with the same key returns the first answer.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateListingBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Post a listing. One live listing each: 409 listing_already_open.",
+        "tags": [
+          "listings"
+        ]
+      }
+    },
+    "/v1/listings/stats": {
+      "get": {
+        "operationId": "listingsStats",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingStatsDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The Home counter.",
+        "tags": [
+          "listings"
+        ]
+      }
+    },
+    "/v1/listings/{id}": {
+      "get": {
+        "operationId": "listingsGet",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One listing, as the signed-in player sees it.",
+        "tags": [
+          "listings"
+        ]
+      }
+    },
+    "/v1/listings/{id}/close": {
+      "post": {
+        "operationId": "listingsClose",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Owner only. 409 listing_not_live once it has ended.",
+        "tags": [
+          "listings"
+        ]
+      }
+    },
+    "/v1/me/listing": {
+      "get": {
+        "operationId": "myListingGet",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyListingDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Your live listing for Home, or null.",
+        "tags": [
+          "listings"
+        ]
+      }
+    },
+    "/v1/public/listings/{id}": {
+      "get": {
+        "operationId": "publicListingsGet",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicListingDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "summary": "For the share page: no sign-in, no ids or gaming IDs.",
+        "tags": [
+          "listings"
+        ]
+      }
+    },
+    "/v1/connection-requests": {
+      "post": {
+        "operationId": "connectionRequestsSend",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "A UUID per create. A retry with the same key returns the first answer.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendRequestBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionRequestDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "\"Connect\" on a listing card (pass listingId) or a profile. 409 already_connected,\nrequest_pending, request_waiting_for_you (fields.requestId: accept that instead),\nlisting_not_open; 429 request_cooldown, daily_limit.",
+        "tags": [
+          "connections"
+        ]
+      },
+      "get": {
+        "operationId": "connectionRequestsList",
+        "parameters": [
+          {
+            "name": "direction",
+            "required": false,
+            "in": "query",
+            "description": "incoming: asking you (Alerts). outgoing: yours, still waiting.",
+            "schema": {
+              "default": "incoming",
+              "type": "string",
+              "enum": [
+                "incoming",
+                "outgoing"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionRequestListDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Pending requests to you (Alerts) or from you.",
+        "tags": [
+          "connections"
+        ]
+      }
+    },
+    "/v1/connection-requests/{id}/accept": {
+      "post": {
+        "operationId": "connectionRequestsAccept",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedRequestDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Connects you; takes a slot on their listing and schedules check-ins if it came from one.",
+        "tags": [
+          "connections"
+        ]
+      }
+    },
+    "/v1/connection-requests/{id}/decline": {
+      "post": {
+        "operationId": "connectionRequestsDecline",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "\"Not now\".",
+        "tags": [
+          "connections"
+        ]
+      }
+    },
+    "/v1/connection-requests/{id}": {
+      "delete": {
+        "operationId": "connectionRequestsCancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Withdraw your own pending request.",
+        "tags": [
+          "connections"
+        ]
+      }
+    },
+    "/v1/me/connections": {
+      "get": {
+        "operationId": "connectionsList",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionPageDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Your connections, newest first.",
+        "tags": [
+          "connections"
+        ]
+      }
+    },
+    "/v1/connections/{userId}": {
+      "delete": {
+        "operationId": "connectionsRemove",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a connection, for both players.",
+        "tags": [
+          "connections"
+        ]
+      }
+    },
+    "/v1/play-invites": {
+      "post": {
+        "operationId": "playInvitesSend",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "A UUID per create. A retry with the same key returns the first answer.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendInviteBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayInviteDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "\"Play together\" with a connection. 403 not_connected, 409 invite_pending,\n429 daily_limit (20 a day).",
+        "tags": [
+          "play"
+        ]
+      },
+      "get": {
+        "operationId": "playInvitesList",
+        "parameters": [
+          {
+            "name": "direction",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "incoming",
+              "type": "string",
+              "enum": [
+                "incoming",
+                "outgoing"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayInviteListDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Pending invites to you (the banner) or from you.",
+        "tags": [
+          "play"
+        ]
+      }
+    },
+    "/v1/play-invites/{id}/accept": {
+      "post": {
+        "operationId": "playInvitesAccept",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayInviteDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Schedules the check-ins. 409 invite_expired after startsAt + 15 min.",
+        "tags": [
+          "play"
+        ]
+      }
+    },
+    "/v1/play-invites/{id}/decline": {
+      "post": {
+        "operationId": "playInvitesDecline",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Turn down a play invite.",
+        "tags": [
+          "play"
+        ]
+      }
+    },
+    "/v1/me/check-ins": {
+      "get": {
+        "operationId": "checkInsDue",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckInListDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "\"Did you play with …?\" cards for Home.",
+        "tags": [
+          "play"
+        ]
+      }
+    },
+    "/v1/check-ins/{id}": {
+      "post": {
+        "operationId": "checkInsAnswer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswerCheckInBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One tap. The product's main number (docs/PRD.md).",
+        "tags": [
+          "play"
+        ]
+      }
+    },
+    "/v1/blocks": {
+      "post": {
+        "operationId": "safetyBlock",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlockBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Hides you from each other everywhere and ends the connection.",
+        "tags": [
+          "safety"
+        ]
+      }
+    },
+    "/v1/blocks/{userId}": {
+      "delete": {
+        "operationId": "safetyUnblock",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Unblock a player.",
+        "tags": [
+          "safety"
+        ]
+      }
+    },
+    "/v1/me/blocks": {
+      "get": {
+        "operationId": "safetyBlocked",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlockListDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Settings → Blocked users.",
+        "tags": [
+          "safety"
+        ]
+      }
+    },
+    "/v1/reports": {
+      "post": {
+        "operationId": "safetyReport",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "A UUID per create. A retry with the same key returns the first answer.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Goes to the admin reports queue.",
+        "tags": [
+          "safety"
+        ]
+      }
+    },
+    "/v1/waitlist": {
+      "post": {
+        "operationId": "safetyJoinWaitlist",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WaitlistBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "\"Notify me\" for features that aren't built yet (Groups).",
+        "tags": [
+          "safety"
+        ]
+      }
+    },
+    "/v1/admin/reports": {
+      "get": {
+        "operationId": "adminReports",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/ReportStatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminReportPageDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The queue. Open ones oldest first.",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/reports/{id}/resolve": {
+      "post": {
+        "operationId": "adminResolveReport",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveReportBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminReportDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "dismiss, warn, remove_listing or ban. 409 report_closed if already handled.",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/users": {
+      "get": {
+        "operationId": "adminUsers",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "state",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/AccountState"
+            }
+          },
+          {
+            "name": "query",
+            "required": false,
+            "in": "query",
+            "description": "Username, display name or email prefix.",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 60,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserPageDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Search and page through players.",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/users/{id}": {
+      "get": {
+        "operationId": "adminUser",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The player drawer.",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/users/{id}/ban": {
+      "post": {
+        "operationId": "adminBan",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BanBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Signs them out everywhere and removes their live listing.",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/users/{id}/unban": {
+      "post": {
+        "operationId": "adminUnban",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lift a ban.",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/listings/{id}/remove": {
+      "post": {
+        "operationId": "adminRemoveListing",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take a listing down.",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/games/{id}": {
+      "patch": {
+        "operationId": "adminSetLaunch",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetLaunchBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Puts a game on Find Players, or takes it off.",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/metrics": {
+      "get": {
+        "operationId": "adminMetrics",
+        "parameters": [
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Start, inclusive. Defaults to 30 days before `to`.",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "End, exclusive. Defaults to now.",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The MVP's numbers. Defaults to the last 30 days.",
+        "tags": [
+          "admin"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "gamer-network API",
+    "description": "Conventions: docs/API.md. Every non-2xx response is an ErrorResponse.",
+    "version": "0.0.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
+    "schemas": {
+      "NotificationType": {
+        "type": "string",
+        "enum": [
+          "connection_request",
+          "connection_accepted",
+          "play_invite",
+          "play_invite_accepted",
+          "check_in_due",
+          "listing_expiring",
+          "report_resolved"
+        ]
+      },
+      "PlayerStatus": {
+        "type": "string",
+        "enum": [
+          "looking",
+          "playing",
+          "available_tonight",
+          "not_available"
+        ],
+        "description": "Already reset to not_available once its time has passed."
+      },
+      "GameRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "shortCode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "shortCode"
+        ]
+      },
+      "RankRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "tier": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "tier"
+        ]
+      },
+      "RoleRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "UserGameDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "game": {
+            "nullable": true,
+            "description": "Null for a custom game.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GameRefDto"
+              }
+            ]
+          },
+          "customGameName": {
+            "type": "string",
+            "nullable": true,
+            "description": "Set only for a custom game."
+          },
+          "rank": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RankRefDto"
+              }
+            ]
+          },
+          "rankText": {
+            "type": "string",
+            "nullable": true,
+            "description": "Free-text level, custom games only."
+          },
+          "role": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RoleRefDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "game",
+          "customGameName",
+          "rank",
+          "rankText",
+          "role"
+        ]
+      },
+      "UserCardDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "description": "Already reset to not_available once its time has passed.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayerStatus"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string"
+          },
+          "statusGame": {
+            "nullable": true,
+            "description": "The game behind \"Playing …\".",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GameRefDto"
+              }
+            ]
+          },
+          "topGame": {
+            "nullable": true,
+            "description": "First game on the profile.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserGameDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "id",
+          "username",
+          "displayName",
+          "avatarUrl",
+          "city",
+          "statusGame",
+          "topGame"
+        ]
+      },
+      "NotificationDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NotificationType"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "actor": {
+            "nullable": true,
+            "description": "Who caused it; for check_in_due, who you played with.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserCardDto"
+              }
+            ]
+          },
+          "listingId": {
+            "type": "string",
+            "nullable": true
+          },
+          "connectionRequestId": {
+            "type": "string",
+            "nullable": true
+          },
+          "playInviteId": {
+            "type": "string",
+            "nullable": true
+          },
+          "checkInId": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "description": "Push title."
+          },
+          "text": {
+            "type": "string",
+            "description": "Ready to show, e.g. \"Hana wants to play PUBG Mobile with you\"."
+          },
+          "route": {
+            "type": "string",
+            "description": "In-app path to open on tap, same as the push's data.route."
+          },
+          "readAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "actor",
+          "listingId",
+          "connectionRequestId",
+          "playInviteId",
+          "checkInId",
+          "title",
+          "text",
+          "route",
+          "readAt",
+          "createdAt"
+        ]
+      },
+      "NotificationPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "UnreadCountDto": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "count"
+        ]
+      },
+      "MarkReadBody": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "description": "Ids to mark read. Or send all: true.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "all": {
+            "type": "boolean"
+          }
+        }
+      },
+      "DevicePlatform": {
+        "type": "string",
+        "enum": [
+          "android",
+          "ios",
+          "web"
+        ]
+      },
+      "RegisterDeviceBody": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DevicePlatform"
+              }
+            ]
+          },
+          "appVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20
+          },
+          "fcmToken": {
+            "type": "string",
+            "description": "From FirebaseMessaging.getToken().",
+            "minLength": 10,
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "platform",
+          "fcmToken"
+        ]
+      },
+      "AgeRange": {
+        "type": "string",
+        "enum": [
+          "16_17",
+          "18_24",
+          "25_34",
+          "35_plus"
+        ]
+      },
+      "SignupBody": {
+        "type": "object",
+        "properties": {
+          "ageRange": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgeRange"
+              }
+            ]
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email"
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 30
+          },
+          "username": {
+            "type": "string",
+            "description": "Stored lowercase."
+          },
+          "password": {
+            "type": "string",
+            "description": "8–72 characters.",
+            "minLength": 8,
+            "maxLength": 72
+          }
+        },
+        "required": [
+          "ageRange",
+          "email",
+          "displayName",
+          "username",
+          "password"
+        ]
+      },
+      "Day": {
+        "type": "string",
+        "enum": [
+          "mon",
+          "tue",
+          "wed",
+          "thu",
+          "fri",
+          "sat",
+          "sun"
+        ]
+      },
+      "Platform": {
+        "type": "string",
+        "enum": [
+          "pc",
+          "playstation",
+          "xbox",
+          "mobile",
+          "switch"
+        ]
+      },
+      "PlayTag": {
+        "type": "string",
+        "enum": [
+          "competitive",
+          "casual",
+          "fps",
+          "rpg",
+          "strategy",
+          "co_op",
+          "ranked",
+          "achievement_hunter",
+          "story"
+        ]
+      },
+      "Relationship": {
+        "type": "string",
+        "enum": [
+          "self",
+          "none",
+          "outgoing_request",
+          "incoming_request",
+          "connected"
+        ]
+      },
+      "UserRole": {
+        "type": "string",
+        "enum": [
+          "player",
+          "admin"
+        ]
+      },
+      "GamingIdKind": {
+        "type": "string",
+        "enum": [
+          "riot",
+          "steam",
+          "discord",
+          "playstation",
+          "xbox",
+          "epic",
+          "ea",
+          "activision",
+          "in_game"
+        ]
+      },
+      "IdVisibility": {
+        "type": "string",
+        "enum": [
+          "public",
+          "connections"
+        ]
+      },
+      "GamingIdDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GamingIdKind"
+              }
+            ]
+          },
+          "visibility": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/IdVisibility"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "game": {
+            "nullable": true,
+            "description": "Set when kind is in_game.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GameRefDto"
+              }
+            ]
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "visibility",
+          "id",
+          "game",
+          "value"
+        ]
+      },
+      "ProfileStatsDto": {
+        "type": "object",
+        "properties": {
+          "connections": {
+            "type": "number"
+          },
+          "games": {
+            "type": "number"
+          },
+          "playedWith": {
+            "type": "number",
+            "description": "Different people you checked in \"played\" with."
+          }
+        },
+        "required": [
+          "connections",
+          "games",
+          "playedWith"
+        ]
+      },
+      "MeDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "description": "Already reset to not_available once its time has passed.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayerStatus"
+              }
+            ]
+          },
+          "ageRange": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgeRange"
+              }
+            ]
+          },
+          "availableDays": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Day"
+            }
+          },
+          "platforms": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Platform"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayTag"
+            }
+          },
+          "relationship": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Relationship"
+              }
+            ]
+          },
+          "role": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserRole"
+              }
+            ]
+          },
+          "email": {
+            "type": "string"
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "hasPassword": {
+            "type": "boolean",
+            "description": "False for Google-only accounts, so Settings can offer \"Set a password\"."
+          },
+          "country": {
+            "type": "string"
+          },
+          "onboardedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "Null until \"Go live\"; route to onboarding while null."
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "bio": {
+            "type": "string",
+            "nullable": true
+          },
+          "statusUntil": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When available_tonight or playing clears itself."
+          },
+          "games": {
+            "description": "In profile order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserGameDto"
+            }
+          },
+          "gamingIds": {
+            "description": "Only the ones you may see.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GamingIdDto"
+            }
+          },
+          "stats": {
+            "$ref": "#/components/schemas/ProfileStatsDto"
+          },
+          "incomingRequestId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Set when relationship is incoming_request, to accept from the profile."
+          },
+          "id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string"
+          },
+          "statusGame": {
+            "nullable": true,
+            "description": "The game behind \"Playing …\".",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GameRefDto"
+              }
+            ]
+          },
+          "topGame": {
+            "nullable": true,
+            "description": "First game on the profile.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserGameDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "ageRange",
+          "availableDays",
+          "platforms",
+          "tags",
+          "relationship",
+          "role",
+          "email",
+          "emailVerified",
+          "hasPassword",
+          "country",
+          "onboardedAt",
+          "createdAt",
+          "bio",
+          "statusUntil",
+          "games",
+          "gamingIds",
+          "stats",
+          "incomingRequestId",
+          "id",
+          "username",
+          "displayName",
+          "avatarUrl",
+          "city",
+          "statusGame",
+          "topGame"
+        ]
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Send as `Authorization: Bearer <token>`. Keep it in secure storage."
+          },
+          "user": {
+            "$ref": "#/components/schemas/MeDto"
+          },
+          "isNew": {
+            "type": "boolean",
+            "description": "True when this call created the account: go to onboarding."
+          }
+        },
+        "required": [
+          "token",
+          "user",
+          "isNew"
+        ]
+      },
+      "LoginBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 72
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "GoogleBody": {
+        "type": "object",
+        "properties": {
+          "ageRange": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgeRange"
+              }
+            ]
+          },
+          "idToken": {
+            "type": "string",
+            "description": "From Google Sign-In on the device, or Google Identity Services on the web.",
+            "minLength": 10,
+            "maxLength": 4096
+          },
+          "username": {
+            "type": "string",
+            "description": "Only for a new account: send after a 422 signup_details_required."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Defaults to the name on the Google account.",
+            "minLength": 1,
+            "maxLength": 30
+          }
+        },
+        "required": [
+          "idToken"
+        ]
+      },
+      "CodeBody": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "The 6 digits from the email.",
+            "pattern": "^\\d{6}$"
+          }
+        },
+        "required": [
+          "code"
+        ]
+      },
+      "ForgotPasswordBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "ResetPasswordBody": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "The 6 digits from the email.",
+            "pattern": "^\\d{6}$"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 72
+          }
+        },
+        "required": [
+          "code",
+          "email",
+          "newPassword"
+        ]
+      },
+      "ResetResponse": {
+        "type": "object",
+        "properties": {}
+      },
+      "ChangePasswordBody": {
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "description": "Required unless the account has no password yet (Google-only).",
+            "minLength": 1,
+            "maxLength": 72
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 72
+          }
+        },
+        "required": [
+          "newPassword"
+        ]
+      },
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok"
+            ]
+          },
+          "database": {
+            "type": "string",
+            "enum": [
+              "ok"
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "database"
+        ]
+      },
+      "AppConfigResponse": {
+        "type": "object",
+        "properties": {}
+      },
+      "RankDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "e.g. \"Diamond\", \"Div 3\""
+          },
+          "tier": {
+            "type": "number",
+            "description": "Position on the ladder, 0 = lowest."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "tier"
+        ]
+      },
+      "RoleDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "ModeDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "Ranked, Unrated or Casual"
+          },
+          "isRanked": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "isRanked"
+        ]
+      },
+      "GameDto": {
+        "type": "object",
+        "properties": {
+          "platforms": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Platform"
+            }
+          },
+          "id": {
+            "type": "string",
+            "description": "Short id shared with the app's catalog, e.g. \"val\"."
+          },
+          "name": {
+            "type": "string"
+          },
+          "shortCode": {
+            "type": "string",
+            "description": "Tile label, e.g. \"VAL\"."
+          },
+          "hasRanks": {
+            "type": "boolean",
+            "description": "False when the ladder is play-style levels rather than ranks."
+          },
+          "maxParty": {
+            "type": "number",
+            "description": "Largest party a listing can ask for: 2 = Duo … 5 = 5-stack."
+          },
+          "isLaunch": {
+            "type": "boolean",
+            "description": "Launch games are the ones Find Players offers."
+          },
+          "ranks": {
+            "description": "Lowest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RankDto"
+            }
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoleDto"
+            }
+          },
+          "modes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModeDto"
+            }
+          }
+        },
+        "required": [
+          "platforms",
+          "id",
+          "name",
+          "shortCode",
+          "hasRanks",
+          "maxParty",
+          "isLaunch",
+          "ranks",
+          "roles",
+          "modes"
+        ]
+      },
+      "UpdateMeBody": {
+        "type": "object",
+        "properties": {
+          "ageRange": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgeRange"
+              }
+            ]
+          }
+        }
+      },
+      "SetGamesBody": {
+        "type": "object",
+        "properties": {}
+      },
+      "SetPlatformsBody": {
+        "type": "object",
+        "properties": {
+          "platforms": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Platform"
+            }
+          }
+        },
+        "required": [
+          "platforms"
+        ]
+      },
+      "SetTagsBody": {
+        "type": "object",
+        "properties": {
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayTag"
+            }
+          }
+        },
+        "required": [
+          "tags"
+        ]
+      },
+      "SetGamingIdsBody": {
+        "type": "object",
+        "properties": {}
+      },
+      "SetStatusBody": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayerStatus"
+              }
+            ]
+          },
+          "availableDays": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Day"
+            }
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "AvatarType": {
+        "type": "string",
+        "enum": [
+          "image/jpeg",
+          "image/png",
+          "image/webp"
+        ]
+      },
+      "AvatarUploadBody": {
+        "type": "object",
+        "properties": {
+          "contentType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AvatarType"
+              }
+            ]
+          }
+        },
+        "required": [
+          "contentType"
+        ]
+      },
+      "AvatarUploadDto": {
+        "type": "object",
+        "properties": {
+          "uploadUrl": {
+            "type": "string",
+            "description": "PUT the file here before `expiresAt`, with `headers`. The body must be\nexactly the `size` you asked for (the URL is signed for it); let the\nHTTP client set Content-Length."
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Send these with the upload (Content-Type)."
+          },
+          "key": {
+            "type": "string",
+            "description": "Send to PUT /v1/me/avatar once the upload succeeds."
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "uploadUrl",
+          "headers",
+          "key",
+          "expiresAt"
+        ]
+      },
+      "SetAvatarBody": {
+        "type": "object",
+        "properties": {}
+      },
+      "UsernameAvailability": {
+        "type": "object",
+        "properties": {}
+      },
+      "ProfileDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "description": "Already reset to not_available once its time has passed.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayerStatus"
+              }
+            ]
+          },
+          "ageRange": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgeRange"
+              }
+            ]
+          },
+          "availableDays": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Day"
+            }
+          },
+          "platforms": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Platform"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayTag"
+            }
+          },
+          "relationship": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Relationship"
+              }
+            ]
+          },
+          "bio": {
+            "type": "string",
+            "nullable": true
+          },
+          "statusUntil": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When available_tonight or playing clears itself."
+          },
+          "games": {
+            "description": "In profile order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserGameDto"
+            }
+          },
+          "gamingIds": {
+            "description": "Only the ones you may see.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GamingIdDto"
+            }
+          },
+          "stats": {
+            "$ref": "#/components/schemas/ProfileStatsDto"
+          },
+          "incomingRequestId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Set when relationship is incoming_request, to accept from the profile."
+          },
+          "id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string"
+          },
+          "statusGame": {
+            "nullable": true,
+            "description": "The game behind \"Playing …\".",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GameRefDto"
+              }
+            ]
+          },
+          "topGame": {
+            "nullable": true,
+            "description": "First game on the profile.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserGameDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "ageRange",
+          "availableDays",
+          "platforms",
+          "tags",
+          "relationship",
+          "bio",
+          "statusUntil",
+          "games",
+          "gamingIds",
+          "stats",
+          "incomingRequestId",
+          "id",
+          "username",
+          "displayName",
+          "avatarUrl",
+          "city",
+          "statusGame",
+          "topGame"
+        ]
+      },
+      "UserSearchResponse": {
+        "type": "object",
+        "properties": {}
+      },
+      "PlayStyle": {
+        "type": "string",
+        "enum": [
+          "competitive",
+          "casual"
+        ]
+      },
+      "Voice": {
+        "type": "string",
+        "enum": [
+          "required",
+          "optional"
+        ]
+      },
+      "PlayWhen": {
+        "type": "string",
+        "enum": [
+          "now",
+          "tonight",
+          "weekend"
+        ]
+      },
+      "ListingStatus": {
+        "type": "string",
+        "enum": [
+          "open",
+          "full",
+          "closed",
+          "expired",
+          "removed"
+        ],
+        "description": "expired as soon as expiresAt passes, even before the expiry job runs."
+      },
+      "ModeRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "RequestStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "accepted",
+          "declined",
+          "cancelled",
+          "expired"
+        ]
+      },
+      "MyRequestDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RequestStatus"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "id"
+        ]
+      },
+      "ListingDto": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Platform"
+              }
+            ]
+          },
+          "voice": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Voice"
+              }
+            ]
+          },
+          "style": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayStyle"
+              }
+            ]
+          },
+          "playWhen": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayWhen"
+              }
+            ]
+          },
+          "durationHours": {
+            "enum": [
+              2,
+              6,
+              24
+            ],
+            "type": "number"
+          },
+          "status": {
+            "description": "expired as soon as expiresAt passes, even before the expiry job runs.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingStatus"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/UserCardDto"
+          },
+          "game": {
+            "$ref": "#/components/schemas/GameRefDto"
+          },
+          "mode": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ModeRefDto"
+              }
+            ]
+          },
+          "rank": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RankRefDto"
+              }
+            ]
+          },
+          "partySize": {
+            "type": "number",
+            "description": "Whole party including the owner: 2 = Duo … 5 = 5-stack."
+          },
+          "filled": {
+            "type": "number",
+            "description": "Players accepted so far, owner not counted."
+          },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Count down to this."
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "myRequest": {
+            "nullable": true,
+            "description": "Your latest request to join, for \"Requested…\" / \"Connected ✓\". Null on your own.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MyRequestDto"
+              }
+            ]
+          },
+          "shareUrl": {
+            "type": "string",
+            "description": "Link for Telegram/WhatsApp."
+          }
+        },
+        "required": [
+          "platform",
+          "voice",
+          "style",
+          "playWhen",
+          "durationHours",
+          "status",
+          "id",
+          "owner",
+          "game",
+          "mode",
+          "rank",
+          "partySize",
+          "filled",
+          "startsAt",
+          "expiresAt",
+          "note",
+          "createdAt",
+          "myRequest",
+          "shareUrl"
+        ]
+      },
+      "ListingPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ListingDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "CreateListingBody": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Platform"
+              }
+            ]
+          },
+          "voice": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Voice"
+              }
+            ]
+          },
+          "style": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayStyle"
+              }
+            ]
+          },
+          "playWhen": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayWhen"
+              }
+            ]
+          },
+          "durationHours": {
+            "type": "number",
+            "enum": [
+              2,
+              6,
+              24
+            ]
+          }
+        },
+        "required": [
+          "platform",
+          "voice",
+          "style",
+          "playWhen",
+          "durationHours"
+        ]
+      },
+      "ListingStatsDto": {
+        "type": "object",
+        "properties": {
+          "lookingNow": {
+            "type": "number",
+            "description": "Distinct people in your city with an open listing or a \"looking\" status."
+          }
+        },
+        "required": [
+          "lookingNow"
+        ]
+      },
+      "MyListingDto": {
+        "type": "object",
+        "properties": {
+          "listing": {
+            "nullable": true,
+            "description": "Your open or full listing, or null.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "listing"
+        ]
+      },
+      "PublicListingDto": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Platform"
+              }
+            ]
+          },
+          "voice": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Voice"
+              }
+            ]
+          },
+          "playWhen": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayWhen"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingStatus"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "ownerDisplayName": {
+            "type": "string"
+          },
+          "ownerAvatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "game": {
+            "$ref": "#/components/schemas/GameRefDto"
+          },
+          "mode": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ModeRefDto"
+              }
+            ]
+          },
+          "rank": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RankRefDto"
+              }
+            ]
+          },
+          "partySize": {
+            "type": "number"
+          },
+          "filled": {
+            "type": "number"
+          },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "platform",
+          "voice",
+          "playWhen",
+          "status",
+          "id",
+          "ownerDisplayName",
+          "ownerAvatarUrl",
+          "game",
+          "mode",
+          "rank",
+          "partySize",
+          "filled",
+          "startsAt",
+          "expiresAt",
+          "note"
+        ]
+      },
+      "SendRequestBody": {
+        "type": "object",
+        "properties": {
+          "toUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "listingId": {
+            "type": "string",
+            "description": "When sent from a listing card: one of their live listings.",
+            "format": "uuid"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 140
+          }
+        },
+        "required": [
+          "toUserId"
+        ]
+      },
+      "ConnectionRequestDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RequestStatus"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "from": {
+            "$ref": "#/components/schemas/UserCardDto"
+          },
+          "to": {
+            "$ref": "#/components/schemas/UserCardDto"
+          },
+          "listing": {
+            "nullable": true,
+            "description": "Set when sent from a listing card (\"wants to play · Div 2 EA FC 25\").",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingDto"
+              }
+            ]
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "id",
+          "from",
+          "to",
+          "listing",
+          "message",
+          "createdAt"
+        ]
+      },
+      "ConnectionRequestListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "Pending only, newest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConnectionRequestDto"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "ConnectionDto": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/UserCardDto"
+          },
+          "connectedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user",
+          "connectedAt"
+        ]
+      },
+      "AcceptedRequestDto": {
+        "type": "object",
+        "properties": {
+          "request": {
+            "$ref": "#/components/schemas/ConnectionRequestDto"
+          },
+          "connection": {
+            "$ref": "#/components/schemas/ConnectionDto"
+          }
+        },
+        "required": [
+          "request",
+          "connection"
+        ]
+      },
+      "ConnectionPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConnectionDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "InviteWhen": {
+        "type": "string",
+        "enum": [
+          "now",
+          "in_30_min",
+          "tonight"
+        ]
+      },
+      "SendInviteBody": {
+        "type": "object",
+        "properties": {
+          "playWhen": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InviteWhen"
+              }
+            ]
+          },
+          "toUserId": {
+            "type": "string",
+            "description": "One of your connections.",
+            "format": "uuid"
+          },
+          "gameId": {
+            "type": "string",
+            "description": "Any catalog game."
+          }
+        },
+        "required": [
+          "playWhen",
+          "toUserId",
+          "gameId"
+        ]
+      },
+      "InviteStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "accepted",
+          "declined",
+          "expired"
+        ],
+        "description": "expired as soon as expiresAt passes while pending."
+      },
+      "PlayInviteDto": {
+        "type": "object",
+        "properties": {
+          "playWhen": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InviteWhen"
+              }
+            ]
+          },
+          "status": {
+            "description": "expired as soon as expiresAt passes while pending.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InviteStatus"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "from": {
+            "$ref": "#/components/schemas/UserCardDto"
+          },
+          "to": {
+            "$ref": "#/components/schemas/UserCardDto"
+          },
+          "game": {
+            "$ref": "#/components/schemas/GameRefDto"
+          },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Count down to this; unanswered by then, it is expired."
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "playWhen",
+          "status",
+          "id",
+          "from",
+          "to",
+          "game",
+          "startsAt",
+          "expiresAt",
+          "createdAt"
+        ]
+      },
+      "PlayInviteListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "Pending and not expired, newest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayInviteDto"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "CheckInDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "other": {
+            "description": "Who you were matched with.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserCardDto"
+              }
+            ]
+          },
+          "game": {
+            "nullable": true,
+            "description": "The game of the listing or invite that led here.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GameRefDto"
+              }
+            ]
+          },
+          "listingId": {
+            "type": "string",
+            "nullable": true
+          },
+          "playInviteId": {
+            "type": "string",
+            "nullable": true
+          },
+          "dueAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "other",
+          "game",
+          "listingId",
+          "playInviteId",
+          "dueAt"
+        ]
+      },
+      "CheckInListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "Due and unanswered, oldest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CheckInDto"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "CheckInAnswer": {
+        "type": "string",
+        "enum": [
+          "played",
+          "not_yet",
+          "no"
+        ]
+      },
+      "AnswerCheckInBody": {
+        "type": "object",
+        "properties": {
+          "answer": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CheckInAnswer"
+              }
+            ]
+          }
+        },
+        "required": [
+          "answer"
+        ]
+      },
+      "BlockBody": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "userId"
+        ]
+      },
+      "BlockListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "People you blocked, most recent first (Settings → Blocked users).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserCardDto"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "ReportReason": {
+        "type": "string",
+        "enum": [
+          "harassment",
+          "hate",
+          "sexual_content",
+          "underage",
+          "spam",
+          "impersonation",
+          "cheating_or_scam",
+          "other"
+        ]
+      },
+      "ReportBody": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReportReason"
+              }
+            ]
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "listingId": {
+            "type": "string",
+            "description": "When reporting from a listing card: one of their listings.",
+            "format": "uuid"
+          },
+          "details": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "reason",
+          "userId"
+        ]
+      },
+      "WaitlistBody": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string",
+            "description": "\"groups\" for the Groups \"Notify me\" button.",
+            "pattern": "^[a-z_]{1,30}$"
+          }
+        },
+        "required": [
+          "topic"
+        ]
+      },
+      "DeleteAccountBody": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string",
+            "description": "Required when the account has a password (hasPassword on Me).",
+            "minLength": 1,
+            "maxLength": 72
+          }
+        }
+      },
+      "ReportStatus": {
+        "type": "string",
+        "enum": [
+          "open",
+          "actioned",
+          "dismissed"
+        ]
+      },
+      "AccountState": {
+        "type": "string",
+        "enum": [
+          "active",
+          "banned",
+          "deleted"
+        ]
+      },
+      "AdminUserDto": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountState"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "mainGame": {
+            "type": "string",
+            "nullable": true,
+            "description": "First game on their profile."
+          },
+          "banReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "onboarded": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "lastSeenAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "Latest activity on any session."
+          },
+          "connections": {
+            "type": "number"
+          },
+          "playedWith": {
+            "type": "number"
+          },
+          "openReports": {
+            "type": "number",
+            "description": "Reports against them still open."
+          }
+        },
+        "required": [
+          "state",
+          "id",
+          "username",
+          "displayName",
+          "email",
+          "city",
+          "mainGame",
+          "banReason",
+          "onboarded",
+          "createdAt",
+          "lastSeenAt",
+          "connections",
+          "playedWith",
+          "openReports"
+        ]
+      },
+      "AdminReportDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReportReason"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReportStatus"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "reporter": {
+            "$ref": "#/components/schemas/AdminUserDto"
+          },
+          "target": {
+            "$ref": "#/components/schemas/AdminUserDto"
+          },
+          "listingId": {
+            "type": "string",
+            "nullable": true
+          },
+          "details": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "resolvedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "resolutionNote": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "reason",
+          "status",
+          "id",
+          "reporter",
+          "target",
+          "listingId",
+          "details",
+          "createdAt",
+          "resolvedAt",
+          "resolutionNote"
+        ]
+      },
+      "AdminReportPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminReportDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "ResolveAction": {
+        "type": "string",
+        "enum": [
+          "dismiss",
+          "warn",
+          "remove_listing",
+          "ban"
+        ],
+        "description": "dismiss: no action. warn, remove_listing (the reported listing), ban (the target)."
+      },
+      "ResolveReportBody": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "description": "dismiss: no action. warn, remove_listing (the reported listing), ban (the target).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResolveAction"
+              }
+            ]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "action",
+          "note"
+        ]
+      },
+      "AdminUserPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminUserDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "BanBody": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "description": "Shown to nobody but admins; keep it factual.",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "NoteBody": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          }
+        }
+      },
+      "SetLaunchBody": {
+        "type": "object",
+        "properties": {
+          "isLaunch": {
+            "type": "boolean",
+            "description": "Launch games are the ones Find Players offers."
+          }
+        },
+        "required": [
+          "isLaunch"
+        ]
+      },
+      "MetricsDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "to": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "listings": {
+            "type": "number"
+          },
+          "listingsWithRequest": {
+            "type": "number",
+            "description": "Got at least one connection request."
+          },
+          "listingsPlayed": {
+            "type": "number",
+            "description": "At least one \"played\" check-in points at them."
+          },
+          "playedRate": {
+            "type": "number",
+            "description": "listingsPlayed / listings: the number that decides the MVP."
+          },
+          "weeklyActive": {
+            "type": "number",
+            "description": "People active in the 7 days before `to`."
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "listings",
+          "listingsWithRequest",
+          "listingsPlayed",
+          "playedRate",
+          "weeklyActive"
+        ]
+      },
+      "ErrorBody": {
+        "type": "object",
+        "properties": {
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Field name → problem, on 422"
+          },
+          "code": {
+            "type": "string",
+            "description": "Stable machine code, e.g. `listing_already_open`."
+          },
+          "message": {
+            "type": "string",
+            "description": "Safe to show to the user."
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "required": [
+          "error"
+        ]
+      }
+    }
+  }
 }

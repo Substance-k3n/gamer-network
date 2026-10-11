@@ -4,5 +4,29 @@
     "suspicious": "warn"
   },
   "plugins": ["typescript", "import", "react", "nextjs"],
-  "ignorePatterns": ["**/dist/**", "**/.next/**", "apps/mobile/**"]
+  "ignorePatterns": ["**/dist/**", "**/.next/**", "apps/mobile/**", "**/next-env.d.ts"],
+  "rules": {
+    "typescript/no-extraneous-class": [
+      "warn",
+      {
+        "allowWithDecorator": true
+      }
+    ],
+    "react/react-in-jsx-scope": "off",
+    "import/no-unassigned-import": [
+      "warn",
+      {
+        "allow": ["**/*.css"]
+      }
+    ],
+    "no-unused-vars": [
+      "error",
+      {
+        "ignoreRestSiblings": true
+      }
+    ]
+  },
+  "env": {
+    "node": true
+  }
 }

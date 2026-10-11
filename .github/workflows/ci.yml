@@ -5,8 +5,8 @@ on:
   push:
     branches: [main, dev]
 
-# Per-app jobs (api tests against Postgres, spec freshness, web build,
-# flutter analyze/test) are added in each app's scaffold PR.
+# Per-app jobs (web build, flutter analyze/test) are added in each
+# app's scaffold PR.
 jobs:
   repo:
     runs-on: ubuntu-latest
@@ -28,3 +28,142 @@ jobs:
 
       - name: Lint
         run: pnpm lint
+
+  admin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm --filter @app/admin typecheck
+
+      - name: Build
+        run: pnpm --filter @app/admin build
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm --filter @app/web typecheck
+
+      - name: Build
+        run: pnpm --filter @app/web build
+
+  api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: gn
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: gn
+        ports:
+          - 5470:5432
+        options: >-
+          --health-cmd "pg_isready -U gn -d gn"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # Same server and credentials as infra/docker/dev; tests use gn_test.
+      DATABASE_URL: postgres://gn:password@localhost:5470/gn
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm --filter @app/api typecheck
+
+      - name: Test
+        run: pnpm --filter @app/api test
+
+      # ADR-0006: a schema change must come with its migration.
+      - name: Migrations match the schema
+        run: |
+          pnpm --filter @app/api db:generate
+          git diff --exit-code apps/api/drizzle || {
+            echo "::error::apps/api/src/db/schema changed without a migration. Run 'pnpm --filter @app/api db:generate' and commit it."
+            exit 1
+          }
+          test -z "$(git status --porcelain apps/api/drizzle)"
+
+      - name: Migrate and seed a fresh database
+        run: |
+          pnpm --filter @app/api db:migrate
+          pnpm --filter @app/api db:seed
+
+      # Avatars: the same RustFS as infra/docker/dev, on a throwaway tmpfs
+      # (RustFS runs as UID/GID 10001). The api's dev defaults point at it.
+      - name: Start media storage
+        run: |
+          docker run -d --name s3 -p 9470:9000 \
+            --tmpfs /data:rw,uid=10001,gid=10001 \
+            -e RUSTFS_VOLUMES=/data \
+            -e RUSTFS_ADDRESS=0.0.0.0:9000 \
+            -e RUSTFS_ACCESS_KEY=gn-media \
+            -e RUSTFS_SECRET_KEY=password123 \
+            rustfs/rustfs:1.0.0
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:9470/health && break
+            sleep 1
+          done
+          curl -fsS http://localhost:9470/health || { docker logs s3; exit 1; }
+          AWS_ACCESS_KEY_ID=gn-media AWS_SECRET_ACCESS_KEY=password123 \
+          AWS_DEFAULT_REGION=us-east-1 S3_ENDPOINT=http://localhost:9470 BUCKET=gn-media \
+            sh infra/docker/dev/setup-bucket.sh
+
+      - name: Test (e2e, real Postgres and storage)
+        run: pnpm --filter @app/api test:e2e
+
+      # ADR-0003: the committed spec must match the code.
+      - name: API spec is up to date
+        run: |
+          pnpm --filter @app/api spec
+          git diff --exit-code packages/api-spec/openapi.json || {
+            echo "::error::packages/api-spec/openapi.json is stale. Run 'pnpm --filter @app/api spec' and commit it."
+            exit 1
+          }
+
+  # The production images (docs/DEPLOY.md) must keep building.
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build api, web and admin images
+        working-directory: infra/docker/prod
+        run: |
+          cp .env.example .env
+          docker compose build api web admin

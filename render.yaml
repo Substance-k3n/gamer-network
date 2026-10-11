@@ -1,0 +1,117 @@
+# Render Blueprint (ADR-0008, docs/DEPLOY.md). Render → New → Blueprint →
+# this repo. Values marked `sync: false` are asked for once, on creation.
+# Deploys follow `main`: merging a release deploys it.
+#
+#   gn-api    the app and the admin call this; /health, /openapi.json
+#   gn-web    share pages, privacy policy, App Links
+#   gn-admin  moderation dashboard
+#   gn-db     Postgres (daily backups by Render)
+#
+# web and admin reach the API over Render's private network.
+
+databases:
+  - name: gn-db
+    plan: basic-256mb
+    region: frankfurt
+    databaseName: gn
+    user: gn
+    postgresMajorVersion: '17'
+    ipAllowList: [] # no outside access; services connect privately
+
+services:
+  - type: web
+    name: gn-api
+    runtime: docker
+    plan: starter # always on: the expiry jobs run in-process
+    region: frankfurt
+    branch: main
+    dockerContext: .
+    dockerfilePath: apps/api/Dockerfile
+    healthCheckPath: /health
+    # Same image, so code and schema always match. Seeding is safe to repeat.
+    preDeployCommand: node dist/db/migrate.js && node dist/db/seed.js
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: gn-db
+          property: connectionString
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: '3300'
+      # https://<gn-web host>,https://<gn-admin host>
+      - key: WEB_ORIGINS
+        sync: false
+      # https://<gn-web host>: share links point here
+      - key: PUBLIC_WEB_URL
+        sync: false
+      - key: LAUNCH_CITY
+        value: Addis Ababa
+      - key: MIN_APP_VERSION
+        value: 0.0.0
+      - key: LATEST_APP_VERSION
+        value: 1.0.0
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: GOOGLE_CLIENT_IDS
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_REGION
+        value: auto
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_BUCKET
+        value: gn-media
+      - key: MEDIA_PUBLIC_URL
+        sync: false
+
+  - type: web
+    name: gn-web
+    runtime: docker
+    plan: starter # share links must open fast, no cold starts
+    region: frankfurt
+    branch: main
+    dockerContext: .
+    dockerfilePath: apps/web/Dockerfile
+    envVars:
+      - key: PORT
+        value: '3000'
+      - key: API_URL
+        fromService:
+          type: web
+          name: gn-api
+          property: hostport
+      - key: PUBLIC_WEB_URL
+        sync: false
+      - key: ANDROID_PACKAGE
+        value: com.example.rally
+      - key: ANDROID_CERT_SHA256
+        sync: false
+      - key: PLAY_STORE_URL
+        sync: false
+      - key: CONTACT_EMAIL
+        sync: false
+
+  - type: web
+    name: gn-admin
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    branch: main
+    dockerContext: .
+    dockerfilePath: apps/admin/Dockerfile
+    envVars:
+      - key: PORT
+        value: '3001'
+      - key: API_URL
+        fromService:
+          type: web
+          name: gn-api
+          property: hostport

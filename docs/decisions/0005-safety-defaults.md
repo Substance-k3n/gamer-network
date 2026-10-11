@@ -14,7 +14,7 @@ requires block and report for apps where users post content.
   site can remove content and ban accounts.
 - Gaming IDs are visible only to accepted connections by default.
 - Ranks are self-reported until game APIs allow verification.
-- Sign-in with Google or an emailed code. No phone numbers collected.
+- No phone numbers collected. (Sign-in methods: ADR-0007.)
 
 ## Consequences
 

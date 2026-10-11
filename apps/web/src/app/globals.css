@@ -1,0 +1,158 @@
+:root {
+  --bg: #0c0c0c;
+  --card: #1b1b1b;
+  --line: #2e2e2e;
+  --text: #ededed;
+  --muted: #8c8c8c;
+  --accent: #ff4d2a;
+  --soft: #3a1c14;
+  --pink: #ffb4a3;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--bg);
+  font-family: var(--font-grotesk), system-ui, sans-serif;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+a {
+  color: var(--text);
+}
+a:hover {
+  color: var(--accent);
+}
+.page {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+.brand {
+  font-family: var(--font-doto);
+  font-weight: 900;
+  font-size: 28px;
+  text-decoration: none;
+}
+.brand span {
+  color: var(--accent);
+}
+.card {
+  margin-top: 24px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 20px;
+  box-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+.label {
+  font: 400 11px var(--font-mono);
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.game {
+  font-family: var(--font-doto);
+  font-weight: 900;
+  font-size: 34px;
+  line-height: 1.05;
+  margin: 6px 0 0;
+}
+.host {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--soft);
+  color: var(--pink);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  flex: none;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 16px;
+}
+.chip {
+  font: 700 11px var(--font-mono);
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  padding: 5px 10px;
+}
+.note {
+  margin: 16px 0 0;
+  color: #cfcfcf;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.status {
+  display: inline-block;
+  margin-top: 16px;
+  font: 700 12px var(--font-mono);
+  border-radius: 99px;
+  padding: 5px 12px;
+  background: var(--soft);
+  color: var(--pink);
+}
+.status.ended {
+  background: #232323;
+  color: var(--muted);
+}
+.actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+}
+.button {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+  font-weight: 700;
+  border-radius: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+}
+.button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #0e0e0e;
+}
+.button.primary:hover {
+  color: #0e0e0e;
+  filter: brightness(1.08);
+}
+.muted {
+  color: var(--muted);
+}
+.footer {
+  margin-top: 32px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.prose h1 {
+  font-family: var(--font-doto);
+  font-weight: 900;
+  font-size: 30px;
+}
+.prose h2 {
+  font-size: 18px;
+  margin-top: 28px;
+}
+.prose p,
+.prose li {
+  line-height: 1.6;
+  color: #d6d6d6;
+}

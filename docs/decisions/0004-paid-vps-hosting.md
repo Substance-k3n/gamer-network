@@ -1,6 +1,6 @@
 # ADR-0004: Pay for a small VPS from day one
 
-**Status:** Accepted (2026-10-08)
+**Status:** Superseded by ADR-0008 (2026-10-11)
 
 ## Context
 

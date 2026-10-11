@@ -18,5 +18,55 @@ services:
     volumes:
       - database:/var/lib/postgresql/data
 
+  # Avatars. S3-compatible like Cloudflare R2 in production; RustFS
+  # because MinIO's images are no longer public (same choice as abro).
+  s3:
+    image: rustfs/rustfs:1.0.0
+    restart: unless-stopped
+    depends_on:
+      s3-volume-permissions:
+        condition: service_completed_successfully
+    environment:
+      - RUSTFS_VOLUMES=/data
+      - RUSTFS_ADDRESS=0.0.0.0:9000
+      - RUSTFS_CONSOLE_ADDRESS=0.0.0.0:9001
+      - RUSTFS_CONSOLE_ENABLE=true
+      - RUSTFS_ACCESS_KEY=${S3_ACCESS_KEY_ID:-gn-media}
+      - RUSTFS_SECRET_KEY=${S3_SECRET_ACCESS_KEY:-password123}
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://127.0.0.1:9000/health']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - '${S3_API_PORT:-9470}:9000'
+      - '${S3_CONSOLE_PORT:-9471}:9001'
+    volumes:
+      - s3-data:/data
+
+  # RustFS runs as UID/GID 10001, so a fresh volume is chowned first.
+  s3-volume-permissions:
+    image: alpine:3.20
+    command: chown -R 10001:10001 /data
+    volumes:
+      - s3-data:/data
+
+  # Creates the media bucket with public reads under avatars/, like the
+  # public R2 bucket in production. Runs once on `docker compose up`.
+  s3-createbuckets:
+    image: amazon/aws-cli:2.27.0
+    depends_on:
+      s3:
+        condition: service_healthy
+    environment:
+      - AWS_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID:-gn-media}
+      - AWS_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY:-password123}
+      - AWS_DEFAULT_REGION=us-east-1
+      - BUCKET=${S3_BUCKET:-gn-media}
+    entrypoint: ['/bin/sh', '/setup-bucket.sh']
+    volumes:
+      - ./setup-bucket.sh:/setup-bucket.sh:ro
+
 volumes:
   database:
+  s3-data:
