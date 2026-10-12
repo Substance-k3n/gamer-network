@@ -22,9 +22,10 @@ services:
     dockerContext: .
     dockerfilePath: apps/api/Dockerfile
     healthCheckPath: /health
-    # Free instances have no pre-deploy step, so migrations and the seed
-    # (safe to repeat) run on start, from the same image as the code.
-    dockerCommand: sh -c "node dist/db/migrate.js && node dist/db/seed.js && node dist/main.js"
+    # Free instances have no pre-deploy step, so start.js migrates and
+    # seeds (safe to repeat), then starts the API. One plain command:
+    # Render doesn't strip quotes, so `sh -c "…"` can't be used here.
+    dockerCommand: node dist/start.js
     envVars:
       # Neon's direct (not pooled) connection string, ?sslmode=require
       - key: DATABASE_URL
