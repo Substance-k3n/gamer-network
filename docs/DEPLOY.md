@@ -26,24 +26,32 @@ Moving off any limit is a plan change on that service in the dashboard.
 
 `gn-web` and `gn-admin` call the API on its public URL (free services
 can't be reached over Render's private network).
-Avatars go straight from the phone to Cloudflare R2 (API.md "Images").
+Avatars go straight from the phone to an S3 bucket, Backblaze B2 for now
+(API.md "Images", ADR-0009).
 
 ## 1. One-time setup on Render
 
-1. **Cloudflare R2.** A `gn-media` bucket with public access (the
-   `r2.dev` URL or a custom domain); that URL is `MEDIA_PUBLIC_URL`. Add
-   a CORS rule allowing `PUT` from any origin with the `Content-Type`
-   header, so phones can upload. Create an API token with Object Read &
-   Write on the bucket.
+1. **Backblaze B2.** A **private** bucket (e.g. `gn-media-bucket`). Under
+   its CORS Rules, share with all HTTPS origins for both the B2 Native
+   and S3 Compatible APIs, so phones can upload. Create an application
+   key limited to this bucket, Read and Write. Leave `MEDIA_PUBLIC_URL`
+   empty: the API signs avatar URLs (ADR-0009). Any S3-compatible bucket
+   works the same; a public one sets `MEDIA_PUBLIC_URL` to its URL.
 2. **Keys.** Production refuses to start without them (the API exits
-   with e.g. `RESEND_API_KEY is not set.`):
-   - `RESEND_API_KEY`, and `MAIL_FROM` on a domain verified in Resend.
+   with e.g. `FIREBASE_SERVICE_ACCOUNT is required in production.`):
+   - Email, one of: `BREVO_API_KEY` (Brevo → SMTP & API → API keys),
+     with `MAIL_FROM` on a sender verified in Brevo (a single address
+     like a Gmail works, no domain needed); or `RESEND_API_KEY`, with
+     `MAIL_FROM` on a domain verified in Resend. Leave the other empty.
    - `FIREBASE_SERVICE_ACCOUNT`: Firebase console → Project settings →
      Service accounts → Generate new private key, then
      `base64 -w0 key.json`.
-   - The R2 settings above: `S3_ENDPOINT`
-     (`https://<account id>.r2.cloudflarestorage.com`),
-     `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `MEDIA_PUBLIC_URL`.
+   - The bucket settings above: `S3_ENDPOINT` (the bucket's endpoint,
+     e.g. `https://s3.us-west-004.backblazeb2.com`), `S3_ACCESS_KEY_ID`
+     (the `keyID`), `S3_SECRET_ACCESS_KEY` (the `applicationKey`). After
+     the Blueprint is created, set `S3_REGION` (the middle of the
+     endpoint, e.g. `us-west-004`; B2 rejects `auto`) and `S3_BUCKET` on
+     `gn-api`.
    - `GOOGLE_CLIENT_IDS` is optional: leave it empty and only email +
      password sign-in works.
 3. **Blueprint.** Render dashboard → New → Blueprint → connect this
@@ -147,7 +155,10 @@ network (`http://api:3300`), so share pages don't depend on DNS.
      this bucket.
 4. **Keys.** Production refuses to start without them (the API exits
    with e.g. `RESEND_API_KEY is required in production.`):
-   - `RESEND_API_KEY`, and `MAIL_FROM` on a domain verified in Resend.
+   - Email, one of: `BREVO_API_KEY` (Brevo → SMTP & API → API keys),
+     with `MAIL_FROM` on a sender verified in Brevo (a single address
+     like a Gmail works, no domain needed); or `RESEND_API_KEY`, with
+     `MAIL_FROM` on a domain verified in Resend. Leave the other empty.
    - `FIREBASE_SERVICE_ACCOUNT`: Firebase console → Project settings →
      Service accounts → Generate new private key, then
      `base64 -w0 key.json`.

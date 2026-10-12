@@ -33,6 +33,7 @@ async function signup() {
     .expect(201);
   const auth = { Authorization: `Bearer ${res.body.token}` };
   return {
+    auth,
     uploadUrl: (body: object) => http().post('/v1/me/avatar/upload-url').set(auth).send(body),
     setAvatar: (key: string) => http().put('/v1/me/avatar').set(auth).send({ key }),
     removeAvatar: () => http().delete('/v1/me/avatar').set(auth),
@@ -98,6 +99,26 @@ describe('avatar', () => {
     const p = await signup();
     await p.uploadUrl({ contentType: 'image/gif', size: 100 }).expect(422);
     await p.uploadUrl({ contentType: 'image/png', size: 3 * 1024 * 1024 }).expect(422);
+  });
+
+  it('is a signed URL, the same all day, when the bucket is private', async () => {
+    const before = process.env.MEDIA_PUBLIC_URL;
+    process.env.MEDIA_PUBLIC_URL = '';
+    try {
+      const p = await signup();
+      const target = (await p.uploadUrl({ contentType: 'image/png', size: PNG.length })).body;
+      await upload(target, PNG);
+      const url = (await p.setAvatar(target.key).expect(200)).body.avatarUrl;
+      expect(url).toContain('X-Amz-Signature=');
+      const served = await fetch(url);
+      expect(served.status).toBe(200);
+      expect(Buffer.from(await served.arrayBuffer())).toEqual(PNG);
+      const again = (await http().get('/v1/me').set(p.auth)).body.avatarUrl;
+      expect(again).toBe(url);
+    } finally {
+      if (before === undefined) delete process.env.MEDIA_PUBLIC_URL;
+      else process.env.MEDIA_PUBLIC_URL = before;
+    }
   });
 
   it('can be removed', async () => {

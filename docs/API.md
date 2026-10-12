@@ -74,7 +74,8 @@ show. `fields` (on `422`) maps a field name to its problem, for forms.
    is signed for that type and size; anything else gets `403`.
 4. `PUT /v1/me/avatar` with `{ key }` → `Me` with the new `avatarUrl`.
 
-Responses give ready-to-use public `avatarUrl`s.
+Responses give ready-to-use `avatarUrl`s. They may be signed and change
+once a day (ADR-0009): use them as given, never build one from the key.
 
 **Idempotency.** `POST` that creates something (`/listings`,
 `/connection-requests`, `/play-invites`, `/reports`) accepts

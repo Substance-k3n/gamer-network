@@ -44,6 +44,9 @@ export const env = {
   get resendApiKey() {
     return process.env.RESEND_API_KEY ?? '';
   },
+  get brevoApiKey() {
+    return process.env.BREVO_API_KEY ?? '';
+  },
   get mailFrom() {
     return process.env.MAIL_FROM ?? 'gamer-network <no-reply@example.com>';
   },
@@ -78,9 +81,10 @@ export const env = {
   get s3Bucket() {
     return devDefault('S3_BUCKET', 'gn-media');
   },
-  /** Where the bucket is publicly readable; avatar URLs start with this. */
+  /** Where the bucket is publicly readable; avatar URLs start with this. Empty: the bucket is private and avatar URLs are signed. */
   get mediaPublicUrl() {
-    return devDefault('MEDIA_PUBLIC_URL', 'http://localhost:9470/gn-media').replace(/\/+$/, '');
+    const fallback = this.production ? '' : 'http://localhost:9470/gn-media';
+    return (process.env.MEDIA_PUBLIC_URL ?? fallback).replace(/\/+$/, '');
   },
   /** The web app; share links are <publicWebUrl>/l/<listing id>. */
   get publicWebUrl() {

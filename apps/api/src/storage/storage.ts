@@ -1,5 +1,6 @@
 import {
   DeleteObjectCommand,
+  GetObjectCommand,
   HeadObjectCommand,
   NotFound,
   PutObjectCommand,
@@ -22,8 +23,11 @@ export interface MediaStorage {
   /** Null when nothing is stored at `key`. */
   head(key: string): Promise<StoredObject | null>;
   delete(key: string): Promise<void>;
-  publicUrl(key: string): string;
+  /** Where clients read `key`: public, or signed when the bucket is private. */
+  url(key: string): Promise<string>;
 }
+
+const DAY = 24 * 60 * 60;
 
 export class S3MediaStorage implements MediaStorage {
   private readonly s3 = new S3Client({
@@ -63,7 +67,15 @@ export class S3MediaStorage implements MediaStorage {
     await this.s3.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
   }
 
-  publicUrl(key: string): string {
-    return `${env.mediaPublicUrl}/${key}`;
+  async url(key: string): Promise<string> {
+    if (env.mediaPublicUrl) return `${env.mediaPublicUrl}/${key}`;
+    // Private bucket. Signed as of the start of the UTC day and valid for
+    // two, so a URL stays the same all day (phones keep it cached) and
+    // always has at least a day left.
+    const signingDate = new Date(Math.floor(Date.now() / 1000 / DAY) * DAY * 1000);
+    return getSignedUrl(this.s3, new GetObjectCommand({ Bucket: this.bucket, Key: key }), {
+      signingDate,
+      expiresIn: 2 * DAY,
+    });
   }
 }

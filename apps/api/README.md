@@ -24,7 +24,7 @@ Every route needs `Authorization: Bearer <token>` unless it's marked
 `@RequireVerifiedEmail()` on routes that need a verified email (posting
 listings, sending requests).
 
-Without `RESEND_API_KEY`, emails (and their 6-digit codes) are printed to
+Without `RESEND_API_KEY` or `BREVO_API_KEY`, emails (and their 6-digit codes) are printed to
 the API console. Google sign-in needs `GOOGLE_CLIENT_IDS`.
 
 ## Database
@@ -70,7 +70,7 @@ src/
 ├── admin/          @AdminOnly: reports queue, bans, remove listing, game switch, metrics
 ├── storage/        S3-compatible media (RustFS locally, R2 in production)
 ├── jobs/           JobRunner: timers in the API, one advisory lock per job
-├── mail/           Resend or console
+├── mail/           Resend, Brevo or console
 ├── common/         errors, cursor paging, Addis time helpers
 └── health/         GET /health (checks the database)
 ```
@@ -99,6 +99,7 @@ pnpm --filter @app/api admin:grant you@example.com --revoke  # undo
 
 Everything in `.env.example` has a dev default except these, which must
 be set in production (the API refuses to start without the `S3_*` and
-URL ones): `GOOGLE_CLIENT_IDS`, `RESEND_API_KEY` + `MAIL_FROM`,
-`FIREBASE_SERVICE_ACCOUNT`, `S3_*`, `MEDIA_PUBLIC_URL`, `PUBLIC_WEB_URL`,
-`WEB_ORIGINS`.
+URL ones): `GOOGLE_CLIENT_IDS`, `RESEND_API_KEY` or `BREVO_API_KEY`, + `MAIL_FROM`,
+`FIREBASE_SERVICE_ACCOUNT`, `S3_*`, `PUBLIC_WEB_URL`, `WEB_ORIGINS`.
+`MEDIA_PUBLIC_URL` is optional: empty means a private bucket and signed
+avatar URLs (ADR-0009).

@@ -55,7 +55,10 @@ services:
         value: 0.0.0
       - key: LATEST_APP_VERSION
         value: 1.0.0
+      # Email: set one of these two (Resend wins if both are set)
       - key: RESEND_API_KEY
+        sync: false
+      - key: BREVO_API_KEY
         sync: false
       - key: MAIL_FROM
         sync: false

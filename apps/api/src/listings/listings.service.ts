@@ -353,7 +353,7 @@ export class ListingsService {
     return {
       id: l.id,
       ownerDisplayName: owner.displayName,
-      ownerAvatarUrl: this.profiles.avatarUrl(owner.avatarKey),
+      ownerAvatarUrl: await this.profiles.avatarUrl(owner.avatarKey),
       game: row.game,
       mode: row.mode,
       rank: row.rank,

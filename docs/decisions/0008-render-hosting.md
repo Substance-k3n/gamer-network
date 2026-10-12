@@ -16,7 +16,7 @@ API, share pages, admin and Postgres run on Render, described by
 (closest to Ethiopia). `main` auto-deploys; the API runs the migrations
 and the game seed when it starts, from the same image as the code.
 Everything starts on the **free tier**, to pay nothing until there are
-users. Avatars stay on Cloudflare R2.
+users. Avatars stay in an S3 bucket outside Render (ADR-0009).
 
 ## Alternatives considered
 

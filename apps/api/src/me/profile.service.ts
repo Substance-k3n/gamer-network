@@ -81,8 +81,8 @@ export class ProfileService {
     @Inject(MEDIA_STORAGE) private readonly storage: MediaStorage,
   ) {}
 
-  avatarUrl(key: string | null) {
-    return key && this.storage.publicUrl(key);
+  async avatarUrl(key: string | null) {
+    return key && this.storage.url(key);
   }
 
   async me(user: User): Promise<MeDto> {
@@ -126,7 +126,7 @@ export class ProfileService {
       id: user.id,
       username: user.username,
       displayName: user.displayName,
-      avatarUrl: this.avatarUrl(user.avatarKey),
+      avatarUrl: await this.avatarUrl(user.avatarKey),
       city: user.city,
       status: expired ? 'not_available' : user.status,
       statusGame: gameRef(statusGame ?? null),
@@ -171,16 +171,18 @@ export class ProfileService {
     ]);
     const topByUser = new Map(tops.map(({ userId, ...g }) => [userId, g]));
     const gameById = new Map(statusGames.map((g) => [g.id, g]));
-    return list.map((u) => ({
-      id: u.id,
-      username: u.username,
-      displayName: u.displayName,
-      avatarUrl: this.avatarUrl(u.avatarKey),
-      city: u.city,
-      status: live(u) ? u.status : 'not_available',
-      statusGame: live(u) && u.statusGameId ? (gameById.get(u.statusGameId) ?? null) : null,
-      topGame: topByUser.get(u.id) ?? null,
-    }));
+    return Promise.all(
+      list.map(async (u) => ({
+        id: u.id,
+        username: u.username,
+        displayName: u.displayName,
+        avatarUrl: await this.avatarUrl(u.avatarKey),
+        city: u.city,
+        status: live(u) ? u.status : 'not_available',
+        statusGame: live(u) && u.statusGameId ? (gameById.get(u.statusGameId) ?? null) : null,
+        topGame: topByUser.get(u.id) ?? null,
+      })),
+    );
   }
 
   /** How `viewerId` stands with `userId`. */

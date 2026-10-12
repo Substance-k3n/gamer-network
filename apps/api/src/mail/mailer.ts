@@ -36,6 +36,35 @@ export class ResendMailer implements Mailer {
   }
 }
 
+/** Brevo's HTTP API. Sends from a single verified address, no domain needed. */
+export class BrevoMailer implements Mailer {
+  constructor(
+    private readonly apiKey: string,
+    private readonly from: string,
+  ) {}
+
+  async send(mail: Mail) {
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: { 'api-key': this.apiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sender: parseAddress(this.from),
+        to: [{ email: mail.to }],
+        subject: mail.subject,
+        textContent: mail.text,
+      }),
+    });
+    if (!res.ok) throw new Error(`Brevo answered ${res.status}: ${await res.text()}`);
+  }
+}
+
+/** "Name <a@b.c>" or "a@b.c" → Brevo's { name?, email }. */
+export function parseAddress(address: string): { name?: string; email: string } {
+  const match = address.match(/^\s*(.*?)\s*<([^>]+)>\s*$/);
+  if (!match) return { email: address.trim() };
+  return match[1] ? { name: match[1], email: match[2]! } : { email: match[2]! };
+}
+
 /** Local development without an API key: the email goes to the console. */
 export class ConsoleMailer implements Mailer {
   private readonly logger = new Logger('Mail');
@@ -47,6 +76,7 @@ export class ConsoleMailer implements Mailer {
 
 export function createMailer(): Mailer {
   if (env.resendApiKey) return new ResendMailer(env.resendApiKey, env.mailFrom);
-  if (env.production) throw new Error('RESEND_API_KEY is required in production.');
+  if (env.brevoApiKey) return new BrevoMailer(env.brevoApiKey, env.mailFrom);
+  if (env.production) throw new Error('RESEND_API_KEY or BREVO_API_KEY is required in production.');
   return new ConsoleMailer();
 }
