@@ -1,7 +1,8 @@
 # Deploying
 
 Production runs on Render's free tier (ADR-0008), described by
-`render.yaml` at the repo root. `main` deploys itself: merging a release
+`render.yaml` at the repo root, with Postgres on Neon's free tier
+(ADR-0010). `main` deploys itself: merging a release
 is the deploy.
 
 **Free-tier limits, know them before the beta:**
@@ -10,10 +11,10 @@ is the deploy.
   waits about a minute while it wakes. Timed jobs (the "ending soon"
   push and the like) don't run while the API sleeps. Listings still read
   correctly because expiry is checked on every read.
-- **The free database expires 30 days after it is created.** Render
-  emails before then. Upgrade `gn-db` (from about $6/month) before that
-  date or the data goes; take a dump first either way (§3).
-- No Render backups and no Shell on free plans.
+- Neon's free database doesn't expire. It holds 0.5 GB and pauses when
+  idle (the first query after that waits a moment). Its restore history
+  is short, so take your own dumps too (§3).
+- No Shell on Render's free plans.
 
 Moving off any limit is a plan change on that service in the dashboard.
 
@@ -22,7 +23,7 @@ Moving off any limit is a plan change on that service in the dashboard.
 | `gn-api`       | NestJS API. Runs the migrations and seeds the game catalog on start |
 | `gn-web`       | Share pages, privacy policy, App Links                              |
 | `gn-admin`     | Moderation dashboard                                                |
-| `gn-db`        | Postgres 17, no outside access                                      |
+| Neon `gn`      | Postgres 17, outside Render (ADR-0010)                              |
 
 `gn-web` and `gn-admin` call the API on its public URL (free services
 can't be reached over Render's private network).
@@ -31,6 +32,10 @@ Avatars go straight from the phone to an S3 bucket, Backblaze B2 for now
 
 ## 1. One-time setup on Render
 
+0. **Neon.** console.neon.tech → New project, Postgres 17, region AWS
+   Europe (Frankfurt), next to Render's. Database `gn`. Copy the
+   connection string with **Connection pooling off** (the direct one):
+   that is `DATABASE_URL`. It ends in `?sslmode=require`.
 1. **Backblaze B2.** A **private** bucket (e.g. `gn-media-bucket`). Under
    its CORS Rules, share with all HTTPS origins for both the B2 Native
    and S3 Compatible APIs, so phones can upload. Create an application
@@ -74,16 +79,15 @@ Avatars go straight from the phone to an S3 bucket, Backblaze B2 for now
    ```
 
 5. **Admin account.** Sign up in the app (or with `POST /v1/auth/signup`).
-   Free services have no Shell, so grant it from your laptop: add your IP
-   under `gn-db` → Networking, copy the **External** connection string,
-   then
+   Free services have no Shell, so grant it from your laptop with Neon's
+   connection string:
 
    ```sh
-   DATABASE_URL='<external connection string>?sslmode=require' \
+   DATABASE_URL='<neon connection string>' \
      pnpm --filter @app/api admin:grant <email>
    ```
 
-   Remove your IP again afterwards. Sign in at
+   Sign in at
    `https://gn-admin.onrender.com`.
 
 6. **Uptime check.** Add `https://gn-api.onrender.com/health` to a free
@@ -105,16 +109,13 @@ way.
 
 ## 3. Backups and restore
 
-The free database has no backups: take your own, at least weekly and
-before the 30-day expiry. Restore with `pg_restore --clean --if-exists
--d "<external connection string>" <file>`.
+Neon's free plan keeps only a short restore history: take your own
+dumps, at least weekly. Restore with `pg_restore --clean --if-exists
+-d "<neon connection string>" <file>`.
 
 ```sh
-pg_dump -Fc "<external connection string>?sslmode=require" -f gn-$(date +%Y%m%d).dump
+pg_dump -Fc "<neon connection string>" -f gn-$(date +%Y%m%d).dump
 ```
-
-(The database has no outside access by default: add your IP under
-`gn-db` → Networking first, and remove it after.)
 
 ## Running the production images yourself
 

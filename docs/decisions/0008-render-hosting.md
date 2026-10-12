@@ -1,6 +1,7 @@
 # ADR-0008: Host on Render instead of our own VPS
 
-**Status:** Accepted (2026-10-11). Supersedes ADR-0004.
+**Status:** Accepted (2026-10-11). Supersedes ADR-0004. Database amended
+by ADR-0010.
 
 ## Context
 
@@ -32,8 +33,7 @@ users. Avatars stay in an S3 bucket outside Render (ADR-0009).
   the API sleeps. Before real users arrive, move `gn-api` and `gn-web`
   to `starter` (about $7/month each).
 - The free database expires 30 days after creation and has no backups.
-  Upgrading `gn-db` (from about $6/month) is required before then; until
-  then we take `pg_dump`s by hand (docs/DEPLOY.md §3).
+  ADR-0010 moves Postgres to Neon instead.
 - Free services can't receive private-network traffic, so web and admin
   call the API on its public URL.
 - `infra/docker/prod` stays for running the production images locally,
