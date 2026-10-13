@@ -115,3 +115,8 @@ export class AuthResponse {
   /** True when this call created the account: go to onboarding. */
   isNew: boolean;
 }
+
+export class ResetResponse {
+  token: string;
+  user: MeDto;
+}

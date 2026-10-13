@@ -1,24 +1,10 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { Transform } from 'class-transformer';
-import { IsString, Length } from 'class-validator';
 import { CurrentUser } from '../auth/auth.decorators.js';
 import type { User } from '../auth/sessions.service.js';
-import { ProfileDto, UserCardDto } from '../me/profile.dto.js';
+import { ProfileDto } from '../me/profile.dto.js';
+import { UserSearchQuery, UserSearchResponse } from './users.dto.js';
 import { UsersService } from './users.service.js';
-
-export class UserSearchQuery {
-  /** At least 2 characters of a username or display name. */
-  @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value))
-  @IsString()
-  @Length(2, 30, { message: 'Type at least 2 characters' })
-  query: string;
-}
-
-export class UserSearchResponse {
-  /** Up to 20, by username. */
-  items: UserCardDto[];
-}
 
 // Operation ids: usersGet, usersSearch.
 

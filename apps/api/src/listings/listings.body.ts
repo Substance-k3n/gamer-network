@@ -55,7 +55,7 @@ export class CreateListingBody {
   playWhen: PlayWhen;
 
   /** How long it stays up once play starts. */
-  @ApiProperty({ enum: DURATIONS })
+  @ApiProperty({ enum: DURATIONS, type: 'integer' })
   @IsIn(DURATIONS, { message: 'Pick 2, 6 or 24 hours' })
   durationHours: Duration;
 

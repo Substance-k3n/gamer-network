@@ -28,15 +28,9 @@ import {
   SetTagsBody,
   UpdateMeBody,
 } from './me.body.js';
-import { MeDto } from './me.dto.js';
+import { MeDto, UsernameAvailability } from './me.dto.js';
 import { AvatarUploadDto } from './profile.dto.js';
 import { ProfileService } from './profile.service.js';
-
-export class UsernameAvailability {
-  available: boolean;
-  /** Why it isn't: "taken" or "invalid". */
-  reason?: 'taken' | 'invalid';
-}
 
 // Operation ids become client method names: meGet, meUpdate, meSetGames …
 // Every write answers with the whole Me, so the app replaces its copy.

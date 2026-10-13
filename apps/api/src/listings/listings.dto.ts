@@ -53,7 +53,7 @@ export class ListingDto {
   @ApiProperty({ enum: PLAY_WHENS, enumName: 'PlayWhen' })
   playWhen: PlayWhen;
 
-  @ApiProperty({ enum: DURATIONS })
+  @ApiProperty({ enum: DURATIONS, type: 'integer' })
   durationHours: Duration;
 
   startsAt: Date;

@@ -9,11 +9,21 @@
             "name": "limit",
             "required": false,
             "in": "query",
+            "description": "1–50, default 20.",
             "schema": {
               "minimum": 1,
               "maximum": 50,
               "default": 20,
               "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "`nextCursor` from the previous page.",
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -1259,7 +1269,19 @@
     "/v1/users": {
       "get": {
         "operationId": "usersSearch",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "query",
+            "required": true,
+            "in": "query",
+            "description": "At least 2 characters of a username or display name.",
+            "schema": {
+              "minLength": 2,
+              "maxLength": 30,
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "",
@@ -1301,6 +1323,7 @@
             "name": "limit",
             "required": false,
             "in": "query",
+            "description": "1–50, default 20.",
             "schema": {
               "minimum": 1,
               "maximum": 50,
@@ -1320,6 +1343,7 @@
             "name": "voice",
             "required": false,
             "in": "query",
+            "description": "Only \"Mic required\" listings.",
             "schema": {
               "type": "string",
               "enum": [
@@ -1331,6 +1355,7 @@
             "name": "when",
             "required": false,
             "in": "query",
+            "description": "now: already started. tonight: starts before 04:00.",
             "schema": {
               "type": "string",
               "enum": [
@@ -1345,6 +1370,54 @@
             "in": "query",
             "schema": {
               "$ref": "#/components/schemas/PlayStyle"
+            }
+          },
+          {
+            "name": "game",
+            "required": false,
+            "in": "query",
+            "description": "Game id.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "minRank",
+            "required": false,
+            "in": "query",
+            "description": "A rank id: listings at this rank or higher in the same game.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "mode",
+            "required": false,
+            "in": "query",
+            "description": "Mode id.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "partySize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 2,
+              "maximum": 5,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "`nextCursor` from the previous page.",
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -1884,11 +1957,21 @@
             "name": "limit",
             "required": false,
             "in": "query",
+            "description": "1–50, default 20.",
             "schema": {
               "minimum": 1,
               "maximum": 50,
               "default": 20,
               "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "`nextCursor` from the previous page.",
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -2457,6 +2540,7 @@
             "name": "limit",
             "required": false,
             "in": "query",
+            "description": "1–50, default 20.",
             "schema": {
               "minimum": 1,
               "maximum": 50,
@@ -2470,6 +2554,15 @@
             "in": "query",
             "schema": {
               "$ref": "#/components/schemas/ReportStatus"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "`nextCursor` from the previous page.",
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -2570,6 +2663,7 @@
             "name": "limit",
             "required": false,
             "in": "query",
+            "description": "1–50, default 20.",
             "schema": {
               "minimum": 1,
               "maximum": 50,
@@ -2593,6 +2687,15 @@
             "schema": {
               "minLength": 1,
               "maxLength": 60,
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "`nextCursor` from the previous page.",
+            "schema": {
               "type": "string"
             }
           }
@@ -3783,7 +3886,18 @@
       },
       "ResetResponse": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/MeDto"
+          }
+        },
+        "required": [
+          "token",
+          "user"
+        ]
       },
       "ChangePasswordBody": {
         "type": "object",
@@ -3827,7 +3941,30 @@
       },
       "AppConfigResponse": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "minSupportedVersion": {
+            "type": "string",
+            "description": "Apps below this version must update (they get 426 everywhere else)."
+          },
+          "latestVersion": {
+            "type": "string",
+            "description": "Newest released version, for a gentle \"Update available\"."
+          },
+          "launchCity": {
+            "type": "string",
+            "description": "The one city the beta runs in."
+          },
+          "groupsComingSoon": {
+            "type": "boolean",
+            "description": "Show the Groups tab as \"coming soon\" with a waitlist."
+          }
+        },
+        "required": [
+          "minSupportedVersion",
+          "latestVersion",
+          "launchCity",
+          "groupsComingSoon"
+        ]
       },
       "RankDto": {
         "type": "object",
@@ -3959,18 +4096,79 @@
                 "$ref": "#/components/schemas/AgeRange"
               }
             ]
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 30
+          },
+          "username": {
+            "type": "string",
+            "description": "Stored lowercase."
+          },
+          "bio": {
+            "type": "string",
+            "nullable": true,
+            "description": "Send \"\" or null to clear.",
+            "maxLength": 160
+          },
+          "city": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          }
+        }
+      },
+      "UserGameInput": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "type": "string"
+          },
+          "customGameName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          },
+          "rankId": {
+            "type": "string",
+            "description": "A rank of this game, from GET /v1/games. Catalog games only.",
+            "format": "uuid"
+          },
+          "rankText": {
+            "type": "string",
+            "nullable": true,
+            "description": "Free-text level. Custom games only.",
+            "maxLength": 30
+          },
+          "roleId": {
+            "type": "string",
+            "description": "A role of this game. Catalog games only.",
+            "format": "uuid"
           }
         }
       },
       "SetGamesBody": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "games": {
+            "description": "The full list, in profile order. Replaces what was there.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserGameInput"
+            }
+          }
+        },
+        "required": [
+          "games"
+        ]
       },
       "SetPlatformsBody": {
         "type": "object",
         "properties": {
           "platforms": {
             "type": "array",
+            "uniqueItems": true,
             "items": {
               "$ref": "#/components/schemas/Platform"
             }
@@ -3985,6 +4183,8 @@
         "properties": {
           "tags": {
             "type": "array",
+            "description": "At most 6.",
+            "uniqueItems": true,
             "items": {
               "$ref": "#/components/schemas/PlayTag"
             }
@@ -3994,14 +4194,59 @@
           "tags"
         ]
       },
+      "GamingIdInput": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GamingIdKind"
+              }
+            ]
+          },
+          "visibility": {
+            "description": "Defaults to connections.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/IdVisibility"
+              }
+            ]
+          },
+          "gameId": {
+            "type": "string",
+            "description": "Required for in_game (e.g. a PUBG Mobile UID), absent otherwise."
+          },
+          "value": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "kind",
+          "value"
+        ]
+      },
       "SetGamingIdsBody": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "gamingIds": {
+            "description": "The full list. Replaces what was there.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GamingIdInput"
+            }
+          }
+        },
+        "required": [
+          "gamingIds"
+        ]
       },
       "SetStatusBody": {
         "type": "object",
         "properties": {
           "status": {
+            "description": "available_tonight clears at 04:00, playing after 4 hours.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/PlayerStatus"
@@ -4010,9 +4255,15 @@
           },
           "availableDays": {
             "type": "array",
+            "description": "The MO–SU row. Left as is when absent.",
+            "uniqueItems": true,
             "items": {
               "$ref": "#/components/schemas/Day"
             }
+          },
+          "gameId": {
+            "type": "string",
+            "description": "The game for \"Playing …\" or \"Looking …\". Ignored for not_available."
           }
         },
         "required": [
@@ -4036,10 +4287,17 @@
                 "$ref": "#/components/schemas/AvatarType"
               }
             ]
+          },
+          "size": {
+            "type": "number",
+            "description": "The file's exact size in bytes, at most 2 MB. Resize on the phone first.",
+            "minimum": 1,
+            "maximum": 2097152
           }
         },
         "required": [
-          "contentType"
+          "contentType",
+          "size"
         ]
       },
       "AvatarUploadDto": {
@@ -4074,11 +4332,35 @@
       },
       "SetAvatarBody": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "The key from POST /v1/me/avatar/upload-url, after the upload finished.",
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "key"
+        ]
       },
       "UsernameAvailability": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why it isn't: \"taken\" or \"invalid\".",
+            "enum": [
+              "taken",
+              "invalid"
+            ]
+          }
+        },
+        "required": [
+          "available"
+        ]
       },
       "ProfileDto": {
         "type": "object",
@@ -4216,7 +4498,18 @@
       },
       "UserSearchResponse": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "items": {
+            "description": "Up to 20, by username.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserCardDto"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
       },
       "PlayStyle": {
         "type": "string",
@@ -4332,7 +4625,7 @@
               6,
               24
             ],
-            "type": "number"
+            "type": "integer"
           },
           "status": {
             "description": "expired as soon as expiresAt passes, even before the expiry job runs.",
@@ -4454,6 +4747,7 @@
         "type": "object",
         "properties": {
           "platform": {
+            "description": "One of the game's platforms.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/Platform"
@@ -4482,12 +4776,37 @@
             ]
           },
           "durationHours": {
-            "type": "number",
+            "description": "How long it stays up once play starts.",
             "enum": [
               2,
               6,
               24
-            ]
+            ],
+            "type": "integer"
+          },
+          "gameId": {
+            "type": "string",
+            "description": "A launch game (isLaunch in GET /v1/games)."
+          },
+          "modeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "rankId": {
+            "type": "string",
+            "description": "The rank this group plays at. Defaults to your rank in this game.",
+            "format": "uuid"
+          },
+          "partySize": {
+            "type": "number",
+            "description": "Whole party including you, up to the game's maxParty.",
+            "minimum": 2,
+            "maximum": 5
+          },
+          "note": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 140
           }
         },
         "required": [
@@ -4495,7 +4814,9 @@
           "voice",
           "style",
           "playWhen",
-          "durationHours"
+          "durationHours",
+          "gameId",
+          "partySize"
         ]
       },
       "ListingStatsDto": {

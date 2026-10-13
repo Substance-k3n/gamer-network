@@ -19,3 +19,9 @@ export class MeDto extends ProfileDto {
   onboardedAt: Date | null;
   createdAt: Date;
 }
+
+export class UsernameAvailability {
+  available: boolean;
+  /** Why it isn't: "taken" or "invalid". */
+  reason?: 'taken' | 'invalid';
+}

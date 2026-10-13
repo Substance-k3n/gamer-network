@@ -17,15 +17,11 @@ import {
   GoogleBody,
   LoginBody,
   ResetPasswordBody,
+  ResetResponse,
   SignupBody,
 } from './auth.dto.js';
 import { AuthService } from './auth.service.js';
 import { type Session, SessionsService, type User } from './sessions.service.js';
-
-class ResetResponse {
-  token: string;
-  user: MeDto;
-}
 
 @ApiTags('auth')
 @BeforeOnboarding()

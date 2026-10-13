@@ -14,14 +14,17 @@ share pages and privacy policy (`apps/web`, #21), the production stack
 and backups (`infra/docker/prod`, `docs/DEPLOY.md`, #22, tested on a
 laptop), and the admin dashboard on the real API (`feature/admin-api`).
 
-**The app (`apps/mobile`) still runs on mock data:** it has no HTTP
-client yet. That is the biggest gap before the beta.
+**The app (`apps/mobile`) runs on the API** (`feature/mobile-api`): a
+generated client, sign-in with the email code and password reset,
+onboarding, Home, Find Players, connections, play invites, check-ins,
+alerts, block/report and Settings, with an end-to-end test on an
+emulator. Still to wire: push (FCM), Google Sign-In and App Links, which
+wait on the keys and the domain below.
 
 **Next, in order:**
 
-1. **Wire `apps/mobile`** to the API (Natnael; [API.md](API.md) "Wiring
-   the app" and the screen → endpoint map). Sign-in first, then
-   onboarding, Find Players, connections, check-ins.
+1. **Push, Google Sign-In, App Links** in `apps/mobile` once their keys
+   exist.
 2. **Deploy** when the VPS, domain and keys below exist: follow
    [DEPLOY.md](DEPLOY.md) §1–2, then make the first admin.
 3. **Release** `dev` → `main` (`release/YYYY-MM-DD`) once the deploy works.

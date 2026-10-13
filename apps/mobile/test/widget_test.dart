@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,17 +8,44 @@ import 'package:rally/state.dart';
 import 'package:rally/theme.dart';
 import 'package:rally/widgets.dart';
 
+import 'fake_api.dart';
+
 Future<void> loadFonts() async {
-  List<String> f(String file, List<String> weights) => [for (final w in weights) 'assets/fonts/$file-$w.ttf'];
+  List<String> f(String file, List<String> weights) => [
+    for (final w in weights) 'assets/fonts/$file-$w.ttf',
+  ];
   final fonts = {
-    'Outfit': f('Outfit', ['Regular', 'Medium', 'SemiBold', 'Bold', 'ExtraBold']),
+    'Outfit': f('Outfit', [
+      'Regular',
+      'Medium',
+      'SemiBold',
+      'Bold',
+      'ExtraBold',
+    ]),
     'Silkscreen': f('Silkscreen', ['Regular']),
     'DSEG7': ['assets/fonts/DSEG7Classic-Bold.ttf'],
     'Doto': f('Doto', ['Black']),
-    'Space Grotesk': f('SpaceGrotesk', ['Regular', 'Medium', 'SemiBold', 'Bold']),
+    'Space Grotesk': f('SpaceGrotesk', [
+      'Regular',
+      'Medium',
+      'SemiBold',
+      'Bold',
+    ]),
     'Space Mono': f('SpaceMono', ['Regular', 'Bold']),
-    'Plus Jakarta Sans': f('PlusJakartaSans', ['Regular', 'Medium', 'SemiBold', 'Bold', 'ExtraBold']),
-    'Manrope': f('Manrope', ['Regular', 'Medium', 'SemiBold', 'Bold', 'ExtraBold']),
+    'Plus Jakarta Sans': f('PlusJakartaSans', [
+      'Regular',
+      'Medium',
+      'SemiBold',
+      'Bold',
+      'ExtraBold',
+    ]),
+    'Manrope': f('Manrope', [
+      'Regular',
+      'Medium',
+      'SemiBold',
+      'Bold',
+      'ExtraBold',
+    ]),
   };
   for (final e in fonts.entries) {
     final loader = FontLoader(e.key);
@@ -28,286 +56,378 @@ Future<void> loadFonts() async {
   }
 }
 
-Future<void> pumpApp(WidgetTester t, {Screen start = Screen.landing, Size size = const Size(390, 844), String? theme, void Function(String)? persist}) async {
+/// Starts the app on [server]; with [token] it opens signed in.
+Future<AppState> pumpApp(
+  WidgetTester t,
+  FakeApi server, {
+  String? token,
+  Size size = const Size(390, 844),
+  String? theme,
+  void Function(String)? persist,
+}) async {
   t.view.physicalSize = size;
   t.view.devicePixelRatio = 1;
   addTearDown(t.view.reset);
-  await t.pumpWidget(RallyApp(key: UniqueKey(), start: start, themeId: theme, persistTheme: persist));
-  await t.pump();
+  await t.pumpWidget(
+    RallyApp(
+      key: UniqueKey(),
+      api: fakeApi(server, token: token),
+      themeId: theme,
+      persistTheme: persist,
+    ),
+  );
+  await settle(t);
+  return t.state<RallyAppState>(find.byType(RallyApp)).state;
 }
 
-/// Drains timers (toasts, auto-accept) so the test ends cleanly.
-Future<void> settle(WidgetTester t) async {
-  await t.pump(const Duration(seconds: 5));
-  await t.pumpAndSettle(const Duration(milliseconds: 100), EnginePhase.sendSemanticsUpdate, const Duration(seconds: 2));
+/// Unmounts the app so its timers stop, and lets toasts drain.
+Future<void> done(WidgetTester t) async {
+  await t.pumpWidget(const SizedBox());
+  await t.pump(const Duration(seconds: 3));
 }
 
-Future<void> tapText(WidgetTester t, String text) async {
+/// Taps [text]; with [last], the topmost match (a sheet's chip over a card).
+Future<void> tapText(WidgetTester t, String text, {bool last = false}) async {
+  final f = last ? find.text(text).last : find.text(text).first;
   // Centre it, so floating bars at the edges don't cover it.
-  await Scrollable.ensureVisible(t.element(find.text(text).first), alignment: .5);
+  await Scrollable.ensureVisible(t.element(f), alignment: .5);
   await t.pump(); // lay out the scroll before reading the tap position
-  await t.tap(find.text(text).first);
-  await t.pump(const Duration(milliseconds: 400));
-  await t.pump(const Duration(milliseconds: 400)); // let entry animations finish
+  await t.tap(f);
+  await settle(t); // let entry animations and calls finish
+}
+
+/// Lets calls to the fake API and animations finish. Not pumpAndSettle:
+/// countdowns tick every second, so the app never settles.
+Future<void> settle(WidgetTester t) async {
+  for (var i = 0; i < 8; i++) {
+    await t.pump(const Duration(milliseconds: 100));
+  }
 }
 
 Finder icon(Ic i) => find.byWidgetPredicate((w) => w is SvgIcon && w.icon == i);
 
-RallyTheme activeTheme(WidgetTester t) => Theme.of(t.element(find.byType(RallyShell))).extension<RallyTheme>()!;
+RallyTheme activeTheme(WidgetTester t) =>
+    Theme.of(t.element(find.byType(RallyShell))).extension<RallyTheme>()!;
 
 void main() {
   setUpAll(loadFonts);
 
-  for (final size in const [Size(390, 844), Size(360, 740)]) {
-    testWidgets('new-user journey at ${size.width.toInt()}w', (t) async {
-      await pumpApp(t, size: size);
-      expect(find.text('Who are you as a gamer?'), findsOneWidget);
-      await tapText(t, 'Next');
-      await tapText(t, 'Next');
-      await tapText(t, 'Start');
-      expect(find.text('Welcome back.'), findsOneWidget); // Start lands on log in
-      await tapText(t, 'Create a profile');
-      expect(find.text('Who are you\nas a gamer?'), findsOneWidget);
-      await t.enterText(find.byType(TextField).at(0), 'kaleb@example.com');
-      await t.enterText(find.byType(TextField).at(3), 'hunter2hunter2');
-      await t.pump();
-      await tapText(t, 'Continue');
-      expect(find.text('What do you play?'), findsOneWidget);
-      await t.enterText(find.byType(TextField).first, 'mine');
-      await t.pump();
-      await tapText(t, 'Minecraft');
-      await tapText(t, 'Continue with 3 games');
-      expect(find.text('Your ranks.'), findsOneWidget);
-      await tapText(t, 'Creative');
-      await tapText(t, 'Continue');
-      await tapText(t, 'Go live');
-      expect(find.text('Profile live — welcome, Kaleb'), findsOneWidget);
-      expect(find.text('For you'), findsOneWidget); // feed filter button
-      await settle(t);
-    });
-  }
-
-  testWidgets('sign-up validates fields and the password eye toggles', (t) async {
-    await pumpApp(t, start: Screen.signup);
-    await tapText(t, 'Continue');
-    expect(find.text('Enter a valid email'), findsOneWidget);
-    await t.enterText(find.byType(TextField).at(0), 'kaleb@example.com');
-    await t.enterText(find.byType(TextField).at(3), 'short');
-    await t.pump(const Duration(seconds: 3));
-    await tapText(t, 'Continue');
-    expect(find.text('Password needs at least 8 characters'), findsOneWidget);
-    TextField pw() => t.widget<TextField>(find.byType(TextField).at(3));
-    expect(pw().obscureText, isTrue);
-    await t.tap(icon(Ic.eye));
-    await t.pump();
-    expect(pw().obscureText, isFalse);
-    await settle(t);
+  testWidgets('signed out: the intro leads to log in', (t) async {
+    await pumpApp(t, FakeApi());
+    expect(find.text('Who are you as a gamer?'), findsOneWidget);
+    await tapText(t, 'Next');
+    await tapText(t, 'Next');
+    await tapText(t, 'Start');
+    expect(find.text('Welcome back.'), findsOneWidget);
+    await done(t);
   });
 
-  testWidgets('game picker searches, filters and adds a custom game', (t) async {
-    await pumpApp(t, start: Screen.games);
-    await t.enterText(find.byType(TextField).first, 'mlbb');
-    await t.pump();
-    expect(find.text('Mobile Legends: Bang Bang'), findsOneWidget);
-    expect(find.text('Valorant'), findsNothing);
-    await tapText(t, 'Mobile Legends: Bang Bang');
-    expect(find.text('Continue with 3 games'), findsOneWidget);
-    await t.enterText(find.byType(TextField).first, 'Hollow Knight Silksong');
-    await t.pump();
-    await tapText(t, 'Add “Hollow Knight Silksong” as your own game');
-    await tapText(t, 'Add game');
-    expect(find.text('Continue with 4 games'), findsOneWidget);
-    await tapText(t, 'Continue with 4 games');
-    expect(find.text('Hollow Knight Silksong'), findsOneWidget);
-    expect(find.text('Your rank or level (optional)'), findsOneWidget);
-    await tapText(t, 'Mythical Glory');
-    await settle(t);
-  });
-
-  testWidgets('edit profile saves changes and asks before discarding', (t) async {
-    await pumpApp(t, start: Screen.profile);
-    await tapText(t, 'Edit profile');
-    expect(find.text('Edit profile'), findsOneWidget);
-    // Discard prompt when leaving with changes.
-    await t.enterText(find.byType(TextField).at(0), 'Kal');
-    await t.pump();
-    await t.tap(find.text('×').first);
-    await t.pump(const Duration(milliseconds: 300));
-    expect(find.text('Discard changes?'), findsOneWidget);
-    await tapText(t, 'Keep editing');
-    // Change rank, add a game from the picker sheet, save.
-    await tapText(t, 'Diamond');
-    await tapText(t, 'Add or change games');
-    await t.enterText(find.byType(TextField).last, 'rocket');
-    await t.pump();
-    await tapText(t, 'Rocket League');
-    await tapText(t, 'Done');
-    expect(find.text('Rocket League'), findsOneWidget);
-    await tapText(t, 'Save');
-    expect(find.text('Profile updated'), findsOneWidget);
-    expect(find.text('Kal'), findsWidgets);
-    expect(find.text('Rocket League'), findsOneWidget); // on the profile's games list
-    expect(find.text('Diamond'), findsOneWidget);
-    await settle(t);
-  });
-
-  testWidgets('find players → connect → play together', (t) async {
-    await pumpApp(t, start: Screen.find);
-    expect(find.text('05 PLAYERS LOOKING'), findsOneWidget);
-    await tapText(t, 'Connect');
-    expect(find.text('Requested…'), findsOneWidget);
+  testWidgets('a sleeping server: the splash says so, then the app opens', (
+    t,
+  ) async {
+    final api = FakeApi();
+    final config = api.routes['GET /v1/app/config'];
+    api.routes['GET /v1/app/config'] = (RequestOptions o) =>
+        Future.delayed(const Duration(seconds: 6), () => config);
+    t.view.physicalSize = const Size(390, 844);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.reset);
+    await t.pumpWidget(RallyApp(api: fakeApi(api)));
     await t.pump(const Duration(seconds: 4));
-    expect(find.text('Connected ✓'), findsWidgets);
-    await tapText(t, 'Dave');
-    await tapText(t, 'Play together');
-    await tapText(t, 'Send session invite');
-    expect(find.text('SESSION INVITE SENT'), findsOneWidget);
+    expect(find.textContaining('Waking up rally'), findsOneWidget);
+    await t.pump(const Duration(seconds: 3));
     await settle(t);
+    expect(find.textContaining('Waking up rally'), findsNothing);
+    expect(find.text('Who are you as a gamer?'), findsOneWidget);
+    await done(t);
   });
 
-  testWidgets('compose a poll and vote on the feed', (t) async {
-    await pumpApp(t, start: Screen.home);
-    await t.tap(icon(Ic.plus));
-    await t.pump(const Duration(milliseconds: 400));
-    expect(find.text('New post'), findsOneWidget);
-    await tapText(t, 'Poll');
-    await t.enterText(find.byType(TextField).first, 'Best map?');
-    await t.enterText(find.byType(TextField).at(1), 'Ascent');
-    await t.enterText(find.byType(TextField).at(2), 'Bind');
-    await t.pump();
-    await tapText(t, 'Post');
-    expect(find.text('Best map?'), findsOneWidget);
-    await tapText(t, 'Ascent');
-    expect(find.textContaining('YOU VOTED'), findsOneWidget);
-    await settle(t);
+  testWidgets('no connection at launch: Try again keeps the session', (
+    t,
+  ) async {
+    final api = FakeApi();
+    final config = api.routes['GET /v1/app/config'];
+    api.unreachable('GET /v1/app/config');
+    await pumpApp(t, api, token: 't-1');
+    expect(find.text('Can’t reach rally right now.'), findsOneWidget);
+    api.routes['GET /v1/app/config'] = config;
+    await tapText(t, 'Try again');
+    expect(find.text('YOUR STATUS'), findsOneWidget);
+    await done(t);
   });
 
-  testWidgets('feed filter, save, comments and alerts', (t) async {
-    await pumpApp(t, start: Screen.home);
-    // Filter to LFG posts only.
-    await tapText(t, 'For you');
-    await tapText(t, 'LFG & recruiting');
-    expect(find.textContaining('Recruiting for our CODM team'), findsOneWidget);
-    expect(find.textContaining('Finally reached Diamond'), findsNothing);
-    await tapText(t, 'LFG & recruiting');
-    await tapText(t, 'For you');
+  testWidgets('log in shows the API’s error, then lands on Home', (t) async {
+    final api = FakeApi()
+      ..fail(
+        'POST /v1/auth/login',
+        401,
+        'wrong_credentials',
+        'Wrong email or password.',
+      );
+    await pumpApp(t, api);
+    await tapText(t, 'Log in');
+    await t.enterText(find.byType(TextField).at(0), 'kaleb@example.com');
+    await t.enterText(find.byType(TextField).at(1), 'nope-nope');
+    await tapText(t, 'Log in');
+    await settle(t);
+    expect(find.text('Wrong email or password.'), findsOneWidget);
 
-    await t.tap(icon(Ic.bookmark).first);
-    await t.pump(const Duration(milliseconds: 300));
-    expect(find.text('Saved to your bookmarks'), findsOneWidget);
+    api.routes['POST /v1/auth/login'] = {
+      'token': 't-1',
+      'user': me(),
+      'isNew': false,
+    };
+    await tapText(t, 'Log in');
+    await settle(t);
+    expect(api.bodiesOf('POST /v1/auth/login').last, {
+      'email': 'kaleb@example.com',
+      'password': 'nope-nope',
+    });
+    expect(find.text('Did you play with Dave?'), findsOneWidget);
+    expect(find.text('YOUR STATUS'), findsOneWidget);
+    expect(find.text('2'), findsOneWidget); // unread badge
+    expect(api.sent.last.path, isNotEmpty);
+    await done(t);
+  });
 
-    await t.tap(icon(Ic.comment).first);
-    await t.pump(const Duration(milliseconds: 300));
-    await t.enterText(find.byType(TextField).last, 'gg wp');
-    await t.testTextInput.receiveAction(TextInputAction.done);
-    await t.pump();
-    // Field clears on send, so the only match is the posted comment.
-    expect(find.text('gg wp'), findsOneWidget);
-    expect(find.text('Kaleb (you)'), findsOneWidget);
+  testWidgets('Home: the check-in is one tap, invites can be answered', (
+    t,
+  ) async {
+    final api = FakeApi();
+    api.routes['POST /v1/play-invites/pi-1/decline'] = null;
+    await pumpApp(t, api, token: 't-1');
+    expect(find.textContaining('Hana · eFootball'), findsOneWidget);
+    await tapText(t, 'Yes, we played');
+    expect(api.bodiesOf('POST /v1/check-ins/ci-1').single, {
+      'answer': 'played',
+    });
+    expect(find.text('Did you play with Dave?'), findsNothing);
+    await tapText(t, 'Not now');
+    expect(api.bodiesOf('POST /v1/play-invites/pi-1/decline'), hasLength(1));
+    expect(find.textContaining('Hana · eFootball'), findsNothing);
+    await done(t);
+  });
 
+  testWidgets('post a listing sends the game’s options', (t) async {
+    final api = FakeApi();
+    final s = await pumpApp(t, api, token: 't-1');
+    s.go(Screen.find);
+    await settle(t);
+    expect(find.text('02 PLAYERS LOOKING'), findsOneWidget);
+    await tapText(t, 'Post a listing');
+    await tapText(t, 'Squad', last: true);
+    await tapText(
+      t,
+      'Casual',
+      last: true,
+    ); // the STYLE chip (MODE has a Casual too)
+    await tapText(t, '24h');
+    await t.enterText(
+      find.widgetWithText(TextField, 'Looking for a ranked duo tonight.'),
+      'Need two for ranked',
+    );
+    await tapText(t, 'Post listing · expires in 24h');
+    final sent = api.sent.lastWhere(
+      (r) => r.path == '/v1/listings' && r.method == 'POST',
+    );
+    expect(sent.body, {
+      'gameId': 'codm',
+      'modeId': 'm-ranked-codm',
+      'platform': 'mobile',
+      'partySize': 4,
+      'voice': 'required',
+      'style': 'casual',
+      'playWhen': 'tonight',
+      'durationHours': 24,
+      'note': 'Need two for ranked',
+    });
+    expect(
+      find.text('Listing live — status set to Looking for players'),
+      findsOneWidget,
+    );
+    await done(t);
+  });
+
+  testWidgets('connect from a listing, with its id', (t) async {
+    final api = FakeApi();
+    final s = await pumpApp(t, api, token: 't-1');
+    s.go(Screen.find);
+    await settle(t);
+    await tapText(t, 'Connect');
+    expect(api.bodiesOf('POST /v1/connection-requests').single, {
+      'toUserId': 'u-dave',
+      'listingId': 'l-1',
+    });
+    expect(find.text('Request sent to Dave'), findsOneWidget);
+    await done(t);
+  });
+
+  testWidgets('Alerts: accept a request; activity routes to the player', (
+    t,
+  ) async {
+    final api = FakeApi();
+    api.routes['POST /v1/connection-requests/cr-1/accept'] = {
+      'request':
+          (api.routes['GET /v1/connection-requests']! as Map)['items'][0],
+      'connection': {
+        'user': hana,
+        'connectedAt': DateTime.now().toUtc().toIso8601String(),
+      },
+    };
+    await pumpApp(t, api, token: 't-1');
     await t.tap(icon(Ic.bell));
-    await t.pump(const Duration(milliseconds: 400));
+    await settle(t);
     expect(find.text('CONNECTION REQUESTS'), findsOneWidget);
+    expect(api.bodiesOf('POST /v1/notifications/read').single, {'all': true});
     await tapText(t, 'Accept');
     expect(find.text('Connected with Hana'), findsOneWidget);
+    await tapText(t, 'Dave accepted your request');
     await settle(t);
+    expect(find.text('@dave.exe · Addis Ababa'), findsOneWidget);
+    await done(t);
   });
 
-  testWidgets('search, groups and profile tabs', (t) async {
-    await pumpApp(t, start: Screen.search);
-    await t.enterText(find.byType(TextField), 'league');
+  testWidgets('search → a connection’s profile → play together', (t) async {
+    final api = FakeApi();
+    final s = await pumpApp(t, api, token: 't-1');
+    s.go(Screen.find);
+    await settle(t);
+    await t.tap(icon(Ic.search));
     await t.pump();
-    expect(find.text('Yonas'), findsOneWidget);
-    await pumpApp(t, start: Screen.profile);
-    for (final tab in ['Games', 'Groups', 'Posts', 'Moments', 'Connections']) {
-      await tapText(t, tab);
-    }
+    await t.enterText(find.byType(TextField), 'da');
+    await t.pump(const Duration(milliseconds: 400));
     await settle(t);
+    await tapText(t, 'Dave');
+    await settle(t);
+    expect(find.text('Connected ✓'), findsOneWidget);
+    expect(find.text('dave.exe#1'), findsOneWidget);
+    await tapText(t, 'Play together');
+    await tapText(t, 'Now', last: true);
+    await tapText(t, 'Send session invite');
+    expect(api.bodiesOf('POST /v1/play-invites').single, {
+      'toUserId': 'u-dave',
+      'gameId': 'codm',
+      'playWhen': 'now',
+    });
+    await done(t);
   });
 
-  testWidgets('groups: join, members, profiles, approval and leave', (t) async {
-    await pumpApp(t, start: Screen.communities);
-    expect(find.text('Valorant Ethiopia'), findsOneWidget);
-    await tapText(t, 'Ethiopian FC Players');
-    expect(find.text('OPEN TO EVERYONE'), findsOneWidget);
-    await tapText(t, 'Join');
-    expect(find.text('You joined Ethiopian FC Players'), findsOneWidget);
-    // Members open profiles; the profile lists the group.
-    await tapText(t, 'Members');
-    expect(find.text('Kaleb (you)'), findsOneWidget);
-    await tapText(t, 'Hana');
-    expect(find.text('@hanaplays · Addis Ababa'), findsOneWidget);
-    await tapText(t, 'Groups');
-    expect(find.text('Ethiopian FC Players'), findsOneWidget);
-    // Back to the group, then leave it.
-    await tapText(t, 'Ethiopian FC Players');
-    await tapText(t, 'Joined ✓');
-    await tapText(t, 'Leave');
-    expect(find.text('You left Ethiopian FC Players'), findsOneWidget);
-    // Approval-only group: request, then auto-approve.
-    await pumpApp(t, start: Screen.communities);
-    await tapText(t, 'Ask to join');
-    expect(find.text('Requested…'), findsOneWidget);
-    await t.pump(const Duration(seconds: 4));
-    expect(find.text('Joined ✓'), findsWidgets);
-    await settle(t);
-  });
+  testWidgets(
+    'onboarding saves games with ranks, platforms and IDs, then goes live',
+    (t) async {
+      final api = FakeApi(onboarded: false);
+      api.routes['GET /v1/me'] = me(onboarded: false);
+      final s = await pumpApp(t, api, token: 't-1');
+      expect(find.text('What do you play?'), findsOneWidget);
+      s.onboard.games.clear();
+      await t.enterText(find.byType(TextField).first, 'mlbb');
+      await t.pump();
+      await tapText(t, 'Mobile Legends: Bang Bang');
+      await t.enterText(find.byType(TextField).first, 'cod');
+      await t.pump();
+      await tapText(t, 'CoD Mobile');
+      await tapText(t, 'Continue with 2 games');
+      expect(find.text('Your ranks.'), findsOneWidget);
+      await tapText(t, 'Legendary');
+      await tapText(t, 'Continue');
+      await tapText(t, 'PC');
+      await t.enterText(
+        find.widgetWithText(TextField, 'Add ID').at(1),
+        'kaleb.gg',
+      ); // Discord
+      api.routes['GET /v1/me'] = me();
+      await tapText(t, 'Go live');
+      await settle(t);
+      expect(api.bodiesOf('PUT /v1/me/games').last, {
+        'games': [
+          {'gameId': 'mlbb'},
+          {'gameId': 'codm', 'rankId': 'r-legendary'},
+        ],
+      });
+      expect(
+        (api.bodiesOf('PUT /v1/me/platforms').last! as Map)['platforms'],
+        containsAll(['mobile', 'pc']),
+      );
+      // The fixture's Discord ID was public; the new value keeps that.
+      expect(api.bodiesOf('PUT /v1/me/gaming-ids').last, {
+        'gamingIds': [
+          {'kind': 'discord', 'visibility': 'public', 'value': 'kaleb.gg'},
+        ],
+      });
+      expect(api.bodiesOf('POST /v1/me/onboard'), hasLength(1));
+      expect(find.text('Profile live — welcome, Kaleb'), findsOneWidget);
+      await done(t);
+    },
+  );
 
-  testWidgets('create a group, post and add an event', (t) async {
-    await pumpApp(t, start: Screen.communities);
-    await tapText(t, 'Create group');
-    expect(find.text('New group'), findsOneWidget);
-    await tapText(t, 'Create');
-    expect(find.text('Give your group a name (3+ characters)'), findsOneWidget);
-    await t.enterText(find.byType(TextField).first, 'Bole Duo Queue');
-    await t.pump(const Duration(seconds: 3));
-    await tapText(t, 'Create');
-    expect(find.text('Bole Duo Queue is live — invite your squad'), findsOneWidget);
-    expect(find.text('YOU’RE ADMIN'), findsOneWidget);
-    await tapText(t, 'Feed');
-    await t.enterText(find.byType(TextField).first, 'First scrim Friday!');
-    await t.testTextInput.receiveAction(TextInputAction.done);
+  testWidgets('groups waitlist and a report from a profile', (t) async {
+    final api = FakeApi();
+    final s = await pumpApp(t, api, token: 't-1');
+    s.go(Screen.communities);
     await t.pump();
-    expect(find.text('First scrim Friday!'), findsOneWidget);
-    await tapText(t, 'Events');
-    await tapText(t, 'New event');
-    await t.enterText(find.byType(TextField).last, 'Scrim night');
-    await tapText(t, 'Add event');
-    expect(find.text('Scrim night'), findsOneWidget);
-    expect(find.text('Going ✓'), findsOneWidget);
+    await tapText(t, 'Notify me');
+    expect(api.bodiesOf('POST /v1/waitlist').single, {'topic': 'groups'});
+    expect(find.text('You’re on the list ✓'), findsOneWidget);
+    s.openPlayer('hanaplays');
     await settle(t);
+    await t.tap(icon(Ic.more));
+    await settle(t);
+    await tapText(t, 'Report');
+    await tapText(t, 'Spam');
+    await tapText(t, 'Send report');
+    expect(api.bodiesOf('POST /v1/reports').single, {
+      'userId': 'u-hana',
+      'reason': 'spam',
+    });
+    await done(t);
   });
 
   testWidgets('theme picker switches and persists the skin', (t) async {
     final saved = <String>[];
-    await pumpApp(t, start: Screen.profile, persist: saved.add);
+    await pumpApp(t, FakeApi(), token: 't-1', persist: saved.add);
+    await t.tap(find.byType(Avatar).first); // top bar → You
+    await settle(t);
     expect(activeTheme(t).id, 'inked');
-    expect(find.text('APP THEME'), findsOneWidget);
     for (final name in ['Dot matrix', 'Glass', 'Soft clay', 'Inked']) {
       await tapText(t, name);
       await t.pump(const Duration(milliseconds: 400)); // theme blend
       expect(activeTheme(t).name, name);
     }
     expect(saved, ['dot', 'glass', 'soft', 'inked']);
-    // A saved choice is restored on launch.
-    await pumpApp(t, start: Screen.home, theme: 'glass');
-    expect(activeTheme(t).id, 'glass');
-    await settle(t);
+    await done(t);
   });
 
   // Each skin has its own fonts, so text widths differ: render every screen
   // in every skin at a small phone width and fail on any layout overflow.
   for (final th in rallyThemes) {
     testWidgets('every screen lays out in ${th.name}', (t) async {
-      for (final s in Screen.values) {
-        await pumpApp(t, start: s, theme: th.id, size: const Size(360, 740));
-        await t.pump(const Duration(milliseconds: 500));
+      final api = FakeApi();
+      final s = await pumpApp(
+        t,
+        api,
+        token: 't-1',
+        theme: th.id,
+        size: const Size(360, 740),
+      );
+      for (final screen in Screen.values) {
+        if (screen == Screen.profile) {
+          s.openPlayer('dave.exe');
+        } else {
+          s.go(screen, () {
+            if (screen == Screen.editProfile) {
+              s.edit = ProfileDraft.from(s.me!, s.catalog);
+            }
+            if (screen == Screen.ranks) s.onboard.games = ['codm', 'mc'];
+          });
+        }
+        await settle(t);
       }
-      await pumpApp(t, start: Screen.profile, theme: th.id, size: const Size(360, 740));
-      await tapText(t, 'Edit profile');
-      await tapText(t, 'Add or change games');
-      expect(find.text('Your games'), findsOneWidget);
+      s.goProfileTab();
       await settle(t);
+      s.openListingSheet();
+      await settle(t);
+      expect(find.text('EXPIRES AFTER'), findsOneWidget);
+      await done(t);
     });
   }
 }

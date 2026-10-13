@@ -350,8 +350,9 @@ action writes an `admin_actions` row.
 ## Wiring the Flutter app
 
 1. Generate the client from the spec, never by hand:
-   `openapi-generator-cli generate -i packages/api-spec/openapi.json -g dart-dio -o apps/mobile/packages/api_client`.
-   Regenerate whenever `openapi.json` changes in `dev`.
+   `apps/mobile/tool/generate_api_client.sh` (`dart-dio`, pinned
+   generator, into `apps/mobile/packages/api_client`). Regenerate whenever
+   `openapi.json` changes in `dev`.
 2. One Dio instance with interceptors: add `Authorization`,
    `X-App-Version`, `X-Platform`; on `401` clear the token and route to
    sign-in; on `426` show the update screen; retry idempotent requests once
