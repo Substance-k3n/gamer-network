@@ -81,10 +81,14 @@ class ProfileScreen extends StatelessWidget {
                       builder: (context) {
                         final look = s.connLook(v.relationship);
                         final (bg, fg) = lookColors(t, look.look);
-                        final tap =
-                            v.relationship == Relationship.outgoingRequest ||
-                                s.busy
+                        final tap = s.busy
                             ? null
+                            : v.relationship == Relationship.outgoingRequest
+                            ? () => confirmWithdraw(
+                                context,
+                                name: v.displayName,
+                                onYes: s.withdrawRequest,
+                              )
                             : s.connect;
                         return Pill(
                           look.label,
@@ -124,6 +128,7 @@ class ProfileScreen extends StatelessWidget {
                       context,
                       userId: v.id,
                       name: v.displayName,
+                      connected: v.relationship == Relationship.connected,
                     ),
                     child: const SvgIcon(Ic.more, size: 20),
                   ),
@@ -240,6 +245,17 @@ class ProfileScreen extends StatelessWidget {
             ),
         ],
       ),
+      if (s.connCursor != null)
+        Center(
+          child: Pill(
+            'Load more',
+            onTap: s.loadMoreConnections,
+            height: 42,
+            padH: 18,
+            size: 14,
+            weight: w700,
+          ),
+        ),
     ];
   }
 
@@ -413,6 +429,8 @@ class _Settings extends StatelessWidget {
                 () => s.go(Screen.verify, () => s.code = ''),
                 trailing: 'Not confirmed',
               ),
+            if (s.me?.hasPassword ?? false)
+              row('Change password', () => showChangePassword(context)),
             row('Blocked users', () => s.go(Screen.blocked)),
             row('Log out', s.logout, trailing: s.me?.email),
             row('Delete account', () => confirmDeleteAccount(context)),

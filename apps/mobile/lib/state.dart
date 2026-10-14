@@ -31,6 +31,7 @@ enum Screen {
   editProfile,
   search,
   blocked,
+  listing,
 }
 
 enum SheetKind { listing, session }
@@ -81,6 +82,9 @@ class GamerDraft {
 
   /// Game key → rank id for catalog games, or free text for custom ones.
   Map<String, String> ranks = {};
+
+  /// Game key → role id, for games whose catalog lists roles.
+  Map<String, String> roles = {};
   List<Platform> platforms = [];
   List<PlayTag> tags = [];
 
@@ -91,11 +95,13 @@ class GamerDraft {
   void loadFrom(MeDto me, Catalog catalog) {
     games = [];
     ranks = {};
+    roles = {};
     for (final g in me.games) {
       final k = catalog.keyOf(g);
       games.add(k);
       final r = g.rank?.id ?? g.rankText;
       if (r != null && r.isNotEmpty) ranks[k] = r;
+      if (g.role != null) roles[k] = g.role!.id;
     }
     platforms = me.platforms.toList();
     tags = me.tags.toList();
@@ -111,6 +117,7 @@ class GamerDraft {
   void copyFrom(GamerDraft o) {
     games = [...o.games];
     ranks = {...o.ranks};
+    roles = {...o.roles};
     platforms = [...o.platforms];
     tags = [...o.tags];
     ids = {...o.ids};
@@ -138,7 +145,8 @@ class GamerDraft {
           : UserGameInput(
               (b) => b
                 ..gameId = k
-                ..rankId = c.byId(k).rank(ranks[k])?.id,
+                ..rankId = c.byId(k).rank(ranks[k])?.id
+                ..roleId = c.byId(k).role(roles[k])?.id,
             ),
   ];
 
@@ -163,6 +171,7 @@ class GamerDraft {
   bool sameAs(GamerDraft o) =>
       _listEq(games, o.games) &&
       _mapEq(ranks, o.ranks) &&
+      _mapEq(roles, o.roles) &&
       _listEq(platforms, o.platforms) &&
       _listEq(tags, o.tags) &&
       _mapEq(
@@ -200,12 +209,14 @@ class ProfileDraft extends GamerDraft {
     : name = me.displayName,
       handle = me.username,
       bio = me.bio ?? '',
-      city = me.city {
+      city = me.city,
+      age = me.ageRange {
     loadFrom(me, c);
     _saved = GamerDraft()..copyFrom(this);
   }
 
   String name, handle, bio, city;
+  AgeRange age;
   late final GamerDraft _saved;
 
   bool differs(MeDto me) =>
@@ -213,6 +224,7 @@ class ProfileDraft extends GamerDraft {
       handle != me.username ||
       bio != (me.bio ?? '') ||
       city != me.city ||
+      age != me.ageRange ||
       !sameAs(_saved);
 }
 
@@ -251,7 +263,7 @@ class AppState extends ChangeNotifier {
   final ValueNotifier<RallyTheme> theme;
   final void Function(String id)? persistTheme;
   late final Timer _ticker;
-  Timer? _toastTimer, _poll, _searchDebounce;
+  Timer? _toastTimer, _poll, _searchDebounce, _handleDebounce;
   bool _disposed = false;
 
   // Navigation
@@ -280,6 +292,9 @@ class AppState extends ChangeNotifier {
   AgeRange age = AgeRange.n1824;
   String code = '';
 
+  /// Why the username being typed can't be used (sign-up, Edit profile).
+  String? handleNote;
+
   /// Forgot password: email, then the emailed code and a new password.
   String resetEmail = '', resetCode = '', newPassword = '';
   bool resetSent = false;
@@ -296,6 +311,9 @@ class AppState extends ChangeNotifier {
   ListingDto? myListing;
   List<CheckInDto> checkIns = [];
   List<PlayInviteDto> invites = [];
+
+  /// Invites I sent that are still waiting for an answer.
+  List<PlayInviteDto> sentInvites = [];
   bool homeLoaded = false;
 
   // Find Players
@@ -304,6 +322,16 @@ class AppState extends ChangeNotifier {
   bool feedLoaded = false;
   String filterGame = 'all';
   bool fMic = false, fTonight = false, fComp = false;
+
+  /// Filters offered once a game is picked: its platforms, modes, party
+  /// sizes, and "my rank and up".
+  Platform? fPlatform;
+  String? fMode;
+  int? fParty;
+  bool fMyRank = false;
+
+  /// The listing a notification or link opened (Screen.listing).
+  ListingDto? openedListing;
 
   // Alerts
   List<ConnectionRequestDto> requests = [];
@@ -314,6 +342,7 @@ class AppState extends ChangeNotifier {
   String? viewing;
   Profile? viewed;
   List<ConnectionDto> connections = [];
+  String? connCursor;
   String ptab = 'Overview';
 
   // Search
@@ -344,6 +373,7 @@ class AppState extends ChangeNotifier {
     _toastTimer?.cancel();
     _poll?.cancel();
     _searchDebounce?.cancel();
+    _handleDebounce?.cancel();
     now.dispose();
     theme.dispose();
     super.dispose();
@@ -367,6 +397,7 @@ class AppState extends ChangeNotifier {
   };
 
   ConnLook listingLook(ListingDto l) => switch (l.myRequest?.status) {
+    _ when l.owner.id == me?.id => const ConnLook('Your listing', Look.quiet),
     RequestStatus.accepted => const ConnLook('Connected ✓', Look.strong),
     RequestStatus.pending => const ConnLook('Requested…', Look.quiet),
     _ => const ConnLook('Connect', Look.accent),
@@ -833,9 +864,16 @@ class AppState extends ChangeNotifier {
             .toInt(),
         quiet: true,
       ),
+      call(
+        () async =>
+            (await api.play.playInvitesList(direction: 'outgoing')).data!.items
+                .toList(),
+        quiet: true,
+      ),
     ]);
     update(() {
       me = results[0] as MeDto? ?? me;
+      sentInvites = results[6] as List<PlayInviteDto>? ?? sentInvites;
       lookingNow = results[1] as int? ?? lookingNow;
       final ml = results[2] as MyListingDto?;
       if (ml != null) myListing = ml.listing;
@@ -934,6 +972,10 @@ class AppState extends ChangeNotifier {
         voice: fMic ? 'required' : null,
         when_: fTonight ? 'tonight' : null,
         style: fComp ? PlayStyle.competitive : null,
+        platform: filterGame == 'all' ? null : fPlatform,
+        mode: filterGame == 'all' ? null : fMode,
+        partySize: filterGame == 'all' ? null : fParty,
+        minRank: filterGame == 'all' || !fMyRank ? null : myRankIn(filterGame),
         cursor: more ? feedCursor : null,
       )).data!,
     );
@@ -949,6 +991,19 @@ class AppState extends ChangeNotifier {
     update(fn);
     loadFeed();
   }
+
+  /// Picks the game filter; the game-specific filters start over.
+  void setGameFilter(String id) => setFilter(() {
+    filterGame = id;
+    fPlatform = null;
+    fMode = null;
+    fParty = null;
+    fMyRank = false;
+  });
+
+  /// My rank id in [gameId], if my profile has one.
+  String? myRankIn(String gameId) =>
+      me?.games.where((g) => g.game?.id == gameId).firstOrNull?.rank?.id;
 
   void openListingSheet() {
     final launch = launchGames;
@@ -1037,6 +1092,34 @@ class AppState extends ChangeNotifier {
     loadFeed();
   }
 
+  /// Takes back my pending request on a listing.
+  Future<void> withdrawFromListing(ListingDto l) async {
+    final r = l.myRequest;
+    if (r == null || r.status != RequestStatus.pending) return;
+    final ok = await _busy(
+      () async => api.connections.connectionRequestsCancel(id: r.id),
+    );
+    if (ok == null) return;
+    toast('Request to ${l.owner.displayName} withdrawn');
+    loadFeed();
+    if (openedListing?.id == l.id) openListing(l.id);
+  }
+
+  /// A listing on its own, from a notification or a link.
+  Future<void> openListing(String id) async {
+    update(() {
+      if (screen != Screen.listing) prev = screen;
+      screen = Screen.listing;
+      if (openedListing?.id != id) openedListing = null;
+      sheet = null;
+    });
+    final l = await call(
+      () async => (await api.listings.listingsGet(id: id)).data!,
+    );
+    if (l == null) return go(prev);
+    update(() => openedListing = l);
+  }
+
   // ---- connections & profiles ----
 
   /// The profile's main button: connect, accept, or invite to play.
@@ -1067,6 +1150,37 @@ class AppState extends ChangeNotifier {
     await openPlayer(p.username);
   }
 
+  /// Takes back my pending request to the profile being viewed. The profile
+  /// has no request id, so it comes from my outgoing requests.
+  Future<void> withdrawRequest() async {
+    final p = viewed;
+    if (p == null || p.relationship != Relationship.outgoingRequest) return;
+    final ok = await _busy(() async {
+      final out = (await api.connections.connectionRequestsList(
+        direction: 'outgoing',
+      )).data!.items;
+      final r = out.where((r) => r.to.id == p.id).firstOrNull;
+      if (r != null) {
+        await api.connections.connectionRequestsCancel(id: r.id);
+      }
+      return true;
+    });
+    if (ok == null) return;
+    toast('Request to ${p.displayName} withdrawn');
+    await openPlayer(p.username);
+  }
+
+  /// Ends a connection: gaming IDs lock again, both ways.
+  Future<void> removeConnection(String userId, String name) async {
+    final ok = await _busy(
+      () async => api.connections.connectionsRemove(userId: userId),
+    );
+    if (ok == null) return;
+    toast('You’re no longer connected with $name');
+    final p = viewed;
+    if (p != null && p.id == userId) await openPlayer(p.username);
+  }
+
   Future<void> answerRequest(ConnectionRequestDto r, bool accept) async {
     final ok = await call(
       () async => accept
@@ -1085,11 +1199,29 @@ class AppState extends ChangeNotifier {
         quiet: true,
       ).then((m) => m == null ? null : update(() => me = m)),
       call(
-        () async =>
-            (await api.connections.connectionsList()).data!.items.toList(),
+        () async => (await api.connections.connectionsList()).data!,
         quiet: true,
-      ).then((c) => c == null ? null : update(() => connections = c)),
+      ).then(
+        (c) => c == null
+            ? null
+            : update(() {
+                connections = c.items.toList();
+                connCursor = c.nextCursor;
+              }),
+      ),
     ]);
+  }
+
+  Future<void> loadMoreConnections() async {
+    final c = await call(
+      () async =>
+          (await api.connections.connectionsList(cursor: connCursor)).data!,
+    );
+    if (c == null) return;
+    update(() {
+      connections = [...connections, ...c.items];
+      connCursor = c.nextCursor;
+    });
   }
 
   void openSessionSheet() {
@@ -1214,19 +1346,54 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  Future<void> loadMoreNotifications() async {
+    final p = await call(
+      () async =>
+          (await api.notifications.notificationsList(cursor: notifCursor))
+              .data!,
+    );
+    if (p == null) return;
+    update(() {
+      notifications = [...notifications, ...p.items];
+      notifCursor = p.nextCursor;
+    });
+  }
+
   /// Follows a notification's `route` (docs/API.md "Push").
   void openRoute(String route) {
     final parts = route.split('/').where((p) => p.isNotEmpty).toList();
     switch (parts) {
       case ['players', final username]:
         openPlayer(username);
-      case ['listings', _]:
-        go(Screen.find);
+      case ['listings', final id]:
+        openListing(id);
       case ['check-ins', _]:
         go(Screen.home);
       default:
         go(Screen.notifs);
     }
+  }
+
+  /// Checks a username while it's typed (debounced). [mine] is the one I
+  /// already have, which is fine to keep.
+  void checkUsername(String v, {String? mine}) {
+    _handleDebounce?.cancel();
+    final name = v.trim().toLowerCase();
+    if (name.isEmpty || name == mine) return update(() => handleNote = null);
+    _handleDebounce = Timer(const Duration(milliseconds: 400), () async {
+      final r = await call(
+        () async => (await api.me.usernamesCheck(name: name)).data!,
+        quiet: true,
+      );
+      if (r == null) return;
+      update(
+        () => handleNote = r.available
+            ? null
+            : r.reason == UsernameAvailabilityReasonEnum.invalid
+            ? '3–20 characters: lowercase letters, numbers, dots and underscores'
+            : '@$name is taken',
+      );
+    });
   }
 
   // ---- search ----
@@ -1267,6 +1434,7 @@ class AppState extends ChangeNotifier {
     go(Screen.editProfile, () {
       edit = ProfileDraft.from(m, catalog);
       confirmDiscard = false;
+      handleNote = null;
     });
   }
 
@@ -1288,6 +1456,7 @@ class AppState extends ChangeNotifier {
         if (d.city.trim().isNotEmpty && d.city.trim() != m0.city) {
           b.city = d.city.trim();
         }
+        if (d.age != m0.ageRange) b.ageRange = d.age;
       });
       await api.me.meUpdate(updateMeBody: patch);
       await _saveGamer(d);
@@ -1357,6 +1526,33 @@ class AppState extends ChangeNotifier {
     toast('Photo updated');
   }
 
+  Future<void> removeAvatar() async {
+    final m = await _busy(() async => (await api.me.meRemoveAvatar()).data!);
+    if (m == null) return;
+    update(() => me = m);
+    toast('Photo removed');
+  }
+
+  /// Settings → Change password. True when it worked.
+  Future<bool> changePassword(String current, String next) async {
+    if (next.length < 8) {
+      toast('New password needs at least 8 characters');
+      return false;
+    }
+    final ok = await _busy(
+      () async => api.auth.authChangePassword(
+        changePasswordBody: ChangePasswordBody(
+          (b) => b
+            ..currentPassword = current
+            ..newPassword = next,
+        ),
+      ),
+    );
+    if (ok == null) return false;
+    toast('Password changed');
+    return true;
+  }
+
   /// System back. Returns false when the app should close.
   bool handleBack() {
     if (sheet != null) {
@@ -1389,6 +1585,8 @@ class AppState extends ChangeNotifier {
         }
       case Screen.blocked:
         goProfileTab();
+      case Screen.listing:
+        go(prev == Screen.listing ? Screen.home : prev);
       case Screen.search:
         leaveSearch();
       case Screen.profile when viewing != null:

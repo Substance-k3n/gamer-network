@@ -115,10 +115,15 @@ describe('play invites', () => {
     const invite = (await a.invite(b, 'in_30_min').expect(201)).body;
     const before = new Date();
     const { body } = await b.post(`/v1/play-invites/${invite.id}/accept`).expect(200);
+    const after = new Date();
     expect(body.status).toBe('accepted');
     const rows = await conn.db.select().from(checkIns).where(eq(checkIns.playInviteId, invite.id));
     expect(rows).toHaveLength(2);
-    expect(rows[0]!.dueAt.getTime()).toBe(inviteCheckInDueAt(before).getTime());
+    // Before 06:00 Addis the due time is "accepted + 6 h", to the millisecond:
+    // it falls between what `before` and `after` give.
+    const due = rows[0]!.dueAt.getTime();
+    expect(due).toBeGreaterThanOrEqual(inviteCheckInDueAt(before).getTime());
+    expect(due).toBeLessThanOrEqual(inviteCheckInDueAt(after).getTime());
     const told = await conn.db
       .select()
       .from(notifications)

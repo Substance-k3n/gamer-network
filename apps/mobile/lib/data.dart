@@ -81,6 +81,8 @@ const idKinds = [
   GamingIdKind.playstation,
   GamingIdKind.xbox,
   GamingIdKind.epic,
+  GamingIdKind.ea,
+  GamingIdKind.activision,
 ];
 
 const idKindLabel = {
@@ -136,6 +138,7 @@ class Game {
     required this.short,
     this.ranks = const [],
     this.modes = const [],
+    this.roles = const [],
     this.platforms = const {},
     this.hasRanks = false,
     this.maxParty = 5,
@@ -149,6 +152,7 @@ class Game {
     short: g.shortCode,
     ranks: g.ranks.toList()..sort((a, b) => a.tier.compareTo(b.tier)),
     modes: g.modes.toList(),
+    roles: g.roles.toList(),
     platforms: g.platforms.toSet(),
     hasRanks: g.hasRanks,
     maxParty: g.maxParty.toInt(),
@@ -161,6 +165,9 @@ class Game {
   /// empty for custom games (free-text rank).
   final List<RankDto> ranks;
   final List<ModeDto> modes;
+
+  /// Positions or heroes to pick from (empty until the catalog has them).
+  final List<RoleDto> roles;
   final Set<Platform> platforms;
   final bool hasRanks, isLaunch, custom;
   final int maxParty;
@@ -169,6 +176,7 @@ class Game {
   List<String> get aliases => _aliases[id] ?? const [];
 
   RankDto? rank(String? id) => ranks.where((r) => r.id == id).firstOrNull;
+  RoleDto? role(String? id) => roles.where((r) => r.id == id).firstOrNull;
 
   bool matches(String q) {
     final s = q.trim().toLowerCase();

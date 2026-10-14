@@ -841,11 +841,27 @@ class SignupScreen extends StatelessWidget {
             ),
             labeled(
               'USERNAME',
-              BoxField(
-                value: s.handle,
-                hint: 'kaleb.gg',
-                height: 52,
-                onChanged: (v) => s.handle = v,
+              Gap(
+                6,
+                children: [
+                  BoxField(
+                    value: s.handle,
+                    hint: 'kaleb.gg',
+                    height: 52,
+                    onChanged: (v) {
+                      s.handle = v;
+                      s.checkUsername(v);
+                    },
+                  ),
+                  if (s.handleNote != null)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 18),
+                      child: Text(
+                        s.handleNote!,
+                        style: t.body(13, w: w600, c: t.acc),
+                      ),
+                    ),
+                ],
               ),
             ),
             labeled(
@@ -1045,6 +1061,8 @@ class RanksScreen extends StatelessWidget {
             gameId: id,
             rank: s.onboard.ranks[id],
             onPick: (r) => s.update(() => s.onboard.ranks[id] = r),
+            role: s.onboard.roles[id],
+            onRole: (r) => s.update(() => s.onboard.roles[id] = r),
           );
         },
       ),

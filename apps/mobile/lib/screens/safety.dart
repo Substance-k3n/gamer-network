@@ -15,6 +15,7 @@ Future<void> showPlayerMenu(
   required String userId,
   required String name,
   ListingDto? listing,
+  bool connected = false,
 }) {
   final s = context.app;
   return showDialog<void>(
@@ -41,6 +42,12 @@ Future<void> showPlayerMenu(
           Text(name, style: t.body(22, w: w800, ls: -.6)),
           if (listing != null)
             item('Copy share link', () => s.shareListing(listing)),
+          if (connected)
+            item(
+              'Remove connection',
+              () =>
+                  confirmRemoveConnection(context, userId: userId, name: name),
+            ),
           item(
             'Report',
             () => showReportDialog(
@@ -334,4 +341,153 @@ class BlockedScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A yes/no question in the active skin. True when they said yes.
+Future<bool> confirm(
+  BuildContext context, {
+  required String title,
+  required String body,
+  required String yes,
+  String no = 'Cancel',
+}) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    barrierColor: Colors.black.withValues(alpha: .45),
+    builder: (context) {
+      final t = context.rt;
+      return ThemedDialog(
+        children: [
+          Text(title, style: t.body(22, w: w800, ls: -.6)),
+          Text(body, style: t.body(14, c: t.muted, h: 1.35)),
+          Row(
+            children: [
+              Expanded(
+                child: Pill(
+                  no,
+                  onTap: () => Navigator.pop(context, false),
+                  expand: true,
+                  height: 46,
+                  size: 15,
+                  bg: Colors.transparent,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Pill(
+                  yes,
+                  onTap: () => Navigator.pop(context, true),
+                  expand: true,
+                  height: 46,
+                  size: 15,
+                  weight: w700,
+                  bg: t.strong,
+                  fg: t.onStrong,
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    },
+  );
+  return ok == true;
+}
+
+Future<void> confirmWithdraw(
+  BuildContext context, {
+  required String name,
+  required VoidCallback onYes,
+}) async {
+  if (await confirm(
+    context,
+    title: 'Withdraw your request?',
+    body: '$name won’t see it any more. You can ask again later.',
+    yes: 'Withdraw',
+    no: 'Keep it',
+  )) {
+    onYes();
+  }
+}
+
+Future<void> confirmRemoveConnection(
+  BuildContext context, {
+  required String userId,
+  required String name,
+}) async {
+  final s = context.app;
+  if (await confirm(
+    context,
+    title: 'Remove $name?',
+    body: 'You stop being connected: your private gaming IDs lock again, both ways. They aren’t told.',
+    yes: 'Remove',
+  )) {
+    await s.removeConnection(userId, name);
+  }
+}
+
+/// Settings → Change password.
+Future<void> showChangePassword(BuildContext context) async {
+  final s = context.app;
+  var current = '', next = '';
+  await showDialog<void>(
+    context: context,
+    barrierColor: Colors.black.withValues(alpha: .45),
+    builder: (context) {
+      final t = context.rt;
+      return ThemedDialog(
+        children: [
+          Text('Change password', style: t.body(22, w: w800, ls: -.6)),
+          Text(
+            'Other phones signed in to your account stay signed in.',
+            style: t.body(14, c: t.muted, h: 1.35),
+          ),
+          PasswordField(
+            value: current,
+            hint: 'Current password',
+            height: 50,
+            onChanged: (v) => current = v,
+          ),
+          PasswordField(
+            value: next,
+            hint: 'New password, 8+ characters',
+            height: 50,
+            onChanged: (v) => next = v,
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: Pill(
+                  'Cancel',
+                  onTap: () => Navigator.pop(context),
+                  expand: true,
+                  height: 46,
+                  size: 15,
+                  bg: Colors.transparent,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Pill(
+                  'Change',
+                  onTap: () async {
+                    if (await s.changePassword(current, next) &&
+                        context.mounted) {
+                      Navigator.pop(context);
+                    }
+                  },
+                  expand: true,
+                  height: 46,
+                  size: 15,
+                  weight: w700,
+                  bg: t.accent,
+                  fg: t.onAccent,
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    },
+  );
 }

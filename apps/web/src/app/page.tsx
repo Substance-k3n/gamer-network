@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { config } from '@/lib/config';
 import { Brand, Footer } from './brand';
 
@@ -15,8 +16,11 @@ export default function Home() {
           gamers in Ethiopia.
         </p>
         <div className="actions">
+          <Link className="button primary" href="/app">
+            Open the web app
+          </Link>
           {play ? (
-            <a className="button primary" href={play}>
+            <a className="button" href={play}>
               Get the app
             </a>
           ) : (

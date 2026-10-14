@@ -43,6 +43,7 @@ class RallyShell extends StatelessWidget {
     Screen.profile => const ProfileScreen(),
     Screen.search => const SearchScreen(),
     Screen.blocked => const BlockedScreen(),
+    Screen.listing => const ListingScreen(),
   };
 
   @override

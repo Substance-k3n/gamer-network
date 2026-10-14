@@ -303,10 +303,35 @@ class FakeApi implements HttpClientAdapter {
       'PUT /v1/me/gaming-ids': me(onboarded: onboarded),
       'PUT /v1/me/status': me(onboarded: onboarded),
       'POST /v1/me/onboard': null,
+      'GET /v1/play-invites?direction=outgoing': {
+        'items': [
+          {
+            'id': 'pi-out',
+            'from': card('me-1', 'kaleb.gg', 'Kaleb'),
+            'to': dave,
+            'game': gameRef('codm', 'CoD Mobile', 'CODM'),
+            'playWhen': 'tonight',
+            'status': 'pending',
+            'startsAt': _at(const Duration(hours: 3)),
+            'expiresAt': _at(const Duration(hours: 3, minutes: 15)),
+            'createdAt': _at(Duration.zero),
+          },
+        ],
+      },
+      'GET /v1/usernames/taken.name': {'available': false, 'reason': 'taken'},
+      'GET /v1/usernames/free.name': {'available': true},
+      'POST /v1/auth/password': null,
+      'DELETE /v1/me/avatar': me(onboarded: onboarded),
+      'DELETE /v1/connections/u-dave': null,
+      'DELETE /v1/connection-requests/cr-mine': null,
+      'GET /v1/listings/l-1': listing('l-1', dave),
     });
   }
 
   final routes = <String, Object?>{};
+
+  /// Every request as "METHOD /path?query", for checking filters.
+  final queries = <String>[];
   final sent = <({String method, String path, Object? body})>[];
 
   /// Answer [route] with an API error instead.
@@ -328,10 +353,15 @@ class FakeApi implements HttpClientAdapter {
     Stream<Uint8List>? requestStream,
     Future<void>? cancelFuture,
   ) async {
-    final key = '${o.method} ${o.uri.path}';
+    // A route with its query string ("GET /v1/x?direction=outgoing") wins.
+    final withQuery = '${o.method} ${o.uri.path}?${o.uri.query}';
+    final key = routes.containsKey(withQuery)
+        ? withQuery
+        : '${o.method} ${o.uri.path}';
     Object? body = o.data;
     if (body is String && body.isNotEmpty) body = jsonDecode(body);
     sent.add((method: o.method, path: o.uri.path, body: body));
+    queries.add('${o.method} ${o.uri.path}?${o.uri.query}');
     if (!routes.containsKey(key)) {
       return _json(404, {
         'error': {'code': 'not_found', 'message': 'No fake for $key'},

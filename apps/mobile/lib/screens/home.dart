@@ -46,6 +46,8 @@ class HomeScreen extends StatelessWidget {
                     if (me != null && !me.emailVerified) const _VerifyNudge(),
                     for (final i in s.invites)
                       _InviteCard(i, key: ValueKey(i.id)),
+                    for (final i in s.sentInvites)
+                      _SentInvite(i, key: ValueKey(i.id)),
                     for (final c in s.checkIns)
                       _CheckInCard(c, key: ValueKey(c.id)),
                     if (me != null) const _StatusCard(),
@@ -265,6 +267,54 @@ class _InviteCard extends StatelessWidget {
 }
 
 /// "Did you play with Dave?" — the product's main number, one tap.
+/// An invite I sent, waiting for an answer until it expires.
+class _SentInvite extends StatelessWidget {
+  const _SentInvite(this.i, {super.key});
+  final PlayInviteDto i;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.app;
+    final t = context.rt;
+    return InkBox(
+      radius: 22,
+      padding: const EdgeInsets.all(12),
+      onTap: () => s.openPlayer(i.to.username),
+      child: Row(
+        children: [
+          Avatar(
+            initialOf(i.to.displayName),
+            toneFor(i.to.id),
+            url: i.to.avatarUrl,
+            size: 36,
+            fontSize: 14,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(t.up('INVITE SENT'), style: t.label(8, c: t.muted)),
+                Text(
+                  'Waiting for ${i.to.displayName} · ${i.game.name} at ${clock(i.startsAt)}',
+                  maxLines: 2,
+                  style: t.body(14, w: w600),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          ValueListenableBuilder(
+            valueListenable: s.now,
+            builder: (context, now, _) =>
+                Text(countdown(i.expiresAt, now), style: t.digits(12)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _CheckInCard extends StatelessWidget {
   const _CheckInCard(this.c, {super.key});
   final CheckInDto c;

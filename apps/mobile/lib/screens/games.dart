@@ -387,11 +387,17 @@ class RankCard extends StatefulWidget {
     required this.rank,
     required this.onPick,
     this.onRemove,
+    this.role,
+    this.onRole,
   });
   final String gameId;
   final String? rank;
   final ValueChanged<String> onPick;
   final VoidCallback? onRemove;
+
+  /// The picked role id; roles show when the game has any and [onRole] is set.
+  final String? role;
+  final ValueChanged<String>? onRole;
 
   @override
   State<RankCard> createState() => _RankCardState();
@@ -412,7 +418,7 @@ class _RankCardState extends State<RankCard> {
   @override
   Widget build(BuildContext context) {
     final t = context.rt;
-    final RankCard(:gameId, :rank, :onPick, :onRemove) = widget;
+    final RankCard(:gameId, :rank, :onPick, :onRemove, :role, :onRole) = widget;
     final g = context.app.catalog.byId(gameId);
     final pickedName = g.custom ? rank : g.rank(rank)?.name;
     final picked = pickedName != null && pickedName.isNotEmpty;
@@ -494,6 +500,16 @@ class _RankCardState extends State<RankCard> {
                   ),
               ],
             ),
+          if (onRole != null && g.roles.isNotEmpty) ...[
+            const Label('ROLE'),
+            ChipScroller(
+              padding: const EdgeInsets.only(right: 14),
+              children: [
+                for (final r in g.roles)
+                  Pill.chip(r.name, role == r.id, () => onRole(r.id)),
+              ],
+            ),
+          ],
         ],
       ),
     );

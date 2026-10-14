@@ -40,8 +40,9 @@ wait on the keys and the domain below.
 
 **Open decisions:**
 
-- PWA: proposed ADR-0009, a Flutter web build instead of a separate
-  Next.js PWA. Not written yet.
+- PWA: [ADR-0011](decisions/0011-nextjs-pwa-for-players.md), proposed:
+  a Next.js PWA in `apps/web` (`/app`), because a Flutter web build took
+  18 s to first frame on 4G. Waiting on Kidus.
 - Branch protection on `main` and `dev` (phase 0). Until then PRs are
   merged by their author once CI is green.
 - Launch games: codm, pubg and efootball are `is_launch` provisionally;

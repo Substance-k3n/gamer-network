@@ -14,7 +14,7 @@ gamer-network/
 │   ├── admin/          Next.js moderation dashboard on the admin API.
 │   ├── api/            NestJS + PostgreSQL. The only thing that talks to the DB.
 │   ├── mobile/         Flutter app, Android first. The product.
-│   └── web/            Next.js: public listing share pages.
+│   └── web/            Next.js: listing share pages, and the player PWA at /app (ADR-0011, proposed).
 ├── render.yaml         Production on Render (ADR-0008).
 ├── packages/
 │   └── api-spec/       openapi.json generated from apps/api. The contract
@@ -46,6 +46,7 @@ calls:
 5. [ADR-0005](docs/decisions/0005-safety-defaults.md) 16+, block and report, gaming IDs private by default.
 6. [ADR-0006](docs/decisions/0006-drizzle-orm.md) Drizzle for the database, migrations reviewed as SQL.
 7. [ADR-0007](docs/decisions/0007-email-password-and-google.md) Sign in with email + password or Google.
+8. [ADR-0011](docs/decisions/0011-nextjs-pwa-for-players.md) (proposed) Players also get a Next.js PWA in `apps/web`: Flutter web took 18 s to first frame on 4G.
 
 ## Docs
 

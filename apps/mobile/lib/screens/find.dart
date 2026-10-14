@@ -52,7 +52,7 @@ class FindScreen extends StatelessWidget {
                       Pill.chip(
                         'All games',
                         s.filterGame == 'all',
-                        () => s.setFilter(() => s.filterGame = 'all'),
+                        () => s.setGameFilter('all'),
                         height: 38,
                         padH: 15,
                         size: 14,
@@ -61,7 +61,7 @@ class FindScreen extends StatelessWidget {
                         Pill.chip(
                           g.name,
                           s.filterGame == g.id,
-                          () => s.setFilter(() => s.filterGame = g.id),
+                          () => s.setGameFilter(g.id),
                           height: 38,
                           padH: 15,
                           size: 14,
@@ -96,6 +96,7 @@ class FindScreen extends StatelessWidget {
                       ],
                     ),
                   ),
+                  if (s.filterGame != 'all') const _GameFilters(),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 2, 20, 0),
                     child: Row(
@@ -143,6 +144,96 @@ class FindScreen extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+}
+
+/// Filters for the picked game: its platforms, modes and party sizes, and
+/// listings at my rank or higher (GET /listings `minRank`).
+class _GameFilters extends StatelessWidget {
+  const _GameFilters();
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.app;
+    final g = s.catalog.byId(s.filterGame);
+    Widget chip(String label, bool on, VoidCallback onTap) =>
+        Pill.chip(label, on, onTap, height: 32, padH: 12, size: 13);
+    return ChipScroller(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      children: [
+        if (s.myRankIn(g.id) != null)
+          chip(
+            'My rank and up',
+            s.fMyRank,
+            () => s.setFilter(() => s.fMyRank = !s.fMyRank),
+          ),
+        if (g.platforms.length > 1)
+          for (final p in platformLabel.keys)
+            if (g.platforms.contains(p))
+              chip(
+                platformLabel[p]!,
+                s.fPlatform == p,
+                () => s.setFilter(
+                  () => s.fPlatform = s.fPlatform == p ? null : p,
+                ),
+              ),
+        for (final m in g.modes)
+          chip(
+            m.name,
+            s.fMode == m.id,
+            () => s.setFilter(() => s.fMode = s.fMode == m.id ? null : m.id),
+          ),
+        for (var n = 2; n <= g.maxParty; n++)
+          chip(
+            partyLabel(n),
+            s.fParty == n,
+            () => s.setFilter(() => s.fParty = s.fParty == n ? null : n),
+          ),
+      ],
+    );
+  }
+}
+
+/// One listing on its own: opened from an alert or a shared link.
+class ListingScreen extends StatelessWidget {
+  const ListingScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.app;
+    final t = context.rt;
+    final l = s.openedListing;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 40),
+      children: [
+        Gap(
+          14,
+          children: [
+            Row(
+              children: [
+                BackBtn(onTap: () => s.handleBack()),
+                const SizedBox(width: 12),
+                Text('Listing', style: t.body(24, w: w800, ls: -.8)),
+              ],
+            ),
+            if (l == null)
+              const Center(child: CircularProgressIndicator())
+            else ...[
+              if (l.status != ListingStatus.open &&
+                  l.status != ListingStatus.full)
+                EmptyNote(
+                  'This listing has ${l.status == ListingStatus.closed ? 'closed' : 'ended'}.',
+                ),
+              ValueListenableBuilder(
+                valueListenable: s.now,
+                builder: (context, now, _) =>
+                    _ListingCard(l, left: countdown(l.expiresAt, now)),
+              ),
+            ],
+          ],
+        ),
+      ],
     );
   }
 }
@@ -324,9 +415,17 @@ class _ListingCard extends StatelessWidget {
               Expanded(
                 child: Pill(
                   look.label,
-                  onTap: l.myRequest != null || s.busy
+                  onTap: s.busy || l.owner.id == s.me?.id
                       ? null
-                      : () => s.connectFromListing(l),
+                      : l.myRequest == null
+                      ? () => s.connectFromListing(l)
+                      : l.myRequest!.status == RequestStatus.pending
+                      ? () => confirmWithdraw(
+                          context,
+                          name: l.owner.displayName,
+                          onYes: () => s.withdrawFromListing(l),
+                        )
+                      : null,
                   expand: true,
                   height: 44,
                   size: 15,
@@ -534,6 +633,17 @@ class NotifsScreen extends StatelessWidget {
                         ),
                       ),
                   ],
+                ),
+              if (s.notifCursor != null)
+                Center(
+                  child: Pill(
+                    'Load more',
+                    onTap: s.loadMoreNotifications,
+                    height: 42,
+                    padH: 18,
+                    size: 14,
+                    weight: w700,
+                  ),
                 ),
             ],
           ),

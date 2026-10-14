@@ -93,8 +93,16 @@ export default async function ListingPage({ params }: Props) {
               Open in app
             </a>
           )}
+          {live && (
+            <a
+              className={android ? 'button' : 'button primary'}
+              href={`/app/listings/${listing.id}`}
+            >
+              Open in the web app
+            </a>
+          )}
           {config.playStoreUrl ? (
-            <a className={android && live ? 'button' : 'button primary'} href={config.playStoreUrl}>
+            <a className={live ? 'button' : 'button primary'} href={config.playStoreUrl}>
               Get the app
             </a>
           ) : (

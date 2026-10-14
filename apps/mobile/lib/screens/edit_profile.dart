@@ -92,16 +92,30 @@ class EditProfileScreen extends StatelessWidget {
                                     style: t.body(13, c: t.muted),
                                   ),
                                   const SizedBox(height: 4),
-                                  GestureDetector(
-                                    onTap: s.changeAvatar,
-                                    child: Text(
-                                      'Change photo',
-                                      style: t.body(
-                                        13,
-                                        w: w700,
-                                        deco: TextDecoration.underline,
+                                  Row(
+                                    children: [
+                                      GestureDetector(
+                                        onTap: s.changeAvatar,
+                                        child: Text(
+                                          'Change photo',
+                                          style: t.body(
+                                            13,
+                                            w: w700,
+                                            deco: TextDecoration.underline,
+                                          ),
+                                        ),
                                       ),
-                                    ),
+                                      if (me.avatarUrl != null) ...[
+                                        const SizedBox(width: 14),
+                                        GestureDetector(
+                                          onTap: s.busy ? null : s.removeAvatar,
+                                          child: Text(
+                                            'Remove',
+                                            style: t.body(13, c: t.muted),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
                                   ),
                                 ],
                               ),
@@ -120,12 +134,28 @@ class EditProfileScreen extends StatelessWidget {
                       ),
                       labeled(
                         'USERNAME',
-                        BoxField(
-                          value: d.handle,
-                          hint: 'kaleb.gg',
-                          height: 50,
-                          onChanged: (v) => set(() => d.handle = v),
-                          leading: Text('@', style: t.body(16, c: t.muted)),
+                        Gap(
+                          6,
+                          children: [
+                            BoxField(
+                              value: d.handle,
+                              hint: 'kaleb.gg',
+                              height: 50,
+                              onChanged: (v) {
+                                set(() => d.handle = v);
+                                s.checkUsername(v, mine: me.username);
+                              },
+                              leading: Text('@', style: t.body(16, c: t.muted)),
+                            ),
+                            if (s.handleNote != null)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 14),
+                                child: Text(
+                                  s.handleNote!,
+                                  style: t.body(13, w: w600, c: t.acc),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                       labeled(
@@ -161,6 +191,18 @@ class EditProfileScreen extends StatelessWidget {
                           onChanged: (v) => set(() => d.city = v),
                         ),
                       ),
+                      labeled(
+                        'AGE RANGE',
+                        Segmented(
+                          options: ageLabel.values.toList(),
+                          value: ageLabel[d.age]!,
+                          onChanged: (v) => set(
+                            () => d.age = ageLabel.entries
+                                .firstWhere((e) => e.value == v)
+                                .key,
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       Row(
                         children: [
@@ -176,9 +218,12 @@ class EditProfileScreen extends StatelessWidget {
                           gameId: id,
                           rank: d.ranks[id],
                           onPick: (r) => set(() => d.ranks[id] = r),
+                          role: d.roles[id],
+                          onRole: (r) => set(() => d.roles[id] = r),
                           onRemove: () => set(() {
                             d.games.remove(id);
                             d.ranks.remove(id);
+                            d.roles.remove(id);
                           }),
                         ),
                       Dashed(

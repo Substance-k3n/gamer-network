@@ -360,6 +360,140 @@ void main() {
     },
   );
 
+  testWidgets('Home shows the invite I sent, waiting for an answer', (t) async {
+    await pumpApp(t, FakeApi(), token: 't-1');
+    expect(find.text('INVITE SENT'), findsOneWidget);
+    expect(
+      find.textContaining('Waiting for Dave · CoD Mobile'),
+      findsOneWidget,
+    );
+    await done(t);
+  });
+
+  testWidgets('game filters send platform, mode, party and my rank', (t) async {
+    final api = FakeApi();
+    final s = await pumpApp(t, api, token: 't-1');
+    s.go(Screen.find);
+    await settle(t);
+    await tapText(t, 'CoD Mobile');
+    await tapText(t, 'My rank and up');
+    await tapText(t, 'Ranked'); // the chip; the cards below say RANKED
+    await tapText(t, 'Squad'); // the chip, above the cards' NEED boxes
+    final q = api.queries.lastWhere((x) => x.startsWith('GET /v1/listings?'));
+    expect(q, contains('game=codm'));
+    expect(q, contains('minRank=r-master'));
+    expect(q, contains('mode=m-ranked-codm'));
+    expect(q, contains('partySize=4'));
+    // A different game starts its filters over.
+    await tapText(t, 'eFootball');
+    final q2 = api.queries.lastWhere((x) => x.startsWith('GET /v1/listings?'));
+    expect(q2, contains('game=efootball'));
+    expect(q2, isNot(contains('minRank')));
+    await done(t);
+  });
+
+  testWidgets('withdraw a request from a listing', (t) async {
+    final api = FakeApi();
+    final feed = api.routes['GET /v1/listings']! as Map;
+    (feed['items'] as List)[0] = listing(
+      'l-1',
+      dave,
+      myRequest: {'id': 'cr-mine', 'status': 'pending'},
+    );
+    final s = await pumpApp(t, api, token: 't-1');
+    s.go(Screen.find);
+    await settle(t);
+    await tapText(t, 'Requested…');
+    await tapText(t, 'Withdraw');
+    expect(
+      api.sent.any(
+        (r) =>
+            r.method == 'DELETE' && r.path == '/v1/connection-requests/cr-mine',
+      ),
+      isTrue,
+    );
+    expect(find.text('Request to Dave withdrawn'), findsOneWidget);
+    await done(t);
+  });
+
+  testWidgets('remove a connection from their profile menu', (t) async {
+    final api = FakeApi();
+    final s = await pumpApp(t, api, token: 't-1');
+    s.openPlayer('dave.exe');
+    await settle(t);
+    await t.tap(icon(Ic.more));
+    await settle(t);
+    await tapText(t, 'Remove connection');
+    await tapText(t, 'Remove');
+    expect(
+      api.sent.any(
+        (r) => r.method == 'DELETE' && r.path == '/v1/connections/u-dave',
+      ),
+      isTrue,
+    );
+    expect(find.text('You’re no longer connected with Dave'), findsOneWidget);
+    await done(t);
+  });
+
+  testWidgets('an alert about a listing opens that listing', (t) async {
+    final api = FakeApi();
+    final s = await pumpApp(t, api, token: 't-1');
+    s.openRoute('/listings/l-1');
+    await settle(t);
+    expect(find.text('Listing'), findsOneWidget);
+    expect(find.text('“Ranked grind, mics on.”'), findsOneWidget);
+    s.handleBack();
+    await settle(t);
+    expect(find.text('YOUR STATUS'), findsOneWidget);
+    await done(t);
+  });
+
+  testWidgets(
+    'settings: change password, and Edit profile saves age and checks the username',
+    (t) async {
+      final api = FakeApi();
+      final s = await pumpApp(t, api, token: 't-1');
+      s.goProfileTab();
+      await settle(t);
+      await tapText(t, 'Change password');
+      await t.enterText(
+        find.widgetWithText(TextField, 'Current password'),
+        'old-password',
+      );
+      await t.enterText(
+        find.widgetWithText(TextField, 'New password, 8+ characters'),
+        'new-password',
+      );
+      await tapText(t, 'Change');
+      expect(api.bodiesOf('POST /v1/auth/password').single, {
+        'currentPassword': 'old-password',
+        'newPassword': 'new-password',
+      });
+      expect(find.text('Password changed'), findsOneWidget);
+
+      s.openEditProfile();
+      await settle(t);
+      await t.enterText(
+        find.widgetWithText(TextField, 'kaleb.gg').first,
+        'taken.name',
+      );
+      await t.pump(const Duration(milliseconds: 500));
+      await settle(t);
+      expect(find.text('@taken.name is taken'), findsOneWidget);
+      await t.enterText(
+        find.widgetWithText(TextField, 'kaleb.gg').first,
+        'kaleb.gg',
+      );
+      await t.pump(const Duration(milliseconds: 500));
+      await settle(t);
+      expect(find.text('@taken.name is taken'), findsNothing);
+      await tapText(t, '25–34');
+      await tapText(t, 'Save');
+      expect((api.bodiesOf('PATCH /v1/me').last! as Map)['ageRange'], '25_34');
+      await done(t);
+    },
+  );
+
   testWidgets('groups waitlist and a report from a profile', (t) async {
     final api = FakeApi();
     final s = await pumpApp(t, api, token: 't-1');
