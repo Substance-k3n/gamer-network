@@ -84,6 +84,7 @@ describe('GET /v1/users/{username}', () => {
       username: owner.username,
       relationship: 'none',
       incomingRequestId: null,
+      outgoingRequestId: null,
       stats: { games: 1 },
     });
     expect(body).not.toHaveProperty('email');
@@ -113,10 +114,12 @@ describe('GET /v1/users/{username}', () => {
     expect((await a.get(`/v1/users/${b.username}`)).body).toMatchObject({
       relationship: 'outgoing_request',
       incomingRequestId: null,
+      outgoingRequestId: req!.id,
     });
     expect((await b.get(`/v1/users/${a.username}`)).body).toMatchObject({
       relationship: 'incoming_request',
       incomingRequestId: req!.id,
+      outgoingRequestId: null,
     });
   });
 

@@ -20,6 +20,7 @@ import {
   userPlatforms,
   users,
   userTags,
+  waitlist,
 } from '../db/schema/index.js';
 import {
   AVATAR_MAX_BYTES,
@@ -86,8 +87,17 @@ export class ProfileService {
   }
 
   async me(user: User): Promise<MeDto> {
+    const [profile, topics] = await Promise.all([
+      this.profile(user, user.id),
+      this.db
+        .select({ topic: waitlist.topic })
+        .from(waitlist)
+        .where(eq(waitlist.userId, user.id))
+        .orderBy(asc(waitlist.topic)),
+    ]);
     return {
-      ...(await this.profile(user, user.id)),
+      ...profile,
+      waitlist: topics.map((t) => t.topic),
       email: user.email,
       emailVerified: user.emailVerifiedAt !== null,
       hasPassword: user.passwordHash !== null,
@@ -189,8 +199,13 @@ export class ProfileService {
   private async relationship(
     userId: string,
     viewerId: string,
-  ): Promise<{ relationship: Relationship; incomingRequestId: string | null }> {
-    if (userId === viewerId) return { relationship: 'self', incomingRequestId: null };
+  ): Promise<{
+    relationship: Relationship;
+    incomingRequestId: string | null;
+    outgoingRequestId: string | null;
+  }> {
+    const none = { incomingRequestId: null, outgoingRequestId: null };
+    if (userId === viewerId) return { relationship: 'self', ...none };
     // connections stores each pair once, lower id first; uuid order matches hex string order.
     const [a, b] = userId < viewerId ? [userId, viewerId] : [viewerId, userId];
     const [connected, pending] = await Promise.all([
@@ -218,11 +233,13 @@ export class ProfileService {
           ),
         ),
     ]);
-    if (connected.length) return { relationship: 'connected', incomingRequestId: null };
+    if (connected.length) return { relationship: 'connected', ...none };
     const incoming = pending.find((r) => r.fromUserId === userId);
-    if (incoming) return { relationship: 'incoming_request', incomingRequestId: incoming.id };
-    if (pending.length) return { relationship: 'outgoing_request', incomingRequestId: null };
-    return { relationship: 'none', incomingRequestId: null };
+    if (incoming)
+      return { relationship: 'incoming_request', ...none, incomingRequestId: incoming.id };
+    if (pending.length)
+      return { relationship: 'outgoing_request', ...none, outgoingRequestId: pending[0]!.id };
+    return { relationship: 'none', ...none };
   }
 
   private async games(where: SQL): Promise<(UserGameDto & { userId: string })[]> {

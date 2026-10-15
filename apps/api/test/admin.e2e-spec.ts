@@ -260,4 +260,14 @@ describe('metrics', () => {
     expect(m.playedRate).toBeCloseTo(1 / 3);
     expect(m.weeklyActive).toBeGreaterThanOrEqual(4);
   });
+
+  it('counts the waitlist per topic', async () => {
+    const admin = await player({ admin: true });
+    const before = (await admin.get('/v1/admin/metrics').expect(200)).body.waitlist;
+    const groups = before.find((w: { topic: string }) => w.topic === 'groups')?.count ?? 0;
+    const a = await player();
+    await a.post('/v1/waitlist', { topic: 'groups' }).expect(204);
+    const after = (await admin.get('/v1/admin/metrics').expect(200)).body.waitlist;
+    expect(after).toContainEqual({ topic: 'groups', count: groups + 1 });
+  });
 });

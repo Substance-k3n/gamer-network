@@ -128,6 +128,9 @@ export class ProfileDto extends UserCardDto {
 
   /** Set when relationship is incoming_request, to accept from the profile. */
   incomingRequestId: string | null;
+
+  /** Set when relationship is outgoing_request, to withdraw from the profile. */
+  outgoingRequestId: string | null;
 }
 
 export class AvatarUploadDto {

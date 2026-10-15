@@ -31,6 +31,7 @@ import {
   sessions,
   userGames,
   users,
+  waitlist,
 } from '../db/schema/index.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import type {
@@ -375,7 +376,7 @@ export class AdminService {
   /** docs/DATA_MODEL.md "The metric", for listings created in [from, to). */
   async metrics(from: Date, to: Date): Promise<MetricsDto> {
     const created = and(gte(listings.createdAt, from), lt(listings.createdAt, to));
-    const [[all], [requested], [played], [active]] = await Promise.all([
+    const [[all], [requested], [played], [active], waiting] = await Promise.all([
       this.db
         .select({ n: sql<number>`count(*)::int` })
         .from(listings)
@@ -417,6 +418,11 @@ export class AdminService {
             lt(sessions.lastSeenAt, to),
           ),
         ),
+      this.db
+        .select({ topic: waitlist.topic, count: sql<number>`count(*)::int` })
+        .from(waitlist)
+        .groupBy(waitlist.topic)
+        .orderBy(desc(sql`count(*)`), waitlist.topic),
     ]);
     return {
       from,
@@ -426,6 +432,7 @@ export class AdminService {
       listingsPlayed: played!.n,
       playedRate: all!.n ? played!.n / all!.n : 0,
       weeklyActive: active!.n,
+      waitlist: waiting,
     };
   }
 }

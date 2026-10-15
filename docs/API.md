@@ -116,6 +116,7 @@ Profile extends UserCard {
   stats: { connections, games, playedWith },
   relationship: "self" | "none" | "outgoing_request" | "incoming_request" | "connected"
   incomingRequestId | null                                // to accept straight from the profile
+  outgoingRequestId | null                                // to withdraw straight from the profile
 }
 
 GameRef  { id: "valorant", name: "Valorant", shortCode: "VAL" }
@@ -145,16 +146,16 @@ than `/me*`, `/auth/*` and `/app/*` also need a finished onboarding.
 
 ### Sign-in
 
-| Method  | Path                       | Body → Response                                                                                                          |
-| ------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| POST 🔓 | `/v1/auth/signup`          | `{ email, password, displayName, username, ageRange }` → `{ token, user: Me, isNew: true }`. Sends a verification code   |
-| POST 🔓 | `/v1/auth/login`           | `{ email, password }` → `{ token, user: Me, isNew: false }`. `401 wrong_credentials` for any mismatch                    |
-| POST 🔓 | `/v1/auth/google`          | `{ idToken }` (from Google Sign-In on the device, or Google Identity Services on the web) → `{ token, user: Me, isNew }` |
-| POST    | `/v1/auth/verify-email`    | `{ code }` → `Me`. `POST /v1/auth/verify-email/resend` sends a new one                                                   |
-| POST 🔓 | `/v1/auth/password/forgot` | `{ email }` → `204`, always, even for unknown emails. Sends a reset code                                                 |
-| POST 🔓 | `/v1/auth/password/reset`  | `{ email, code, newPassword }` → `{ token, user: Me }`. Signs out every other device                                     |
-| POST    | `/v1/auth/password`        | `{ currentPassword, newPassword }` → `204`. Change password from Settings                                                |
-| POST    | `/v1/auth/logout`          | `204`. Revokes this token and unregisters this device                                                                    |
+| Method  | Path                       | Body → Response                                                                                                                   |
+| ------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| POST 🔓 | `/v1/auth/signup`          | `{ email, password, displayName, username, ageRange }` → `{ token, user: Me, isNew: true }`. Sends a verification code            |
+| POST 🔓 | `/v1/auth/login`           | `{ email, password }` or `{ username, password }` → `{ token, user: Me, isNew: false }`. `401 wrong_credentials` for any mismatch |
+| POST 🔓 | `/v1/auth/google`          | `{ idToken }` (from Google Sign-In on the device, or Google Identity Services on the web) → `{ token, user: Me, isNew }`          |
+| POST    | `/v1/auth/verify-email`    | `{ code }` → `Me`. `POST /v1/auth/verify-email/resend` sends a new one                                                            |
+| POST 🔓 | `/v1/auth/password/forgot` | `{ email }` → `204`, always, even for unknown emails. Sends a reset code                                                          |
+| POST 🔓 | `/v1/auth/password/reset`  | `{ email, code, newPassword }` → `{ token, user: Me }`. Signs out every other device                                              |
+| POST    | `/v1/auth/password`        | `{ currentPassword, newPassword }` → `204`. Change password from Settings                                                         |
+| POST    | `/v1/auth/logout`          | `204`. Revokes this token and unregisters this device                                                                             |
 
 Sign-up covers onboarding step 1 (the app's sign-up screen already asks
 for email, display name, username, password and age range). Listings
@@ -168,7 +169,7 @@ skip it and look around.
 
 | Method | Path                       | Body → Response                                                                                                                                                             |
 | ------ | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `/v1/me`                   | `Me` = `Profile` + `email`, `emailVerified`, `hasPassword`, `country`, `onboardedAt`, `role`, `createdAt`                                                                   |
+| GET    | `/v1/me`                   | `Me` = `Profile` + `email`, `emailVerified`, `hasPassword`, `country`, `onboardedAt`, `role`, `createdAt`, `waitlist` (topics joined)                                       |
 | PATCH  | `/v1/me`                   | `{ displayName?, username?, bio?, ageRange?, city? }` → `Me`. Only fields sent change; `bio: ""` or `null` clears it. `409 username_taken`                                  |
 | GET    | `/v1/usernames/{name}`     | `{ available: boolean, suggestion? }` (debounce while typing)                                                                                                               |
 | PUT    | `/v1/me/games`             | `{ games: [{ gameId?, customGameName?, rankId?, rankText?, roleId? }] }` (≤ 20, the full list, in order; `customGameName` + `rankText` for games not in the catalog) → `Me` |
@@ -209,6 +210,7 @@ username, and never includes you.
 | GET    | `/v1/listings/stats`       | `{ lookingNow: 43 }` for the Home counter                                                                                                                                                                              |
 | POST   | `/v1/listings`             | `{ gameId, modeId?, rankId?, platform, partySize, voice, style, playWhen, durationHours: 2\|6\|24, note? }` → `201 Listing`. Needs a verified email. `409 listing_already_open` if you have one                        |
 | GET    | `/v1/listings/{id}`        | `Listing`, any status (a shared link can say "expired")                                                                                                                                                                |
+| PATCH  | `/v1/listings/{id}`        | Owner only. `{ voice?, style?, playWhen?, note? }` → `Listing`. A new `playWhen` moves start and end, same length, from now. `409 listing_not_live` once it has ended                                                  |
 | POST   | `/v1/listings/{id}/close`  | Owner only (`403 not_owner`) → `Listing` with status `closed`. `409 listing_not_live` once it has ended                                                                                                                |
 | GET    | `/v1/me/listing`           | `{ listing: Listing \| null }`: your open or full listing                                                                                                                                                              |
 | GET 🔓 | `/v1/public/listings/{id}` | For share pages: owner display name and avatar, game, mode, rank, platform, party, voice, when, note, status. No ids or gaming IDs                                                                                     |
@@ -317,17 +319,17 @@ gamer profile. Make an account an admin with
 `pnpm --filter @app/api admin:grant <email>` (`--revoke` to undo). Every
 action writes an `admin_actions` row.
 
-| Method | Path                             | Purpose                                                                                                          |
-| ------ | -------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| GET    | `/v1/admin/reports?status=open`  | Reports queue with reporter and target. `open` oldest first, others newest first; `limit`/`cursor`               |
-| POST   | `/v1/admin/reports/{id}/resolve` | `{ action: "dismiss" \| "warn" \| "remove_listing" \| "ban", note }` → report. Reporter is told unless dismissed |
-| GET    | `/v1/admin/users?query=&state=`  | Search by username, name or email prefix; `state` = `active` \| `banned` \| `deleted`                            |
-| GET    | `/v1/admin/users/{id}`           | The player drawer: account, main game, last seen, connections, played with, open reports                         |
-| POST   | `/v1/admin/users/{id}/ban`       | `{ reason }`. Signs them out everywhere and removes their live listing                                           |
-| POST   | `/v1/admin/users/{id}/unban`     | `{ note? }`                                                                                                      |
-| POST   | `/v1/admin/listings/{id}/remove` | `{ note? }` → `204`                                                                                              |
-| PATCH  | `/v1/admin/games/{id}`           | `{ isLaunch }` → `204`. Puts a game on Find Players or takes it off                                              |
-| GET    | `/v1/admin/metrics?from=&to=`    | `{ listings, listingsWithRequest, listingsPlayed, playedRate, weeklyActive }`, default the last 30 days          |
+| Method | Path                             | Purpose                                                                                                                                                         |
+| ------ | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/v1/admin/reports?status=open`  | Reports queue with reporter and target. `open` oldest first, others newest first; `limit`/`cursor`                                                              |
+| POST   | `/v1/admin/reports/{id}/resolve` | `{ action: "dismiss" \| "warn" \| "remove_listing" \| "ban", note }` → report. Reporter is told unless dismissed                                                |
+| GET    | `/v1/admin/users?query=&state=`  | Search by username, name or email prefix; `state` = `active` \| `banned` \| `deleted`                                                                           |
+| GET    | `/v1/admin/users/{id}`           | The player drawer: account, main game, last seen, connections, played with, open reports                                                                        |
+| POST   | `/v1/admin/users/{id}/ban`       | `{ reason }`. Signs them out everywhere and removes their live listing                                                                                          |
+| POST   | `/v1/admin/users/{id}/unban`     | `{ note? }`                                                                                                                                                     |
+| POST   | `/v1/admin/listings/{id}/remove` | `{ note? }` → `204`                                                                                                                                             |
+| PATCH  | `/v1/admin/games/{id}`           | `{ isLaunch }` → `204`. Puts a game on Find Players or takes it off                                                                                             |
+| GET    | `/v1/admin/metrics?from=&to=`    | `{ listings, listingsWithRequest, listingsPlayed, playedRate, weeklyActive, waitlist: [{ topic, count }] }`, default the last 30 days; the waitlist is all time |
 
 ## Screen → endpoint map (prototype "rally")
 

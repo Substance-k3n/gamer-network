@@ -1,4 +1,14 @@
-import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import {
   BeforeOnboarding,
@@ -8,7 +18,7 @@ import {
 } from '../auth/auth.decorators.js';
 import type { User } from '../auth/sessions.service.js';
 import { notFound } from '../common/app-error.js';
-import { CreateListingBody, ListingFeedQuery } from './listings.body.js';
+import { CreateListingBody, ListingFeedQuery, UpdateListingBody } from './listings.body.js';
 import {
   ListingDto,
   ListingPageDto,
@@ -23,7 +33,7 @@ import { Idempotent } from '../idempotency/idempotency.js';
 const listingId = new ParseUUIDPipe({ exceptionFactory: () => notFound('That listing') });
 
 // Operation ids: listingsFeed, listingsCreate, listingsStats, listingsGet,
-// listingsClose, myListingGet, publicListingsGet.
+// listingsUpdate, listingsClose, myListingGet, publicListingsGet.
 
 @ApiTags('listings')
 @ApiBearerAuth()
@@ -59,6 +69,17 @@ export class ListingsController {
   @ApiOkResponse({ type: ListingDto })
   get(@CurrentUser() user: User, @Param('id', listingId) id: string): Promise<ListingDto> {
     return this.listings.get(user, id);
+  }
+
+  /** Fix a live listing: voice, style, when, note. Owner only; 409 listing_not_live once it has ended. */
+  @Patch(':id')
+  @ApiOkResponse({ type: ListingDto })
+  update(
+    @CurrentUser() user: User,
+    @Param('id', listingId) id: string,
+    @Body() body: UpdateListingBody,
+  ): Promise<ListingDto> {
+    return this.listings.update(user, id, body);
   }
 
   /** Owner only. 409 listing_not_live once it has ended. */

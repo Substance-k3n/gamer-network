@@ -72,7 +72,9 @@ describe('GET /v1/me', () => {
       stats: { connections: 0, games: 0, playedWith: 0 },
       relationship: 'self',
       incomingRequestId: null,
+      outgoingRequestId: null,
       onboardedAt: null,
+      waitlist: [],
     });
   });
 

@@ -4,15 +4,24 @@ What the mobile app needs that `apps/api` doesn't offer yet, found while
 wiring every endpoint in `packages/api-spec/openapi.json` into
 `apps/mobile`. Everything else the app uses exists and is integrated.
 
-Last checked: 2026-10-13, against the spec on `dev`.
+Last checked: 2026-10-15, against the spec on `dev`.
 
 ## API gaps
 
-| #   | What the app needs                                    | What happens now                                                                                                                                                            | Suggested change                                                                         |
-| --- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| 1   | Withdraw my request from someone's profile            | `Profile` says `relationship: outgoing_request` but not which request, so the app lists `GET /connection-requests?direction=outgoing` and finds it by user. One extra call. | `outgoingRequestId` on `Profile`, next to `incomingRequestId`.                           |
-| 2   | Show "You're on the list ✓" on Groups after a restart | `POST /waitlist` has no read side; the app forgets after it closes and shows "Notify me" again (joining twice is harmless).                                                 | `waitlist: string[]` (topics joined) on `Me`, or `GET /v1/waitlist`.                     |
-| 3   | Fix a typo in a live listing                          | Not possible: close it and post again, which resets its requests and share link.                                                                                            | `PATCH /v1/listings/{id}` for `note`, `voice`, `playWhen`. Fine to leave out of the MVP. |
+Closed on 2026-10-15 (`feature/api-missing-fields`):
+
+- `outgoingRequestId` on `Profile`: withdraw from someone's profile in one
+  call.
+- `waitlist` on `Me`: Groups keeps "You're on the list ✓" after a restart.
+- `username` on `POST /v1/auth/login`: the prototype's "Email or username"
+  login field.
+- `waitlist` counts on `GET /v1/admin/metrics`: the admin Overview shows
+  which groups people want (PRD: the waitlist "tells us which groups to
+  launch").
+- `PATCH /v1/listings/{id}` (`voice`, `style`, `playWhen`, `note`): fix a
+  live listing without closing it, so its requests and link stay.
+
+The apps don't use these yet; wiring them is the next PR.
 
 ## Data gaps (seed, not API)
 

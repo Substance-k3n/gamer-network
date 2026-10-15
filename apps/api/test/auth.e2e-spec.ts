@@ -104,6 +104,21 @@ describe('log in', () => {
     await me(res.body.token).expect(200);
   });
 
+  it('signs in with the username instead of the email', async () => {
+    const p = await signup();
+    const res = await http()
+      .post('/v1/auth/login')
+      .send({ username: p.username.toUpperCase(), password: p.password })
+      .expect(200);
+    expect(res.body.user.email).toBe(p.email);
+    const wrong = await http()
+      .post('/v1/auth/login')
+      .send({ username: p.username, password: 'wrong password' })
+      .expect(401);
+    expect(wrong.body.error.code).toBe('wrong_credentials');
+    await http().post('/v1/auth/login').send({ password: p.password }).expect(422);
+  });
+
   it('gives the same answer for a wrong password and an unknown email', async () => {
     const p = await signup();
     const wrong = await http()

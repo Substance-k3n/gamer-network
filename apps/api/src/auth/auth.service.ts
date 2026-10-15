@@ -74,7 +74,12 @@ export class AuthService {
   }
 
   async login(body: LoginBody, userAgent?: string): Promise<AuthResponse> {
-    const wait = this.throttle.lockedFor(body.email);
+    const user = body.email
+      ? await this.findByEmail(body.email)
+      : await this.db.query.users.findFirst({ where: eq(users.username, body.username!) });
+    // Throttled per account, whichever way it's named.
+    const key = user?.email ?? body.email ?? `@${body.username}`;
+    const wait = this.throttle.lockedFor(key);
     if (wait > 0) {
       throw new AppError(
         HttpStatus.TOO_MANY_REQUESTS,
@@ -83,20 +88,19 @@ export class AuthService {
       );
     }
 
-    const user = await this.findByEmail(body.email);
     if (!user?.passwordHash || user.deletedAt) {
       await burnPasswordCheck(body.password);
-      this.throttle.fail(body.email);
+      this.throttle.fail(key);
       throw wrongCredentials();
     }
     if (!(await verifyPassword(user.passwordHash, body.password))) {
-      this.throttle.fail(body.email);
+      this.throttle.fail(key);
       throw wrongCredentials();
     }
     if (user.bannedAt)
       throw new AppError(HttpStatus.FORBIDDEN, 'banned', 'This account has been banned.');
 
-    this.throttle.succeed(body.email);
+    this.throttle.succeed(key);
     return this.issue(user, false, userAgent);
   }
 

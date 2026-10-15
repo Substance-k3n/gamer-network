@@ -136,6 +136,12 @@ export class MetricsQuery {
   to?: Date;
 }
 
+export class WaitlistCountDto {
+  /** "groups" for the Groups "Notify me" button. */
+  topic: string;
+  count: number;
+}
+
 /** The MVP's numbers for listings created in [from, to) (docs/PRD.md). */
 export class MetricsDto {
   from: Date;
@@ -149,4 +155,6 @@ export class MetricsDto {
   playedRate: number;
   /** People active in the 7 days before `to`. */
   weeklyActive: number;
+  /** Everyone who tapped "Notify me", per topic, all time; most wanted first. */
+  waitlist: WaitlistCountDto[];
 }

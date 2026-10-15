@@ -1591,6 +1591,60 @@
         "tags": [
           "listings"
         ]
+      },
+      "patch": {
+        "operationId": "listingsUpdate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateListingBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Fix a live listing: voice, style, when, note. Owner only; 409 listing_not_live once it has ended.",
+        "tags": [
+          "listings"
+        ]
       }
     },
     "/v1/listings/{id}/close": {
@@ -3667,6 +3721,13 @@
             "format": "date-time",
             "type": "string"
           },
+          "waitlist": {
+            "description": "Waitlist topics joined (POST /v1/waitlist), e.g. \"groups\".",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "bio": {
             "type": "string",
             "nullable": true
@@ -3698,6 +3759,11 @@
             "type": "string",
             "nullable": true,
             "description": "Set when relationship is incoming_request, to accept from the profile."
+          },
+          "outgoingRequestId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Set when relationship is outgoing_request, to withdraw from the profile."
           },
           "id": {
             "type": "string"
@@ -3750,12 +3816,14 @@
           "country",
           "onboardedAt",
           "createdAt",
+          "waitlist",
           "bio",
           "statusUntil",
           "games",
           "gamingIds",
           "stats",
           "incomingRequestId",
+          "outgoingRequestId",
           "id",
           "username",
           "displayName",
@@ -3791,7 +3859,14 @@
         "properties": {
           "email": {
             "type": "string",
+            "description": "Required unless `username` is sent.",
             "format": "email"
+          },
+          "username": {
+            "type": "string",
+            "description": "Instead of `email`.",
+            "minLength": 1,
+            "maxLength": 30
           },
           "password": {
             "type": "string",
@@ -3800,7 +3875,6 @@
           }
         },
         "required": [
-          "email",
           "password"
         ]
       },
@@ -4437,6 +4511,11 @@
             "nullable": true,
             "description": "Set when relationship is incoming_request, to accept from the profile."
           },
+          "outgoingRequestId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Set when relationship is outgoing_request, to withdraw from the profile."
+          },
           "id": {
             "type": "string"
           },
@@ -4487,6 +4566,7 @@
           "gamingIds",
           "stats",
           "incomingRequestId",
+          "outgoingRequestId",
           "id",
           "username",
           "displayName",
@@ -4830,6 +4910,39 @@
         "required": [
           "lookingNow"
         ]
+      },
+      "UpdateListingBody": {
+        "type": "object",
+        "properties": {
+          "voice": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Voice"
+              }
+            ]
+          },
+          "style": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayStyle"
+              }
+            ]
+          },
+          "playWhen": {
+            "description": "Moves the start and the end, keeping durationHours, counted from now.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayWhen"
+              }
+            ]
+          },
+          "note": {
+            "type": "string",
+            "nullable": true,
+            "description": "null or \"\" clears it.",
+            "maxLength": 140
+          }
+        }
       },
       "MyListingDto": {
         "type": "object",
@@ -5632,6 +5745,22 @@
           "isLaunch"
         ]
       },
+      "WaitlistCountDto": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string",
+            "description": "\"groups\" for the Groups \"Notify me\" button."
+          },
+          "count": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "topic",
+          "count"
+        ]
+      },
       "MetricsDto": {
         "type": "object",
         "properties": {
@@ -5661,6 +5790,13 @@
           "weeklyActive": {
             "type": "number",
             "description": "People active in the 7 days before `to`."
+          },
+          "waitlist": {
+            "description": "Everyone who tapped \"Notify me\", per topic, all time; most wanted first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WaitlistCountDto"
+            }
           }
         },
         "required": [
@@ -5670,7 +5806,8 @@
           "listingsWithRequest",
           "listingsPlayed",
           "playedRate",
-          "weeklyActive"
+          "weeklyActive",
+          "waitlist"
         ]
       },
       "ErrorBody": {

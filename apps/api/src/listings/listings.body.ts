@@ -66,6 +66,32 @@ export class CreateListingBody {
   note?: string | null;
 }
 
+/** Owner fixes to a live listing; send only what changes. */
+export class UpdateListingBody {
+  @ApiPropertyOptional({ enum: VOICES, enumName: 'Voice' })
+  @IsOptional()
+  @IsIn(VOICES)
+  voice?: Voice;
+
+  @ApiPropertyOptional({ enum: PLAY_STYLES, enumName: 'PlayStyle' })
+  @IsOptional()
+  @IsIn(PLAY_STYLES)
+  style?: PlayStyle;
+
+  /** Moves the start and the end, keeping durationHours, counted from now. */
+  @ApiPropertyOptional({ enum: PLAY_WHENS, enumName: 'PlayWhen' })
+  @IsOptional()
+  @IsIn(PLAY_WHENS)
+  playWhen?: PlayWhen;
+
+  /** null or "" clears it. */
+  @IsOptional()
+  @Transform(trimOrNull)
+  @IsString()
+  @MaxLength(140, { message: 'Keep it under 140 characters' })
+  note?: string | null;
+}
+
 export const FEED_WHENS = ['now', 'tonight'] as const;
 
 export class ListingFeedQuery extends PageQuery {

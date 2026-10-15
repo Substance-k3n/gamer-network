@@ -174,6 +174,7 @@ describe('reports and the waitlist', () => {
     await me.post('/v1/waitlist', { topic: 'groups' }).expect(204);
     const rows = await conn.db.select().from(waitlist).where(eq(waitlist.userId, me.id));
     expect(rows).toHaveLength(1);
+    expect((await me.get('/v1/me').expect(200)).body.waitlist).toEqual(['groups']);
   });
 });
 

@@ -1,6 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsEmail, IsIn, IsOptional, IsString, Length, Matches, MaxLength } from 'class-validator';
+import {
+  IsEmail,
+  IsIn,
+  IsOptional,
+  IsString,
+  Length,
+  Matches,
+  MaxLength,
+  ValidateIf,
+} from 'class-validator';
 import { AGE_RANGES, type AgeRange, MeDto } from '../me/me.dto.js';
 
 const trimLower = ({ value }: { value: unknown }) =>
@@ -38,10 +47,20 @@ export class SignupBody extends PasswordField {
   ageRange: AgeRange;
 }
 
+/** Sign in with your email or your username, and your password. */
 export class LoginBody {
+  /** Required unless `username` is sent. */
+  @ValidateIf((o: LoginBody) => o.username === undefined)
   @Transform(trimLower)
   @IsEmail({}, { message: 'Enter a valid email' })
-  email: string;
+  email?: string;
+
+  /** Instead of `email`. */
+  @ValidateIf((o: LoginBody) => o.email === undefined)
+  @Transform(trimLower)
+  @IsString()
+  @Length(1, 30)
+  username?: string;
 
   @IsString()
   @Length(1, 72)

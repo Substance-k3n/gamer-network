@@ -67,6 +67,7 @@ async function player({ city = 'Addis Ababa', verified = true, rankTier = 3 }: O
     get: (path: string) => http().get(path).set(auth),
     post: (path: string, body?: object) => http().post(path).set(auth).send(body),
     put: (path: string, body: object) => http().put(path).set(auth).send(body),
+    patch: (path: string, body: object) => http().patch(path).set(auth).send(body),
   };
 }
 
@@ -249,6 +250,39 @@ describe('one listing', () => {
     );
     expect((await owner.post(`/v1/listings/${l.id}/close`).expect(200)).body.status).toBe('closed');
     await owner.post(`/v1/listings/${l.id}/close`).expect(409);
+  });
+
+  it('the owner fixes a live listing without reposting it', async () => {
+    const owner = await player();
+    const other = await player();
+    const l = await post(owner, { playWhen: 'now', durationHours: 2, note: 'old' });
+    const res = await owner
+      .patch(`/v1/listings/${l.id}`, { voice: 'optional', note: '  Chill games only ' })
+      .expect(200);
+    expect(res.body).toMatchObject({
+      id: l.id,
+      voice: 'optional',
+      note: 'Chill games only',
+      style: l.style,
+      startsAt: l.startsAt,
+      expiresAt: l.expiresAt,
+    });
+    // Moving it keeps its length, counted from now.
+    const moved = (await owner.patch(`/v1/listings/${l.id}`, { playWhen: 'weekend' }).expect(200))
+      .body;
+    expect(moved.playWhen).toBe('weekend');
+    expect(new Date(moved.expiresAt).getTime() - new Date(moved.startsAt).getTime()).toBe(
+      2 * 3600_000,
+    );
+    expect((await owner.patch(`/v1/listings/${l.id}`, { note: null }).expect(200)).body.note).toBe(
+      null,
+    );
+    await owner.patch(`/v1/listings/${l.id}`, { voice: 'loud' }).expect(422);
+    expect(
+      (await other.patch(`/v1/listings/${l.id}`, { note: 'mine now' }).expect(403)).body.error.code,
+    ).toBe('not_owner');
+    await owner.post(`/v1/listings/${l.id}/close`).expect(200);
+    await owner.patch(`/v1/listings/${l.id}`, { note: 'too late' }).expect(409);
   });
 
   it('GET /v1/me/listing is your live listing or null', async () => {

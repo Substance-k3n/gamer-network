@@ -18,6 +18,9 @@ export class MeDto extends ProfileDto {
   /** Null until "Go live"; route to onboarding while null. */
   onboardedAt: Date | null;
   createdAt: Date;
+
+  /** Waitlist topics joined (POST /v1/waitlist), e.g. "groups". */
+  waitlist: string[];
 }
 
 export class UsernameAvailability {

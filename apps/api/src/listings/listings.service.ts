@@ -35,7 +35,7 @@ import { env } from '../env.js';
 import { ProfileService } from '../me/profile.service.js';
 import { isLive, visibleTo } from '../users/visibility.js';
 import { listingTimes } from './listing-times.js';
-import type { CreateListingBody, ListingFeedQuery } from './listings.body.js';
+import type { CreateListingBody, ListingFeedQuery, UpdateListingBody } from './listings.body.js';
 import type {
   Duration,
   ListingDto,
@@ -57,6 +57,9 @@ const LIVE = ['open', 'full'] as const;
 /** open/full turn into expired the moment expiresAt passes, whether or not the job has run. */
 const effectiveStatus = (status: ListingStatus, expiresAt: Date, now: Date): ListingStatus =>
   (status === 'open' || status === 'full') && expiresAt <= now ? 'expired' : status;
+
+const notLive = () =>
+  new AppError(HttpStatus.CONFLICT, 'listing_not_live', 'That listing has already ended.');
 
 @Injectable()
 export class ListingsService {
@@ -278,7 +281,37 @@ export class ListingsService {
     return listing;
   }
 
+  async update(viewer: User, id: string, body: UpdateListingBody): Promise<ListingDto> {
+    const listing = await this.ownLive(viewer, id);
+    const times =
+      body.playWhen && body.playWhen !== listing.playWhen
+        ? listingTimes(body.playWhen, listing.durationHours, new Date())
+        : undefined;
+    await this.db
+      .update(listings)
+      .set({
+        voice: body.voice,
+        style: body.style,
+        playWhen: body.playWhen,
+        startsAt: times?.startsAt,
+        expiresAt: times?.expiresAt,
+        note: body.note === undefined ? undefined : body.note,
+      })
+      .where(and(eq(listings.id, id), inArray(listings.status, LIVE)));
+    return this.get(viewer, id);
+  }
+
   async close(viewer: User, id: string): Promise<ListingDto> {
+    await this.ownLive(viewer, id);
+    await this.db
+      .update(listings)
+      .set({ status: 'closed', closedAt: new Date() })
+      .where(and(eq(listings.id, id), inArray(listings.status, LIVE)));
+    return this.get(viewer, id);
+  }
+
+  /** The viewer's listing, still open or full: 403 not_owner, 409 listing_not_live. */
+  private async ownLive(viewer: User, id: string): Promise<ListingDto> {
     const listing = await this.get(viewer, id);
     if (listing.owner.id !== viewer.id) {
       throw new AppError(
@@ -287,18 +320,8 @@ export class ListingsService {
         'Only the person who posted it can close it.',
       );
     }
-    if (listing.status !== 'open' && listing.status !== 'full') {
-      throw new AppError(
-        HttpStatus.CONFLICT,
-        'listing_not_live',
-        'That listing has already ended.',
-      );
-    }
-    await this.db
-      .update(listings)
-      .set({ status: 'closed', closedAt: new Date() })
-      .where(and(eq(listings.id, id), inArray(listings.status, LIVE)));
-    return this.get(viewer, id);
+    if (listing.status !== 'open' && listing.status !== 'full') throw notLive();
+    return listing;
   }
 
   /** Your open or full listing, if it hasn't run out. */
