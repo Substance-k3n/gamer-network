@@ -18,3 +18,13 @@ export class AppError extends HttpException {
 
 export const notFound = (what = 'That') =>
   new AppError(HttpStatus.NOT_FOUND, 'not_found', `${what} doesn't exist or isn't visible to you.`);
+
+/** 429 rate_limited with a Retry-After header (docs/FEED_AND_GROUPS_API.md "Rate limits"). */
+export class RateLimited extends AppError {
+  constructor(
+    message: string,
+    readonly retryAfterSeconds: number,
+  ) {
+    super(HttpStatus.TOO_MANY_REQUESTS, 'rate_limited', message);
+  }
+}

@@ -117,6 +117,7 @@ lib/src/model/set_status_body.dart
 lib/src/model/set_tags_body.dart
 lib/src/model/signup_body.dart
 lib/src/model/unread_count_dto.dart
+lib/src/model/update_listing_body.dart
 lib/src/model/update_me_body.dart
 lib/src/model/user_card_dto.dart
 lib/src/model/user_game_dto.dart
@@ -126,5 +127,6 @@ lib/src/model/user_search_response.dart
 lib/src/model/username_availability.dart
 lib/src/model/voice.dart
 lib/src/model/waitlist_body.dart
+lib/src/model/waitlist_count_dto.dart
 lib/src/serializers.dart
 pubspec.yaml

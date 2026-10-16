@@ -107,6 +107,7 @@ import 'package:api_client/src/model/set_status_body.dart';
 import 'package:api_client/src/model/set_tags_body.dart';
 import 'package:api_client/src/model/signup_body.dart';
 import 'package:api_client/src/model/unread_count_dto.dart';
+import 'package:api_client/src/model/update_listing_body.dart';
 import 'package:api_client/src/model/update_me_body.dart';
 import 'package:api_client/src/model/user_card_dto.dart';
 import 'package:api_client/src/model/user_game_dto.dart';
@@ -116,6 +117,7 @@ import 'package:api_client/src/model/user_search_response.dart';
 import 'package:api_client/src/model/username_availability.dart';
 import 'package:api_client/src/model/voice.dart';
 import 'package:api_client/src/model/waitlist_body.dart';
+import 'package:api_client/src/model/waitlist_count_dto.dart';
 
 part 'serializers.g.dart';
 
@@ -213,6 +215,7 @@ part 'serializers.g.dart';
   SetTagsBody,
   SignupBody,
   UnreadCountDto,
+  UpdateListingBody,
   UpdateMeBody,
   UserCardDto,
   UserGameDto,
@@ -222,6 +225,7 @@ part 'serializers.g.dart';
   UsernameAvailability,
   Voice,
   WaitlistBody,
+  WaitlistCountDto,
 ])
 Serializers serializers = (_$serializers.toBuilder()
       ..addBuilderFactory(
@@ -247,6 +251,10 @@ Serializers serializers = (_$serializers.toBuilder()
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(AdminUserDto)]),
         () => ListBuilder<AdminUserDto>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(WaitlistCountDto)]),
+        () => ListBuilder<WaitlistCountDto>(),
       )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(GameDto)]),

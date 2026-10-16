@@ -7,10 +7,12 @@ import type { Db, Tx } from '../db/db.js';
 import { DB } from '../db/db.module.js';
 import {
   blocks,
+  comments,
   connectionRequests,
   connections,
   listings,
   playInvites,
+  posts,
   reports,
   users,
   waitlist,
@@ -114,10 +116,33 @@ export class SafetyService {
         });
       }
     }
+    const wrong = (field: string, message: string) =>
+      new AppError(HttpStatus.UNPROCESSABLE_ENTITY, 'validation_failed', 'Wrong item.', {
+        [field]: message,
+      });
+    if ([body.listingId, body.postId, body.commentId].filter(Boolean).length > 1) {
+      throw wrong('postId', 'Report one thing at a time');
+    }
+    if (body.postId) {
+      const post = await this.db.query.posts.findFirst({ where: eq(posts.id, body.postId) });
+      if (!post || post.authorId !== target.id) {
+        throw wrong('postId', "Not one of this player's posts");
+      }
+    }
+    if (body.commentId) {
+      const comment = await this.db.query.comments.findFirst({
+        where: eq(comments.id, body.commentId),
+      });
+      if (!comment || comment.authorId !== target.id) {
+        throw wrong('commentId', "Not one of this player's comments");
+      }
+    }
     await this.db.insert(reports).values({
       reporterId: me.id,
       targetUserId: target.id,
       listingId: body.listingId ?? null,
+      postId: body.postId ?? null,
+      commentId: body.commentId ?? null,
       reason: body.reason,
       details: body.details ?? null,
     });
@@ -174,6 +199,14 @@ export class SafetyService {
       await tx
         .delete(connections)
         .where(or(eq(connections.userAId, me.id), eq(connections.userBId, me.id)));
+      await tx
+        .update(posts)
+        .set({ status: 'deleted' })
+        .where(and(eq(posts.authorId, me.id), eq(posts.status, 'live')));
+      await tx
+        .update(comments)
+        .set({ status: 'deleted' })
+        .where(and(eq(comments.authorId, me.id), eq(comments.status, 'live')));
     });
     await this.sessions.revokeAll(me.id);
   }

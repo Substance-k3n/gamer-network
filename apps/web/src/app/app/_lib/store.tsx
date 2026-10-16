@@ -61,7 +61,9 @@ export function mayShow(path: string, me: Me | null) {
 }
 
 type Sheet =
-  { kind: 'listing' } | { kind: 'invite'; userId: string; name: string; games: string[] };
+  | { kind: 'listing' }
+  | { kind: 'post' }
+  | { kind: 'invite'; userId: string; name: string; games: string[] };
 
 type Store = {
   ready: boolean;

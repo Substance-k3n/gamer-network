@@ -18,6 +18,9 @@ export class NotificationDto {
   connectionRequestId: string | null;
   playInviteId: string | null;
   checkInId: string | null;
+  /** The post it is about (post_gg, post_comment, comment_reply, mention). */
+  postId: string | null;
+  commentId: string | null;
   /** Push title. */
   title: string;
   /** Ready to show, e.g. "Hana wants to play PUBG Mobile with you". */

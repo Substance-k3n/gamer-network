@@ -62,6 +62,10 @@ export const notificationType = pgEnum('notification_type', [
   'check_in_due',
   'listing_expiring',
   'report_resolved',
+  'post_gg',
+  'post_comment',
+  'comment_reply',
+  'mention',
 ]);
 export const reportReason = pgEnum('report_reason', [
   'harassment',
@@ -81,4 +85,23 @@ export const adminActionKind = pgEnum('admin_action_kind', [
   'dismiss_report',
   'warn',
   'set_launch',
+  'remove_post',
+  'remove_comment',
 ]);
+// docs/FEED_AND_GROUPS_API.md "Data model".
+export const postType = pgEnum('post_type', [
+  'discussion',
+  'gameplay',
+  'recruitment',
+  'poll',
+  'milestone',
+  'question',
+  'looking_for_players',
+  'tip_guide',
+  'review',
+  'event',
+  'meme',
+]);
+export const postAudience = pgEnum('post_audience', ['everyone', 'connections']);
+/** deleted: by its author. removed: by an admin. */
+export const contentStatus = pgEnum('content_status', ['live', 'deleted', 'removed']);

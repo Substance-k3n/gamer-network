@@ -10,6 +10,7 @@ import {
   listings,
   notifications,
   playInvites,
+  postGg,
   sessions,
   users,
 } from '../db/schema/index.js';
@@ -47,7 +48,21 @@ export class NotificationsService {
   /** Notifications with what their text needs: actor, and the game of their listing or invite. */
   private withFacts(where: SQL | undefined) {
     return this.db
-      .select({ n: notifications, actor: users, gameName: games.name })
+      .select({
+        n: notifications,
+        actor: users,
+        gameName: games.name,
+        // post_gg: everyone else who GG'd between it being written and being read.
+        others: sql<number>`case when ${notifications.type} = 'post_gg' then (
+          select count(*)::int from ${postGg}
+          inner join ${users} as gg_user on gg_user.id = ${postGg.userId}
+          where ${postGg.postId} = ${notifications.postId}
+            and ${postGg.userId} is distinct from ${notifications.actorId}
+            and ${postGg.createdAt} >= ${notifications.createdAt}
+            and (${notifications.readAt} is null or ${postGg.createdAt} <= ${notifications.readAt})
+            and gg_user.onboarded_at is not null and gg_user.banned_at is null and gg_user.deleted_at is null
+        ) else 0 end`,
+      })
       .from(notifications)
       .leftJoin(users, eq(users.id, notifications.actorId))
       .leftJoin(listings, eq(listings.id, notifications.listingId))
@@ -64,6 +79,9 @@ export class NotificationsService {
       gameName: r.gameName,
       listingId: r.n.listingId,
       checkInId: r.n.checkInId,
+      postId: r.n.postId,
+      commentId: r.n.commentId,
+      others: r.others,
     });
   }
 
@@ -90,6 +108,8 @@ export class NotificationsService {
       connectionRequestId: r.n.connectionRequestId,
       playInviteId: r.n.playInviteId,
       checkInId: r.n.checkInId,
+      postId: r.n.postId,
+      commentId: r.n.commentId,
       ...this.text(r),
       readAt: r.n.readAt,
       createdAt: r.n.createdAt,

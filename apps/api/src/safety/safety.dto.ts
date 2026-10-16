@@ -29,6 +29,16 @@ export class ReportBody {
   @IsUUID()
   listingId?: string;
 
+  /** When reporting a post: one of their posts. */
+  @IsOptional()
+  @IsUUID()
+  postId?: string;
+
+  /** When reporting a comment: one of their comments. */
+  @IsOptional()
+  @IsUUID()
+  commentId?: string;
+
   @ApiProperty({ enum: REPORT_REASONS, enumName: 'ReportReason' })
   @IsIn(REPORT_REASONS)
   reason: ReportReason;

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, query, type AdminReport, type Page, type ResolveAction } from '../api';
-import { ago, REASON, SEV_ORDER, severity, STATE_LABEL } from '../data';
+import { ago, REASON, SEV_ORDER, severity, STATE_LABEL, subject } from '../data';
 import type { Admin } from '../state';
 import { Chip, btnPrimary, btnSecondary } from '../ui';
 import { ACC, C1, DOTO, LINE, MUT, PANEL, SEV, TX, card, grot, label, mono, pill } from '../tokens';
@@ -13,6 +13,8 @@ const DONE: Record<ResolveAction, string> = {
   dismiss: 'Dismissed',
   warn: 'User warned',
   remove_listing: 'Listing removed',
+  remove_post: 'Post removed',
+  remove_comment: 'Comment removed',
   ban: 'User banned',
 };
 
@@ -158,7 +160,7 @@ export function Reports({ admin }: { admin: Admin }) {
                       textOverflow: 'ellipsis',
                     }}
                   >
-                    {r.listingId ? 'Listing' : 'Profile'} by @{r.target.username}
+                    {subject(r).kind} by @{r.target.username}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
@@ -191,7 +193,7 @@ export function Reports({ admin }: { admin: Admin }) {
                 {severity(rep)}
               </span>
               <span style={{ font: mono(400, 11), color: MUT }}>
-                {rep.listingId ? 'Listing' : 'Profile'} · {ago(rep.createdAt)}
+                {subject(rep).kind} · {ago(rep.createdAt)}
               </span>
               <span style={{ flex: 1 }} />
               <span style={{ font: mono(700, 11), color: stFg(rep) }}>{stLabel(rep)}</span>
@@ -210,6 +212,24 @@ export function Reports({ admin }: { admin: Admin }) {
                 gap: 8,
               }}
             >
+              {rep.excerpt !== null && (
+                <>
+                  <div style={{ ...label, letterSpacing: '.04em' }}>
+                    WHAT WAS REPORTED · {subject(rep).kind.toUpperCase()}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 15,
+                      lineHeight: 1.45,
+                      textWrap: 'pretty',
+                      whiteSpace: 'pre-wrap',
+                      overflowWrap: 'anywhere',
+                    }}
+                  >
+                    {rep.excerpt}
+                  </div>
+                </>
+              )}
               <div style={{ ...label, letterSpacing: '.04em' }}>WHAT THE REPORTER WROTE</div>
               <div style={{ fontSize: 15, lineHeight: 1.45, textWrap: 'pretty' }}>
                 {rep.details ? `“${rep.details}”` : <span style={{ color: MUT }}>No details.</span>}
@@ -276,14 +296,14 @@ export function Reports({ admin }: { admin: Admin }) {
                   />
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {rep.listingId && (
+                  {subject(rep).remove && (
                     <button
                       type="button"
                       disabled={busy}
-                      onClick={() => resolve(rep, 'remove_listing')}
+                      onClick={() => resolve(rep, subject(rep).remove!)}
                       style={btnPrimary}
                     >
-                      Remove listing
+                      Remove {subject(rep).kind.toLowerCase()}
                     </button>
                   )}
                   <button
@@ -298,7 +318,7 @@ export function Reports({ admin }: { admin: Admin }) {
                     type="button"
                     disabled={busy}
                     onClick={() => resolve(rep, 'ban')}
-                    style={rep.listingId ? btnSecondary : btnPrimary}
+                    style={subject(rep).remove ? btnSecondary : btnPrimary}
                   >
                     Ban user
                   </button>

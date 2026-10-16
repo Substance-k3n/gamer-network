@@ -52,6 +52,7 @@ export default function Alerts() {
     const [kind, id] = route.split('/').filter(Boolean);
     if (kind === 'players' && id) router.push(`/app/players/${id}`);
     else if (kind === 'listings' && id) router.push(`/app/listings/${id}`);
+    else if (kind === 'posts' && id) router.push(`/app/posts/${id}`);
     else if (kind === 'check-ins') router.push('/app');
   };
 
@@ -114,7 +115,7 @@ export default function Alerts() {
         ))}
         <Label style={{ paddingLeft: 6, marginTop: 4 }}>ACTIVITY</Label>
         {notes.loaded && !notes.data?.length && (
-          <EmptyNote pad={18}>Requests, accepts and invites show up here.</EmptyNote>
+          <EmptyNote pad={18}>Requests, invites, comments and GGs show up here.</EmptyNote>
         )}
         {!!notes.data?.length && (
           <Rows>

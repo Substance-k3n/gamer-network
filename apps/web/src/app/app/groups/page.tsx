@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
 import { api } from '../_lib/api';
 import { Header } from '../_lib/shell';
 import { useApp } from '../_lib/store';
@@ -9,14 +8,15 @@ import { Card, EmptyNote, Icon, Label, Pill } from '../_lib/ui';
 
 /** Groups are "coming soon" in the MVP (docs/PRD.md); the waitlist says which to launch. */
 export default function Groups() {
-  const { run, toast, busy } = useApp();
-  const [on, setOn] = useState(false);
+  const { run, toast, busy, me, setMe } = useApp();
+  // Me.waitlist remembers it across sessions and devices.
+  const on = me?.waitlist.includes('groups') ?? false;
   const join = async () => {
     const ok = await run(() =>
       api('waitlist', { method: 'POST', body: { topic: 'groups' } }).then(() => true),
     );
     if (!ok) return;
-    setOn(true);
+    if (me) setMe({ ...me, waitlist: [...me.waitlist, 'groups'] });
     toast('We’ll let you know when Groups open');
   };
   return (

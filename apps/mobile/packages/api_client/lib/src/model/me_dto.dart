@@ -36,12 +36,14 @@ part 'me_dto.g.dart';
 /// * [country]
 /// * [onboardedAt] - Null until \"Go live\"; route to onboarding while null.
 /// * [createdAt]
+/// * [waitlist] - Waitlist topics joined (POST /v1/waitlist), e.g. \"groups\".
 /// * [bio]
 /// * [statusUntil] - When available_tonight or playing clears itself.
 /// * [games] - In profile order.
 /// * [gamingIds] - Only the ones you may see.
 /// * [stats]
 /// * [incomingRequestId] - Set when relationship is incoming_request, to accept from the profile.
+/// * [outgoingRequestId] - Set when relationship is outgoing_request, to withdraw from the profile.
 /// * [id]
 /// * [username]
 /// * [displayName]
@@ -97,6 +99,10 @@ abstract class MeDto implements Built<MeDto, MeDtoBuilder> {
   @BuiltValueField(wireName: r'createdAt')
   DateTime get createdAt;
 
+  /// Waitlist topics joined (POST /v1/waitlist), e.g. \"groups\".
+  @BuiltValueField(wireName: r'waitlist')
+  BuiltList<String> get waitlist;
+
   @BuiltValueField(wireName: r'bio')
   String? get bio;
 
@@ -118,6 +124,10 @@ abstract class MeDto implements Built<MeDto, MeDtoBuilder> {
   /// Set when relationship is incoming_request, to accept from the profile.
   @BuiltValueField(wireName: r'incomingRequestId')
   String? get incomingRequestId;
+
+  /// Set when relationship is outgoing_request, to withdraw from the profile.
+  @BuiltValueField(wireName: r'outgoingRequestId')
+  String? get outgoingRequestId;
 
   @BuiltValueField(wireName: r'id')
   String get id;
@@ -232,6 +242,11 @@ class _$MeDtoSerializer implements PrimitiveSerializer<MeDto> {
       object.createdAt,
       specifiedType: const FullType(DateTime),
     );
+    yield r'waitlist';
+    yield serializers.serialize(
+      object.waitlist,
+      specifiedType: const FullType(BuiltList, [FullType(String)]),
+    );
     yield r'bio';
     yield object.bio == null
         ? null
@@ -266,6 +281,13 @@ class _$MeDtoSerializer implements PrimitiveSerializer<MeDto> {
         ? null
         : serializers.serialize(
             object.incomingRequestId,
+            specifiedType: const FullType.nullable(String),
+          );
+    yield r'outgoingRequestId';
+    yield object.outgoingRequestId == null
+        ? null
+        : serializers.serialize(
+            object.outgoingRequestId,
             specifiedType: const FullType.nullable(String),
           );
     yield r'id';
@@ -426,6 +448,13 @@ class _$MeDtoSerializer implements PrimitiveSerializer<MeDto> {
           ) as DateTime;
           result.createdAt = valueDes;
           break;
+        case r'waitlist':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(BuiltList, [FullType(String)]),
+          ) as BuiltList<String>;
+          result.waitlist.replace(valueDes);
+          break;
         case r'bio':
           final valueDes = serializers.deserialize(
             value,
@@ -470,6 +499,14 @@ class _$MeDtoSerializer implements PrimitiveSerializer<MeDto> {
           ) as String?;
           if (valueDes == null) continue;
           result.incomingRequestId = valueDes;
+          break;
+        case r'outgoingRequestId':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.outgoingRequestId = valueDes;
           break;
         case r'id':
           final valueDes = serializers.deserialize(

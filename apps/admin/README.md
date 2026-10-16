@@ -26,7 +26,7 @@ needs them. Report severity is worked out from the reason
 | Screen        | Endpoints                                                                            |
 | ------------- | ------------------------------------------------------------------------------------ |
 | Sign in       | `POST /v1/auth/login`; non-admins get `admin_only`                                   |
-| Overview      | `GET /v1/admin/metrics?from=`, the open reports queue                                |
+| Overview      | `GET /v1/admin/metrics?from=` (incl. waitlist counts), the open reports queue        |
 | Reports       | `GET /v1/admin/reports`, `POST /v1/admin/reports/{id}/resolve`                       |
 | Users, drawer | `GET /v1/admin/users`, `GET /v1/admin/users/{id}`, `…/ban`, `…/unban`                |
 | Games & ranks | `GET /v1/games`, `PATCH /v1/admin/games/{id}` (launch switch; the catalog is seeded) |

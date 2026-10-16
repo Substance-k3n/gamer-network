@@ -23,28 +23,31 @@ any migration.
 
 ## Enums
 
-| Enum                 | Values                                                                                                                                    |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `age_range`          | `16_17`, `18_24`, `25_34`, `35_plus`                                                                                                      |
-| `user_role`          | `player`, `admin`                                                                                                                         |
-| `player_status`      | `looking`, `playing`, `available_tonight`, `not_available`                                                                                |
-| `platform`           | `pc`, `playstation`, `xbox`, `mobile`, `switch`                                                                                           |
-| `play_tag`           | `competitive`, `casual`, `fps`, `rpg`, `strategy`, `co_op`, `ranked`, `achievement_hunter`, `story`                                       |
-| `gaming_id_kind`     | `riot`, `steam`, `discord`, `playstation`, `xbox`, `epic`, `ea`, `activision`, `in_game`                                                  |
-| `id_visibility`      | `public`, `connections`                                                                                                                   |
-| `voice`              | `required`, `optional`                                                                                                                    |
-| `play_style`         | `competitive`, `casual`                                                                                                                   |
-| `play_when`          | `now`, `tonight`, `weekend`                                                                                                               |
-| `listing_status`     | `open`, `full`, `closed`, `expired`, `removed`                                                                                            |
-| `request_status`     | `pending`, `accepted`, `declined`, `cancelled`, `expired`                                                                                 |
-| `invite_status`      | `pending`, `accepted`, `declined`, `expired`                                                                                              |
-| `invite_when`        | `now`, `in_30_min`, `tonight`                                                                                                             |
-| `email_code_purpose` | `verify_email`, `reset_password`                                                                                                          |
-| `check_in_answer`    | `played`, `not_yet`, `no`                                                                                                                 |
-| `notification_type`  | `connection_request`, `connection_accepted`, `play_invite`, `play_invite_accepted`, `check_in_due`, `listing_expiring`, `report_resolved` |
-| `report_reason`      | `harassment`, `hate`, `sexual_content`, `underage`, `spam`, `impersonation`, `cheating_or_scam`, `other`                                  |
-| `report_status`      | `open`, `actioned`, `dismissed`                                                                                                           |
-| `admin_action_kind`  | `ban`, `unban`, `remove_listing`, `dismiss_report`, `warn`, `set_launch`                                                                  |
+| Enum                 | Values                                                                                                                                                                                           |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `age_range`          | `16_17`, `18_24`, `25_34`, `35_plus`                                                                                                                                                             |
+| `user_role`          | `player`, `admin`                                                                                                                                                                                |
+| `player_status`      | `looking`, `playing`, `available_tonight`, `not_available`                                                                                                                                       |
+| `platform`           | `pc`, `playstation`, `xbox`, `mobile`, `switch`                                                                                                                                                  |
+| `play_tag`           | `competitive`, `casual`, `fps`, `rpg`, `strategy`, `co_op`, `ranked`, `achievement_hunter`, `story`                                                                                              |
+| `gaming_id_kind`     | `riot`, `steam`, `discord`, `playstation`, `xbox`, `epic`, `ea`, `activision`, `in_game`                                                                                                         |
+| `id_visibility`      | `public`, `connections`                                                                                                                                                                          |
+| `voice`              | `required`, `optional`                                                                                                                                                                           |
+| `play_style`         | `competitive`, `casual`                                                                                                                                                                          |
+| `play_when`          | `now`, `tonight`, `weekend`                                                                                                                                                                      |
+| `listing_status`     | `open`, `full`, `closed`, `expired`, `removed`                                                                                                                                                   |
+| `request_status`     | `pending`, `accepted`, `declined`, `cancelled`, `expired`                                                                                                                                        |
+| `invite_status`      | `pending`, `accepted`, `declined`, `expired`                                                                                                                                                     |
+| `invite_when`        | `now`, `in_30_min`, `tonight`                                                                                                                                                                    |
+| `email_code_purpose` | `verify_email`, `reset_password`                                                                                                                                                                 |
+| `check_in_answer`    | `played`, `not_yet`, `no`                                                                                                                                                                        |
+| `notification_type`  | `connection_request`, `connection_accepted`, `play_invite`, `play_invite_accepted`, `check_in_due`, `listing_expiring`, `report_resolved`, `post_gg`, `post_comment`, `comment_reply`, `mention` |
+| `report_reason`      | `harassment`, `hate`, `sexual_content`, `underage`, `spam`, `impersonation`, `cheating_or_scam`, `other`                                                                                         |
+| `report_status`      | `open`, `actioned`, `dismissed`                                                                                                                                                                  |
+| `post_type`          | `discussion`, `gameplay`, `recruitment`, `poll`, `milestone`, `question`, `looking_for_players`, `tip_guide`, `review`, `event`, `meme`                                                          |
+| `post_audience`      | `everyone`, `connections`                                                                                                                                                                        |
+| `content_status`     | `live`, `deleted` (by its author), `removed` (by an admin, or the post's author for a comment)                                                                                                   |
+| `admin_action_kind`  | `ban`, `unban`, `remove_listing`, `dismiss_report`, `warn`, `set_launch`, `remove_post`, `remove_comment`                                                                                        |
 
 ## Tables
 
@@ -193,11 +196,30 @@ invite nobody answered by then is stale), `responded_at`.
 Unique `(user_id, other_user_id, listing_id)` and
 `(user_id, play_invite_id)`.
 
+### Home feed (ADR-0012)
+
+**`posts`**: `id`, `author_id`, `type` post_type, `game_id` null ("Any
+game"), `text` (1–2000), `audience` post_audience default `everyone`,
+`status` content_status default `live`, `created_at`, `removed_at` /
+`removed_by` null. Indexes `(status, id DESC)` and `(author_id, id DESC)`.
+
+**`comments`**: `id`, `post_id`, `author_id`, `parent_id` null (always a
+top-level comment: one level of replies), `text` (1–500), `status`,
+`created_at`, `removed_at` / `removed_by` null. Indexes `(post_id, id)`
+and `(parent_id, id)`.
+
+**`post_gg`** PK `(post_id, user_id)`, **`comment_gg`** PK
+`(comment_id, user_id)`, **`saved_posts`** PK `(user_id, post_id)` with
+index `(user_id, created_at DESC)`. All with `created_at`.
+
+GG, comment and reply counts are counted from these rows when read,
+leaving out banned and deleted people, so they never drift.
+
 ### Notifications
 
 **`notifications`**: the Alerts list. `id`, `user_id`, `type`,
 `actor_id` null, `listing_id` / `connection_request_id` /
-`play_invite_id` / `check_in_id` null, `read_at` null, `pushed_at` null,
+`play_invite_id` / `check_in_id` / `post_id` / `comment_id` null, `read_at` null, `pushed_at` null,
 `created_at`. Rows with `pushed_at` null are the push outbox: they are
 written in the same transaction as the event, a `NOTIFY` on commit wakes
 the API to push them, and a sweep every minute catches any it missed.
@@ -209,13 +231,14 @@ muted that type (later).
 **`blocks`**: PK `(blocker_id, blocked_id)`, `created_at`.
 
 **`reports`**: `id`, `reporter_id`, `target_user_id` (always set),
-`listing_id` null, `reason` report_reason, `details` null (≤ 500),
+`listing_id` / `post_id` / `comment_id` null (at most one), `reason` report_reason, `details` null (≤ 500),
 `status` report_status default `open`, `created_at`, `resolved_by` null,
 `resolved_at` null, `resolution_note` null.
 
 **`admin_actions`**: audit log. `id`, `admin_id`, `kind`
 admin_action_kind, `target_user_id` null, `listing_id` null,
-`report_id` null, `game_id` null (for `set_launch`), `note`,
+`report_id` null, `game_id` null (for `set_launch`), `post_id` /
+`comment_id` null, `note`,
 `created_at`. Every admin endpoint that changes something writes one.
 
 ### Requests
@@ -300,11 +323,15 @@ rows. **Played with** = distinct `other_user_id` with a `played` check-in.
 
 **Limits.** One live listing per user. 30 connection requests and 20 play
 invites per user per day. Re-requesting someone who declined you waits 7
-days.
+days. 10 posts and 60 comments per user per hour (deleted ones count).
+
+**GG notifications don't stack.** While the author hasn't read it, one
+`post_gg` row per post names the latest person; Alerts counts the
+others from `post_gg`. Written under the post's row lock, never pushed.
 
 ## Not in the MVP
 
-Posts, comments, reactions, clips ("Game Moments"), groups, game pages,
-chat, rank verification. The Home feed and the profile's Posts/Moments
-tabs in the prototype are not built (ADR-0001). When they come, they get
-their own tables and an ADR; nothing here needs to change for them.
+Clips ("Game Moments"), groups, game pages, chat, rank verification.
+Posts, comments and GG are phase 1 of ADR-0012: built, and
+hidden in the apps until `FEED_ENABLED`. Media, polls, recruitment and
+groups follow [FEED_AND_GROUPS_API.md](FEED_AND_GROUPS_API.md).

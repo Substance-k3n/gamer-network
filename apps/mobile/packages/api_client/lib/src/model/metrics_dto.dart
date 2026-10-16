@@ -3,6 +3,8 @@
 //
 
 // ignore_for_file: unused_element
+import 'package:api_client/src/model/waitlist_count_dto.dart';
+import 'package:built_collection/built_collection.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
@@ -18,6 +20,7 @@ part 'metrics_dto.g.dart';
 /// * [listingsPlayed] - At least one \"played\" check-in points at them.
 /// * [playedRate] - listingsPlayed / listings: the number that decides the MVP.
 /// * [weeklyActive] - People active in the 7 days before `to`.
+/// * [waitlist] - Everyone who tapped \"Notify me\", per topic, all time; most wanted first.
 @BuiltValue()
 abstract class MetricsDto implements Built<MetricsDto, MetricsDtoBuilder> {
   @BuiltValueField(wireName: r'from')
@@ -44,6 +47,10 @@ abstract class MetricsDto implements Built<MetricsDto, MetricsDtoBuilder> {
   /// People active in the 7 days before `to`.
   @BuiltValueField(wireName: r'weeklyActive')
   num get weeklyActive;
+
+  /// Everyone who tapped \"Notify me\", per topic, all time; most wanted first.
+  @BuiltValueField(wireName: r'waitlist')
+  BuiltList<WaitlistCountDto> get waitlist;
 
   MetricsDto._();
 
@@ -102,6 +109,11 @@ class _$MetricsDtoSerializer implements PrimitiveSerializer<MetricsDto> {
     yield serializers.serialize(
       object.weeklyActive,
       specifiedType: const FullType(num),
+    );
+    yield r'waitlist';
+    yield serializers.serialize(
+      object.waitlist,
+      specifiedType: const FullType(BuiltList, [FullType(WaitlistCountDto)]),
     );
   }
 
@@ -176,6 +188,14 @@ class _$MetricsDtoSerializer implements PrimitiveSerializer<MetricsDto> {
             specifiedType: const FullType(num),
           ) as num;
           result.weeklyActive = valueDes;
+          break;
+        case r'waitlist':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType:
+                const FullType(BuiltList, [FullType(WaitlistCountDto)]),
+          ) as BuiltList<WaitlistCountDto>;
+          result.waitlist.replace(valueDes);
           break;
         default:
           unhandled.add(key);

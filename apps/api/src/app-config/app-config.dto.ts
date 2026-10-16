@@ -10,4 +10,10 @@ export class AppConfigResponse {
 
   /** Show the Groups tab as "coming soon" with a waitlist. */
   groupsComingSoon: boolean;
+
+  /** Show the Home feed (posts, comments, GG). Off: today's Home. */
+  feedEnabled: boolean;
+
+  /** Show Groups for real. Off until groups ship; then groupsComingSoon goes away. */
+  groupsEnabled: boolean;
 }

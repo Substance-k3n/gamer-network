@@ -32,6 +32,8 @@ class _$ProfileDto extends ProfileDto {
   @override
   final String? incomingRequestId;
   @override
+  final String? outgoingRequestId;
+  @override
   final String id;
   @override
   final String username;
@@ -62,6 +64,7 @@ class _$ProfileDto extends ProfileDto {
       required this.gamingIds,
       required this.stats,
       this.incomingRequestId,
+      this.outgoingRequestId,
       required this.id,
       required this.username,
       required this.displayName,
@@ -93,6 +96,7 @@ class _$ProfileDto extends ProfileDto {
         gamingIds == other.gamingIds &&
         stats == other.stats &&
         incomingRequestId == other.incomingRequestId &&
+        outgoingRequestId == other.outgoingRequestId &&
         id == other.id &&
         username == other.username &&
         displayName == other.displayName &&
@@ -117,6 +121,7 @@ class _$ProfileDto extends ProfileDto {
     _$hash = $jc(_$hash, gamingIds.hashCode);
     _$hash = $jc(_$hash, stats.hashCode);
     _$hash = $jc(_$hash, incomingRequestId.hashCode);
+    _$hash = $jc(_$hash, outgoingRequestId.hashCode);
     _$hash = $jc(_$hash, id.hashCode);
     _$hash = $jc(_$hash, username.hashCode);
     _$hash = $jc(_$hash, displayName.hashCode);
@@ -143,6 +148,7 @@ class _$ProfileDto extends ProfileDto {
           ..add('gamingIds', gamingIds)
           ..add('stats', stats)
           ..add('incomingRequestId', incomingRequestId)
+          ..add('outgoingRequestId', outgoingRequestId)
           ..add('id', id)
           ..add('username', username)
           ..add('displayName', displayName)
@@ -215,6 +221,11 @@ class ProfileDtoBuilder implements Builder<ProfileDto, ProfileDtoBuilder> {
   set incomingRequestId(String? incomingRequestId) =>
       _$this._incomingRequestId = incomingRequestId;
 
+  String? _outgoingRequestId;
+  String? get outgoingRequestId => _$this._outgoingRequestId;
+  set outgoingRequestId(String? outgoingRequestId) =>
+      _$this._outgoingRequestId = outgoingRequestId;
+
   String? _id;
   String? get id => _$this._id;
   set id(String? id) => _$this._id = id;
@@ -264,6 +275,7 @@ class ProfileDtoBuilder implements Builder<ProfileDto, ProfileDtoBuilder> {
       _gamingIds = $v.gamingIds.toBuilder();
       _stats = $v.stats.toBuilder();
       _incomingRequestId = $v.incomingRequestId;
+      _outgoingRequestId = $v.outgoingRequestId;
       _id = $v.id;
       _username = $v.username;
       _displayName = $v.displayName;
@@ -309,6 +321,7 @@ class ProfileDtoBuilder implements Builder<ProfileDto, ProfileDtoBuilder> {
             gamingIds: gamingIds.build(),
             stats: stats.build(),
             incomingRequestId: incomingRequestId,
+            outgoingRequestId: outgoingRequestId,
             id: BuiltValueNullFieldError.checkNotNull(id, r'ProfileDto', 'id'),
             username: BuiltValueNullFieldError.checkNotNull(
                 username, r'ProfileDto', 'username'),

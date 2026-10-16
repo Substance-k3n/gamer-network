@@ -90,6 +90,10 @@ export const env = {
   get publicWebUrl() {
     return devDefault('PUBLIC_WEB_URL', 'http://localhost:3000').replace(/\/+$/, '');
   },
+  /** Turns the Home feed on in the apps (GET /v1/app/config). Off until ADR-0012's switch-on. */
+  get feedEnabled() {
+    return process.env.FEED_ENABLED === 'true';
+  },
   /** Timed jobs (listing expiry …). Tests turn them off and run them by hand. */
   get jobsEnabled() {
     return process.env.JOBS_ENABLED !== 'false';

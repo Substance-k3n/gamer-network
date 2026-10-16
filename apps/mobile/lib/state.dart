@@ -65,6 +65,9 @@ class ListingDraft {
   int dur = 6;
   String note = '';
 
+  /// Set when the sheet edits my live listing instead of posting one.
+  String? editId;
+
   /// One key per listing the person means to post, reused on retries.
   String key = uuid4();
 }
@@ -352,8 +355,8 @@ class AppState extends ChangeNotifier {
   // Settings
   List<UserCardDto> blocked = [];
 
-  // Groups (coming soon)
-  bool notify = false;
+  // Groups (coming soon): joined the waitlist, remembered by the API.
+  bool get notify => me?.waitlist.contains('groups') ?? false;
 
   // Drafts
   ListingDraft draft = ListingDraft();
@@ -627,16 +630,20 @@ class AppState extends ChangeNotifier {
 
   Future<void> doLogin() async {
     final e = loginUser.trim();
-    if (!e.contains('@')) return toast('Log in with your email');
+    if (e.isEmpty) return toast('Enter your email or username');
     if (loginPass.isEmpty) return toast('Enter your password');
     final r = await _busy(
       () async => (await api.auth.authLogin(
         userAgent: api.userAgent,
-        loginBody: LoginBody(
-          (b) => b
-            ..email = e
-            ..password = loginPass,
-        ),
+        loginBody: LoginBody((b) {
+          // An "@" means an email; anything else is a username.
+          if (e.indexOf('@') > 0) {
+            b.email = e;
+          } else {
+            b.username = e.replaceFirst(RegExp('^@'), '');
+          }
+          b.password = loginPass;
+        }),
       )).data!,
     );
     if (r == null) return;
@@ -1024,6 +1031,44 @@ class AppState extends ChangeNotifier {
     });
   }
 
+  /// Reopens the composer on my live listing: style, voice, when and note.
+  void openEditListing() {
+    final l = myListing;
+    if (l == null) return;
+    update(() {
+      draft = ListingDraft()
+        ..editId = l.id
+        ..gameId = l.game.id
+        ..style = l.style
+        ..voice = l.voice
+        ..when = l.playWhen
+        ..note = l.note ?? '';
+      sheet = SheetKind.listing;
+    });
+  }
+
+  Future<void> _saveListingEdit(ListingDraft d) async {
+    final l = await _busy(
+      () async => (await api.listings.listingsUpdate(
+        id: d.editId!,
+        updateListingBody: UpdateListingBody(
+          (b) => b
+            ..voice = d.voice
+            ..style = d.style
+            ..playWhen = d.when
+            ..note = d.note.trim(),
+        ),
+      )).data!,
+    );
+    if (l == null) return;
+    update(() {
+      myListing = l;
+      sheet = null;
+      draft = ListingDraft();
+    });
+    toast('Listing updated');
+  }
+
   void setDraftGame(String id) => update(() => _setDraftGame(catalog.byId(id)));
 
   void _setDraftGame(Game g) {
@@ -1043,6 +1088,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> submitListing() async {
     final d = draft;
+    if (d.editId != null) return _saveListingEdit(d);
     final l = await _busy(
       () async => (await api.listings.listingsCreate(
         idempotencyKey: d.key,
@@ -1150,19 +1196,13 @@ class AppState extends ChangeNotifier {
     await openPlayer(p.username);
   }
 
-  /// Takes back my pending request to the profile being viewed. The profile
-  /// has no request id, so it comes from my outgoing requests.
+  /// Takes back my pending request to the profile being viewed.
   Future<void> withdrawRequest() async {
     final p = viewed;
-    if (p == null || p.relationship != Relationship.outgoingRequest) return;
+    final id = p?.outgoingRequestId;
+    if (p == null || id == null) return;
     final ok = await _busy(() async {
-      final out = (await api.connections.connectionRequestsList(
-        direction: 'outgoing',
-      )).data!.items;
-      final r = out.where((r) => r.to.id == p.id).firstOrNull;
-      if (r != null) {
-        await api.connections.connectionRequestsCancel(id: r.id);
-      }
+      await api.connections.connectionRequestsCancel(id: id);
       return true;
     });
     if (ok == null) return;
@@ -1422,7 +1462,7 @@ class AppState extends ChangeNotifier {
       ),
     );
     if (ok == null) return;
-    update(() => notify = true);
+    update(() => me = me?.rebuild((b) => b.waitlist.add('groups')));
     toast('We’ll let you know when Groups open');
   }
 

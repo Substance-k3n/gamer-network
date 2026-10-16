@@ -17,6 +17,8 @@ export class AppConfigController {
       latestVersion: env.latestAppVersion,
       launchCity: env.launchCity,
       groupsComingSoon: true,
+      feedEnabled: env.feedEnabled,
+      groupsEnabled: false,
     };
   }
 }

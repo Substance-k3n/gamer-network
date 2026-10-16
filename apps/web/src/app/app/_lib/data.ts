@@ -11,6 +11,7 @@ import type {
   PlayerStatus,
   PlayTag,
   PlayWhen,
+  PostType,
   ReportReason,
   UserGame,
 } from './api';
@@ -77,6 +78,33 @@ export const inviteWhenLabel: Record<InviteWhen, string> = {
 };
 
 /** "Duo", "Trio"… for a party size (including the poster). */
+/** The composer's types, in the prototype's order. Media, poll and recruitment come later. */
+export const postTypes: { id: PostType; label: string; placeholder: string }[] = [
+  {
+    id: 'milestone',
+    label: 'Milestone',
+    placeholder: 'Hit a new rank? Won a tournament? Share it.',
+  },
+  {
+    id: 'discussion',
+    label: 'Discussion',
+    placeholder: 'Start a discussion: ask the community anything.',
+  },
+  { id: 'question', label: 'Question', placeholder: 'What do you want to know?' },
+  {
+    id: 'looking_for_players',
+    label: 'Looking for players',
+    placeholder: 'Who are you looking for, and when?',
+  },
+  { id: 'tip_guide', label: 'Tip / guide', placeholder: 'Share a tip that helped you climb.' },
+  { id: 'review', label: 'Review', placeholder: 'What did you think of it?' },
+  { id: 'event', label: 'Event', placeholder: 'What’s happening, where and when?' },
+  { id: 'meme', label: 'Meme', placeholder: 'Make us laugh.' },
+];
+
+export const postTypeLabel = (t: PostType) =>
+  (postTypes.find((p) => p.id === t)?.label ?? t.replace(/_/g, ' ')).toUpperCase();
+
 export const partyLabel = (n: number) =>
   ({ 2: 'Duo', 3: 'Trio', 4: 'Squad', 5: '5-stack' })[n] ?? `${n} players`;
 

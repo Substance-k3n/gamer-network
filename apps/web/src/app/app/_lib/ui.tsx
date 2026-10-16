@@ -44,6 +44,9 @@ const icons = {
   ],
   close: ['<path d="M6 6l12 12M18 6L6 18"/>', 2.4],
   check: ['<path d="M5 12.5l4.5 4.5L19 7.5"/>', 2.8],
+  comment: ['<path d="M4 5h16v11H9l-5 4z"/>', 2.1],
+  bookmark: ['<path d="M6 3h12v18l-6-4.5L6 21z"/>', 2.1],
+  play: ['<path d="M7 4.5v15l12-7.5z"/>', 2.2],
   more: [
     '<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>',
     2.6,

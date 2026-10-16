@@ -141,7 +141,7 @@ than `/me*`, `/auth/*` and `/app/*` also need a finished onboarding.
 | Method | Path             | Purpose                                                                                                       |
 | ------ | ---------------- | ------------------------------------------------------------------------------------------------------------- |
 | GET 🔓 | `/health`        | Liveness (no `/v1`)                                                                                           |
-| GET 🔓 | `/v1/app/config` | `{ minSupportedVersion, latestVersion, launchCity, groupsComingSoon: true }`                                  |
+| GET 🔓 | `/v1/app/config` | `{ minSupportedVersion, latestVersion, launchCity, groupsComingSoon: true, feedEnabled, groupsEnabled }`      |
 | GET 🔓 | `/v1/games`      | Full catalog with `ranks`, `roles`, `modes`, `platforms`, `maxParty`, `isLaunch`. Cache it; it rarely changes |
 
 ### Sign-in
@@ -275,7 +275,7 @@ Show due check-ins as a card on Home: "Did you play with Dave?"
 | POST   | `/v1/notifications/read`         | `{ ids: [...] }` or `{ all: true }` → `204`                      |
 | PUT    | `/v1/me/devices`                 | `{ fcmToken, platform: android\|ios\|web, appVersion? }` → `204` |
 
-`Notification { id, type, actor: UserCard | null, listingId, connectionRequestId, playInviteId, checkInId, title, text, route, readAt, createdAt }`.
+`Notification { id, type, actor: UserCard | null, listingId, connectionRequestId, playInviteId, checkInId, postId, commentId, title, text, route, readAt, createdAt }`.
 `text` is ready to show ("Hana wants to play PUBG Mobile with you");
 `route` is where tapping it goes. Notifications from people you can no
 longer see (blocked, banned) are left out.
@@ -283,20 +283,23 @@ longer see (blocked, banned) are left out.
 **Push.** Every notification is also sent through FCM to each device
 the person registered, with `notification: { title, body: text }` and
 `data: { type, id, route }`. `route` is the in-app path to open:
-`/alerts`, `/players/<username>`, `/listings/<id>`, `/check-ins/<id>`.
+`/alerts`, `/players/<username>`, `/listings/<id>`, `/check-ins/<id>`,
+`/posts/<id>` (`?comments=1` to open its comments). `post_gg` is never
+pushed, and stays one unread row per post ("Meron and 2 others reacted
+GG to your post").
 Register the device (`PUT /v1/me/devices`) on every launch and when the
 token refreshes; it is tied to that sign-in, so logging out stops its
 pushes. A token moves to whoever signed in on the phone last.
 
 ### Safety
 
-| Method | Path                  | Body → Response                                                                         |
-| ------ | --------------------- | --------------------------------------------------------------------------------------- |
-| POST   | `/v1/blocks`          | `{ userId }` → `204`. Safe to repeat                                                    |
-| DELETE | `/v1/blocks/{userId}` | `204`, or `404` if you hadn't blocked them                                              |
-| GET    | `/v1/me/blocks`       | `{ items: UserCard[] }` for Settings → Blocked users                                    |
-| POST   | `/v1/reports`         | `{ userId, listingId?, reason, details? }` → `204`. Goes to the admin queue             |
-| DELETE | `/v1/me`              | `{ password }` (when `hasPassword`) → `204`. `401 wrong_password`. Signs out everywhere |
+| Method | Path                  | Body → Response                                                                           |
+| ------ | --------------------- | ----------------------------------------------------------------------------------------- |
+| POST   | `/v1/blocks`          | `{ userId }` → `204`. Safe to repeat                                                      |
+| DELETE | `/v1/blocks/{userId}` | `204`, or `404` if you hadn't blocked them                                                |
+| GET    | `/v1/me/blocks`       | `{ items: UserCard[] }` for Settings → Blocked users                                      |
+| POST   | `/v1/reports`         | `{ userId, listingId? \| postId? \| commentId?, reason, details? }` → `204`. To the queue |
+| DELETE | `/v1/me`              | `{ password }` (when `hasPassword`) → `204`. `401 wrong_password`. Signs out everywhere   |
 
 Every profile and listing card needs "Block" and "Report" in its menu
 (ADR-0005, Play policy). Blocking hides you from each other everywhere,
@@ -304,6 +307,45 @@ ends the connection and withdraws pending requests and invites both
 ways. Deleting an account closes the live listing, withdraws everything
 pending and removes connections at once; personal data is erased 30
 days later and the email can then sign up again.
+
+### Home feed (ADR-0012, phase 1)
+
+Shown only when `feedEnabled` in `/v1/app/config`. The full plan, with
+later phases (media, polls, recruitment, groups), is
+[FEED_AND_GROUPS_API.md](FEED_AND_GROUPS_API.md). Hidden posts and
+comments are `404`: deleted, removed, by someone banned or blocked
+either way, or connections-only and you aren't connected.
+
+| Method | Path                                    | Body → Response                                                                                                               |
+| ------ | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/v1/feed?filter=&game=&cursor=&limit=` | `Page<Post>`, newest first. `filter`: `for_you` (default), `connections`, `lfg`, `game` (needs `game`). `limit` 1–30          |
+| POST   | `/v1/posts`                             | **Idempotent.** `{ type, text, gameId?, audience? }` → `201 Post`. Verified email. 10 an hour (`429 rate_limited`)            |
+| GET    | `/v1/posts/{id}`                        | `Post`                                                                                                                        |
+| DELETE | `/v1/posts/{id}`                        | Author only (`403 not_owner`) → `204`                                                                                         |
+| PUT    | `/v1/posts/{id}/gg`                     | `{ ggCount, myGG: true }`. Safe to repeat. `DELETE` takes it back                                                             |
+| PUT    | `/v1/posts/{id}/save`                   | `204`. `DELETE` unsaves                                                                                                       |
+| GET    | `/v1/me/saved`                          | `Page<Post>`, most recently saved first                                                                                       |
+| GET    | `/v1/me/posts`                          | `Page<Post>`, yours                                                                                                           |
+| GET    | `/v1/users/{username}/posts`            | `Page<Post>`: their Moments you may see                                                                                       |
+| GET    | `/v1/posts/{id}/comments?sort=`         | `Page<Comment>` of top-level comments, oldest first; `sort=top` by GG                                                         |
+| POST   | `/v1/posts/{id}/comments`               | **Idempotent.** `{ text, parentId? }` → `201 Comment`. Verified email. 60 an hour                                             |
+| GET    | `/v1/comments/{id}/replies`             | `Page<Comment>`, oldest first                                                                                                 |
+| DELETE | `/v1/comments/{id}`                     | Its author or the post's author → `204`. Its replies go with it                                                               |
+| PUT    | `/v1/comments/{id}/gg`                  | `{ ggCount, myGG: true }`. `DELETE` takes it back                                                                             |
+| GET 🔓 | `/v1/public/posts/{id}`                 | For the share page `/p/<id>`: `{ id, type, text (300 chars), author: { displayName, username, avatarUrl }, game, createdAt }` |
+
+`Post { id, type, kind, author: UserCard, game, text, audience, topComment, ggCount, commentCount, myGG, saved, mine, shareUrl, createdAt }`.
+Draw by `kind` (`text`, `discussion` now; `moment`, `poll`, `recruit`
+later), label by `type`. `gameplay`, `poll` and `recruitment` posts answer
+`422` until their phase. Counts leave out banned and deleted people.
+
+`Comment { id, postId, parentId, author: UserCard, text, ggCount, myGG, mine, replies, createdAt }`.
+One level of replies: a reply to a reply goes under the same top-level
+comment. `@username` in a post or comment tells that person, once, if
+they can see it (5 at most).
+
+**Play** on a post uses what exists: `POST /v1/play-invites` when
+connected, otherwise `POST /v1/connection-requests`.
 
 ### Groups (coming soon)
 
@@ -321,13 +363,15 @@ action writes an `admin_actions` row.
 
 | Method | Path                             | Purpose                                                                                                                                                         |
 | ------ | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `/v1/admin/reports?status=open`  | Reports queue with reporter and target. `open` oldest first, others newest first; `limit`/`cursor`                                                              |
-| POST   | `/v1/admin/reports/{id}/resolve` | `{ action: "dismiss" \| "warn" \| "remove_listing" \| "ban", note }` → report. Reporter is told unless dismissed                                                |
+| GET    | `/v1/admin/reports?status=open`  | Reports queue with reporter, target and `excerpt` (a reported post or comment). `open` oldest first, others newest first; `limit`/`cursor`                      |
+| POST   | `/v1/admin/reports/{id}/resolve` | `{ action: "dismiss" \| "warn" \| "remove_listing" \| "remove_post" \| "remove_comment" \| "ban", note }` → report. Reporter is told unless dismissed           |
 | GET    | `/v1/admin/users?query=&state=`  | Search by username, name or email prefix; `state` = `active` \| `banned` \| `deleted`                                                                           |
 | GET    | `/v1/admin/users/{id}`           | The player drawer: account, main game, last seen, connections, played with, open reports                                                                        |
 | POST   | `/v1/admin/users/{id}/ban`       | `{ reason }`. Signs them out everywhere and removes their live listing                                                                                          |
 | POST   | `/v1/admin/users/{id}/unban`     | `{ note? }`                                                                                                                                                     |
 | POST   | `/v1/admin/listings/{id}/remove` | `{ note? }` → `204`                                                                                                                                             |
+| POST   | `/v1/admin/posts/{id}/remove`    | `{ note? }` → `204`                                                                                                                                             |
+| POST   | `/v1/admin/comments/{id}/remove` | `{ note? }` → `204`, with its replies                                                                                                                           |
 | PATCH  | `/v1/admin/games/{id}`           | `{ isLaunch }` → `204`. Puts a game on Find Players or takes it off                                                                                             |
 | GET    | `/v1/admin/metrics?from=&to=`    | `{ listings, listingsWithRequest, listingsPlayed, playedRate, weeklyActive, waitlist: [{ topic, count }] }`, default the last 30 days; the waitlist is all time |
 

@@ -11,12 +11,18 @@ part 'login_body.g.dart';
 /// LoginBody
 ///
 /// Properties:
-/// * [email]
+/// * [email] - Required unless `username` is sent.
+/// * [username] - Instead of `email`.
 /// * [password]
 @BuiltValue()
 abstract class LoginBody implements Built<LoginBody, LoginBodyBuilder> {
+  /// Required unless `username` is sent.
   @BuiltValueField(wireName: r'email')
-  String get email;
+  String? get email;
+
+  /// Instead of `email`.
+  @BuiltValueField(wireName: r'username')
+  String? get username;
 
   @BuiltValueField(wireName: r'password')
   String get password;
@@ -44,11 +50,20 @@ class _$LoginBodySerializer implements PrimitiveSerializer<LoginBody> {
     LoginBody object, {
     FullType specifiedType = FullType.unspecified,
   }) sync* {
-    yield r'email';
-    yield serializers.serialize(
-      object.email,
-      specifiedType: const FullType(String),
-    );
+    if (object.email != null) {
+      yield r'email';
+      yield serializers.serialize(
+        object.email,
+        specifiedType: const FullType(String),
+      );
+    }
+    if (object.username != null) {
+      yield r'username';
+      yield serializers.serialize(
+        object.username,
+        specifiedType: const FullType(String),
+      );
+    }
     yield r'password';
     yield serializers.serialize(
       object.password,
@@ -82,9 +97,18 @@ class _$LoginBodySerializer implements PrimitiveSerializer<LoginBody> {
         case r'email':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(String),
-          ) as String;
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
           result.email = valueDes;
+          break;
+        case r'username':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.username = valueDes;
           break;
         case r'password':
           final valueDes = serializers.deserialize(

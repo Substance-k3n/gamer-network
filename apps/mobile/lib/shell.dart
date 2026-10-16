@@ -377,16 +377,18 @@ class _SheetState extends State<_Sheet> with SingleTickerProviderStateMixin {
     final theirGames = [
       for (final g in p?.games ?? const <UserGameDto>[]) g.game?.id,
     ].whereType<String>().toList();
+    final editing = listing && d.editId != null;
     final groups = listing
         ? [
-            group(
-              'GAME',
-              [for (final g in s.launchGames) g.id],
-              (id) => s.catalog.byId(id).name,
-              d.gameId,
-              s.setDraftGame,
-            ),
-            if (game.modes.isNotEmpty)
+            if (!editing)
+              group(
+                'GAME',
+                [for (final g in s.launchGames) g.id],
+                (id) => s.catalog.byId(id).name,
+                d.gameId,
+                s.setDraftGame,
+              ),
+            if (!editing && game.modes.isNotEmpty)
               group<String?>(
                 'MODE',
                 [for (final m in game.modes) m.id],
@@ -394,14 +396,15 @@ class _SheetState extends State<_Sheet> with SingleTickerProviderStateMixin {
                 d.modeId,
                 (v) => d.modeId = v,
               ),
-            group(
-              'LOOKING FOR',
-              [for (var n = 2; n <= game.maxParty; n++) n],
-              partyLabel,
-              d.partySize,
-              (v) => d.partySize = v,
-            ),
-            if (game.platforms.length > 1)
+            if (!editing)
+              group(
+                'LOOKING FOR',
+                [for (var n = 2; n <= game.maxParty; n++) n],
+                partyLabel,
+                d.partySize,
+                (v) => d.partySize = v,
+              ),
+            if (!editing && game.platforms.length > 1)
               group(
                 'PLATFORM',
                 [
@@ -433,13 +436,14 @@ class _SheetState extends State<_Sheet> with SingleTickerProviderStateMixin {
               d.when,
               (v) => d.when = v,
             ),
-            group(
-              'EXPIRES AFTER',
-              const [2, 6, 24],
-              (h) => '${h}h',
-              d.dur,
-              (v) => d.dur = v,
-            ),
+            if (!editing)
+              group(
+                'EXPIRES AFTER',
+                const [2, 6, 24],
+                (h) => '${h}h',
+                d.dur,
+                (v) => d.dur = v,
+              ),
           ]
         : [
             group(
@@ -504,7 +508,9 @@ class _SheetState extends State<_Sheet> with SingleTickerProviderStateMixin {
                       children: [
                         Flexible(
                           child: Text(
-                            listing
+                            editing
+                                ? 'Edit your listing'
+                                : listing
                                 ? 'Looking for players'
                                 : 'Play with ${p?.displayName ?? ''}',
                             style: t.body(24, w: w800, ls: -.8),
@@ -543,6 +549,8 @@ class _SheetState extends State<_Sheet> with SingleTickerProviderStateMixin {
                     BigButton(
                       s.busy
                           ? 'Sending…'
+                          : editing
+                          ? 'Save changes'
                           : (listing
                                 ? 'Post listing · expires in ${d.dur}h'
                                 : 'Send session invite'),

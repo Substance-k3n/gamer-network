@@ -34,10 +34,12 @@ Call of Duty Mobile, eFootball — confirmed by the validation test in
 | Block and report; admin can remove content and ban                            | Safety, and Google Play requires it        |
 | Share a listing as a link with a proper preview                               | How the app spreads (Telegram, WhatsApp)   |
 | Groups tab as "coming soon" with a waitlist                                   | Cheap, and tells us which groups to launch |
+| Home feed, posts, comments, groups (ADR-0012), switched on with a flag        | The prototype's screens; off until we say  |
 
-**Out until the bet is proven:** home feed, posts, comments, clips,
-search beyond players, game pages (games are a filter, not a screen),
-iPhone app, groups, rank verification through game APIs.
+**Out until the bet is proven:** search beyond players, game pages
+(games are a filter, not a screen), iPhone app, rank verification
+through game APIs. The feed and groups are built (ADR-0012) but stay
+switched off (`FEED_ENABLED`) until we decide to show them.
 
 ## The number that matters
 

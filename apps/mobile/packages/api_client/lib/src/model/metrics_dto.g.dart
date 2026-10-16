@@ -21,6 +21,8 @@ class _$MetricsDto extends MetricsDto {
   final num playedRate;
   @override
   final num weeklyActive;
+  @override
+  final BuiltList<WaitlistCountDto> waitlist;
 
   factory _$MetricsDto([void Function(MetricsDtoBuilder)? updates]) =>
       (MetricsDtoBuilder()..update(updates))._build();
@@ -32,7 +34,8 @@ class _$MetricsDto extends MetricsDto {
       required this.listingsWithRequest,
       required this.listingsPlayed,
       required this.playedRate,
-      required this.weeklyActive})
+      required this.weeklyActive,
+      required this.waitlist})
       : super._();
   @override
   MetricsDto rebuild(void Function(MetricsDtoBuilder) updates) =>
@@ -51,7 +54,8 @@ class _$MetricsDto extends MetricsDto {
         listingsWithRequest == other.listingsWithRequest &&
         listingsPlayed == other.listingsPlayed &&
         playedRate == other.playedRate &&
-        weeklyActive == other.weeklyActive;
+        weeklyActive == other.weeklyActive &&
+        waitlist == other.waitlist;
   }
 
   @override
@@ -64,6 +68,7 @@ class _$MetricsDto extends MetricsDto {
     _$hash = $jc(_$hash, listingsPlayed.hashCode);
     _$hash = $jc(_$hash, playedRate.hashCode);
     _$hash = $jc(_$hash, weeklyActive.hashCode);
+    _$hash = $jc(_$hash, waitlist.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -77,7 +82,8 @@ class _$MetricsDto extends MetricsDto {
           ..add('listingsWithRequest', listingsWithRequest)
           ..add('listingsPlayed', listingsPlayed)
           ..add('playedRate', playedRate)
-          ..add('weeklyActive', weeklyActive))
+          ..add('weeklyActive', weeklyActive)
+          ..add('waitlist', waitlist))
         .toString();
   }
 }
@@ -115,6 +121,12 @@ class MetricsDtoBuilder implements Builder<MetricsDto, MetricsDtoBuilder> {
   num? get weeklyActive => _$this._weeklyActive;
   set weeklyActive(num? weeklyActive) => _$this._weeklyActive = weeklyActive;
 
+  ListBuilder<WaitlistCountDto>? _waitlist;
+  ListBuilder<WaitlistCountDto> get waitlist =>
+      _$this._waitlist ??= ListBuilder<WaitlistCountDto>();
+  set waitlist(ListBuilder<WaitlistCountDto>? waitlist) =>
+      _$this._waitlist = waitlist;
+
   MetricsDtoBuilder() {
     MetricsDto._defaults(this);
   }
@@ -129,6 +141,7 @@ class MetricsDtoBuilder implements Builder<MetricsDto, MetricsDtoBuilder> {
       _listingsPlayed = $v.listingsPlayed;
       _playedRate = $v.playedRate;
       _weeklyActive = $v.weeklyActive;
+      _waitlist = $v.waitlist.toBuilder();
       _$v = null;
     }
     return this;
@@ -148,22 +161,36 @@ class MetricsDtoBuilder implements Builder<MetricsDto, MetricsDtoBuilder> {
   MetricsDto build() => _build();
 
   _$MetricsDto _build() {
-    final _$result = _$v ??
-        _$MetricsDto._(
-          from: BuiltValueNullFieldError.checkNotNull(
-              from, r'MetricsDto', 'from'),
-          to: BuiltValueNullFieldError.checkNotNull(to, r'MetricsDto', 'to'),
-          listings: BuiltValueNullFieldError.checkNotNull(
-              listings, r'MetricsDto', 'listings'),
-          listingsWithRequest: BuiltValueNullFieldError.checkNotNull(
-              listingsWithRequest, r'MetricsDto', 'listingsWithRequest'),
-          listingsPlayed: BuiltValueNullFieldError.checkNotNull(
-              listingsPlayed, r'MetricsDto', 'listingsPlayed'),
-          playedRate: BuiltValueNullFieldError.checkNotNull(
-              playedRate, r'MetricsDto', 'playedRate'),
-          weeklyActive: BuiltValueNullFieldError.checkNotNull(
-              weeklyActive, r'MetricsDto', 'weeklyActive'),
-        );
+    _$MetricsDto _$result;
+    try {
+      _$result = _$v ??
+          _$MetricsDto._(
+            from: BuiltValueNullFieldError.checkNotNull(
+                from, r'MetricsDto', 'from'),
+            to: BuiltValueNullFieldError.checkNotNull(to, r'MetricsDto', 'to'),
+            listings: BuiltValueNullFieldError.checkNotNull(
+                listings, r'MetricsDto', 'listings'),
+            listingsWithRequest: BuiltValueNullFieldError.checkNotNull(
+                listingsWithRequest, r'MetricsDto', 'listingsWithRequest'),
+            listingsPlayed: BuiltValueNullFieldError.checkNotNull(
+                listingsPlayed, r'MetricsDto', 'listingsPlayed'),
+            playedRate: BuiltValueNullFieldError.checkNotNull(
+                playedRate, r'MetricsDto', 'playedRate'),
+            weeklyActive: BuiltValueNullFieldError.checkNotNull(
+                weeklyActive, r'MetricsDto', 'weeklyActive'),
+            waitlist: waitlist.build(),
+          );
+    } catch (_) {
+      late String _$failedField;
+      try {
+        _$failedField = 'waitlist';
+        waitlist.build();
+      } catch (e) {
+        throw BuiltValueNestedFieldError(
+            r'MetricsDto', _$failedField, e.toString());
+      }
+      rethrow;
+    }
     replace(_$result);
     return _$result;
   }

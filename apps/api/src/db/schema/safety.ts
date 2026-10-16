@@ -3,6 +3,7 @@ import { check, index, pgTable, primaryKey, text, uuid } from 'drizzle-orm/pg-co
 import { adminActionKind, reportReason, reportStatus } from './enums.js';
 import { users } from './identity.js';
 import { games } from './catalog.js';
+import { comments, posts } from './feed.js';
 import { listings } from './listings.js';
 import { createdAt, id, ts } from './types.js';
 
@@ -35,6 +36,8 @@ export const reports = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     listingId: uuid('listing_id').references(() => listings.id, { onDelete: 'set null' }),
+    postId: uuid('post_id').references(() => posts.id, { onDelete: 'set null' }),
+    commentId: uuid('comment_id').references(() => comments.id, { onDelete: 'set null' }),
     reason: reportReason('reason').notNull(),
     details: text('details'),
     status: reportStatus('status').notNull().default('open'),
@@ -59,6 +62,8 @@ export const adminActions = pgTable('admin_actions', {
   targetUserId: uuid('target_user_id').references(() => users.id),
   listingId: uuid('listing_id').references(() => listings.id),
   reportId: uuid('report_id').references(() => reports.id),
+  postId: uuid('post_id').references(() => posts.id),
+  commentId: uuid('comment_id').references(() => comments.id),
   /** For set_launch: the game. */
   gameId: text('game_id').references(() => games.id),
   note: text('note').notNull().default(''),

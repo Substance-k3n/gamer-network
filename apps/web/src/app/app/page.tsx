@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import {
   api,
   type CheckIn,
@@ -22,6 +23,8 @@ import {
   statusLook,
   toneFor,
 } from './_lib/data';
+import { Feed } from './_lib/feed';
+import { EditListingSheet } from './_lib/sheets';
 import { useApp, useLoad, useNow } from './_lib/store';
 import { Avatar, Card, Chip, Digits, Dot, Icon, Label, Pill, Wordmark, toneColor } from './_lib/ui';
 
@@ -32,10 +35,25 @@ type HomeData = {
   sent: PlayInvite[];
 };
 
-/** Home in the MVP (docs/API.md screen map): no feed. */
+/**
+ * Home. With config.feedEnabled (ADR-0012): what needs an answer, your live
+ * listing, then the feed. Without it, the MVP Home: status and listings.
+ */
 export default function Home() {
-  const { me, run, setMe, setInvites, invites, unread, setUnread, version, toast, setSheet } =
-    useApp();
+  const {
+    me,
+    run,
+    setMe,
+    setInvites,
+    invites,
+    unread,
+    setUnread,
+    version,
+    toast,
+    setSheet,
+    config,
+  } = useApp();
+  const feedOn = !!config?.feedEnabled;
   const { data, setData, reload } = useLoad<HomeData>(async () => {
     const [m, stats, mine, checks, inc, sent, n] = await Promise.all([
       api<Me>('me'),
@@ -56,6 +74,7 @@ export default function Home() {
       sent: sent.items,
     };
   }, [version]);
+  const [editing, setEditing] = useState(false);
   if (!me) return null;
 
   const answerCheckIn = async (c: CheckIn, answer: 'played' | 'not_yet' | 'no') => {
@@ -97,6 +116,13 @@ export default function Home() {
 
   return (
     <>
+      {editing && data?.listing && (
+        <EditListingSheet
+          l={data.listing}
+          onClose={() => setEditing(false)}
+          onSaved={(l) => setData({ ...data, listing: l })}
+        />
+      )}
       <TopBar unread={unread} />
       <div className="gap rl-pad" style={{ gap: 14, paddingTop: 14 }}>
         {!me.emailVerified && (
@@ -171,9 +197,13 @@ export default function Home() {
             </div>
           </Card>
         ))}
-        <StatusCard me={me} onStatus={setStatus} />
-        {data?.listing ? (
-          <MyListing l={data.listing} onClose={closeListing} />
+        {!feedOn && <StatusCard me={me} onStatus={setStatus} />}
+        {feedOn ? (
+          data?.listing && (
+            <MyListing l={data.listing} onClose={closeListing} onEdit={() => setEditing(true)} />
+          )
+        ) : data?.listing ? (
+          <MyListing l={data.listing} onClose={closeListing} onEdit={() => setEditing(true)} />
         ) : (
           <Card dark pad={18} radius={26}>
             <div className="gap" style={{ gap: 12 }}>
@@ -206,14 +236,18 @@ export default function Home() {
           </span>
           <span style={{ fontSize: 14, fontWeight: 700, textDecoration: 'underline' }}>Find →</span>
         </Link>
-        <button
-          type="button"
-          className="u muted"
-          style={{ fontSize: 13, alignSelf: 'center', textDecoration: 'none' }}
-          onClick={reload}
-        >
-          Refresh
-        </button>
+        {feedOn ? (
+          <Feed />
+        ) : (
+          <button
+            type="button"
+            className="u muted"
+            style={{ fontSize: 13, alignSelf: 'center', textDecoration: 'none' }}
+            onClick={reload}
+          >
+            Refresh
+          </button>
+        )}
       </div>
     </>
   );
@@ -384,7 +418,15 @@ function StatusCard({
   );
 }
 
-function MyListing({ l, onClose }: { l: Listing; onClose: () => void }) {
+function MyListing({
+  l,
+  onClose,
+  onEdit,
+}: {
+  l: Listing;
+  onClose: () => void;
+  onEdit: () => void;
+}) {
   const now = useNow();
   const { toast, busy } = useApp();
   const share = async () => {
@@ -435,6 +477,9 @@ function MyListing({ l, onClose }: { l: Listing; onClose: () => void }) {
         <div className="row" style={{ gap: 8 }}>
           <Pill h={42} size={14} bold expand onClick={share}>
             <Icon name="share" size={16} /> Share link
+          </Pill>
+          <Pill h={42} padH={16} size={14} onClick={onEdit} disabled={busy}>
+            Edit
           </Pill>
           <Pill h={42} size={14} expand look="clear" onClick={onClose} disabled={busy}>
             Close listing

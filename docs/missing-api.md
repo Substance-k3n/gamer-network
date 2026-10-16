@@ -21,7 +21,14 @@ Closed on 2026-10-15 (`feature/api-missing-fields`):
 - `PATCH /v1/listings/{id}` (`voice`, `style`, `playWhen`, `note`): fix a
   live listing without closing it, so its requests and link stay.
 
-The apps don't use these yet; wiring them is the next PR.
+`apps/mobile`, `apps/web` and `apps/admin` use all of them.
+
+## The prototype's feed and groups
+
+Not gaps in the MVP API but a scope change: the Home feed, posts,
+comments, groups and Moments from the prototype.
+[FEED_AND_GROUPS_API.md](FEED_AND_GROUPS_API.md) lists everything those
+screens need, accepted with ADR-0012.
 
 ## Data gaps (seed, not API)
 

@@ -62,13 +62,9 @@ export function ProfileView({ p, onReload }: { p: View; onReload: () => void }) 
         ))
       )
         return;
-      // The profile has no request id: find it among my outgoing requests (docs/missing-api.md #1).
       const ok = await run(async () => {
-        const out = await api<{ items: { id: string; to: { id: string } }[] }>(
-          'connection-requests?direction=outgoing',
-        );
-        const r = out.items.find((x) => x.to.id === p.id);
-        if (r) await api(`connection-requests/${r.id}`, { method: 'DELETE' });
+        if (p.outgoingRequestId)
+          await api(`connection-requests/${p.outgoingRequestId}`, { method: 'DELETE' });
         return true;
       });
       if (ok) toast(`Request to ${p.displayName} withdrawn`);

@@ -7,6 +7,9 @@ const facts = (over: Partial<NotificationFacts>): NotificationFacts => ({
   gameName: 'PUBG Mobile',
   listingId: null,
   checkInId: null,
+  postId: null,
+  commentId: null,
+  others: 0,
   ...over,
 });
 
@@ -31,5 +34,28 @@ describe('notificationText', () => {
       facts({ type: 'connection_accepted', actorName: null, actorUsername: null }),
     );
     expect(t).toMatchObject({ text: 'Someone accepted your request', route: '/alerts' });
+  });
+
+  it("counts the others who GG'd, and opens the post", () => {
+    expect(notificationText(facts({ type: 'post_gg', postId: 'p1' }))).toMatchObject({
+      text: 'Hana reacted GG to your post',
+      route: '/posts/p1',
+    });
+    expect(notificationText(facts({ type: 'post_gg', postId: 'p1', others: 1 })).text).toBe(
+      'Hana and 1 other reacted GG to your post',
+    );
+    expect(notificationText(facts({ type: 'post_gg', postId: 'p1', others: 4 })).text).toBe(
+      'Hana and 4 others reacted GG to your post',
+    );
+  });
+
+  it('opens the comments for comments, replies and mentions in a comment', () => {
+    expect(
+      notificationText(facts({ type: 'comment_reply', postId: 'p1', commentId: 'c1' })),
+    ).toMatchObject({ text: 'Hana replied to your comment', route: '/posts/p1?comments=1' });
+    expect(notificationText(facts({ type: 'mention', postId: 'p1' }))).toMatchObject({
+      text: 'Hana mentioned you in a post',
+      route: '/posts/p1',
+    });
   });
 });

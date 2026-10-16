@@ -4,6 +4,7 @@ import { AppConfigModule } from './app-config/app-config.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { ConnectionsModule } from './connections/connections.module.js';
 import { DbModule } from './db/db.module.js';
+import { FeedModule } from './feed/feed.module.js';
 import { GamesModule } from './games/games.module.js';
 import { HealthModule } from './health/health.module.js';
 import { MailModule } from './mail/mail.module.js';
@@ -29,6 +30,7 @@ import { UsersModule } from './users/users.module.js';
     MeModule,
     UsersModule,
     ListingsModule,
+    FeedModule,
     ConnectionsModule,
     PlayModule,
     SafetyModule,

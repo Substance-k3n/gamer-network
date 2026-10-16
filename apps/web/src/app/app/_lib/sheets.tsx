@@ -15,7 +15,7 @@ import { inviteWhenLabel, partyLabel, platformLabel, platforms, playWhenLabel } 
 import { useApp } from './store';
 import { BigButton, Chip, Field, Label, Sheet } from './ui';
 
-function Group<T extends string | number>({
+export function Group<T extends string | number>({
   label,
   options,
   value,
@@ -49,7 +49,7 @@ function Group<T extends string | number>({
   );
 }
 
-function SheetTitle({ children, onClose }: { children: ReactNode; onClose: () => void }) {
+export function SheetTitle({ children, onClose }: { children: ReactNode; onClose: () => void }) {
   return (
     <div className="row" style={{ justifyContent: 'space-between', marginBottom: 10 }}>
       <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: -0.8 }}>{children}</div>
@@ -209,6 +209,80 @@ export function ListingSheet({ onClose }: { onClose: () => void }) {
         </div>
         <BigButton onClick={submit} disabled={busy}>
           {busy ? 'Sending…' : `Post listing · expires in ${dur}h`}
+        </BigButton>
+      </div>
+    </Sheet>
+  );
+}
+
+/** Fix my live listing (PATCH /listings/{id}): style, voice, when and note. */
+export function EditListingSheet({
+  l,
+  onClose,
+  onSaved,
+}: {
+  l: Listing;
+  onClose: () => void;
+  onSaved: (l: Listing) => void;
+}) {
+  const { run, busy, toast } = useApp();
+  const [style, setStyle] = useState(l.style);
+  const [voice, setVoice] = useState(l.voice);
+  const [when, setWhen] = useState<PlayWhen>(l.playWhen);
+  const [note, setNote] = useState(l.note ?? '');
+
+  const save = async () => {
+    const r = await run(() =>
+      api<Listing>(`listings/${l.id}`, {
+        method: 'PATCH',
+        body: { style, voice, playWhen: when, note: note.trim() },
+      }),
+    );
+    if (!r) return;
+    onSaved(r);
+    onClose();
+    toast('Listing updated');
+  };
+
+  return (
+    <Sheet onClose={onClose}>
+      <SheetTitle onClose={onClose}>Edit your listing</SheetTitle>
+      <div className="gap" style={{ gap: 10 }}>
+        <Group<'competitive' | 'casual'>
+          label="STYLE"
+          options={['competitive', 'casual']}
+          value={style}
+          onPick={setStyle}
+          labelOf={(s) => (s === 'competitive' ? 'Competitive' : 'Casual')}
+        />
+        <Group<'required' | 'optional'>
+          label="VOICE"
+          options={['required', 'optional']}
+          value={voice}
+          onPick={setVoice}
+          labelOf={(v) => (v === 'required' ? 'Mic required' : 'Mic optional')}
+        />
+        <Group
+          label="WHEN"
+          options={Object.keys(playWhenLabel) as PlayWhen[]}
+          value={when}
+          onPick={setWhen}
+          labelOf={(w) => playWhenLabel[w]}
+        />
+        <div className="gap" style={{ gap: 6 }}>
+          <Label style={{ paddingTop: 2 }}>NOTE</Label>
+          <Field
+            value={note}
+            onChange={setNote}
+            placeholder="Looking for a ranked duo tonight."
+            h={48}
+            radius={16}
+            sunken
+            maxLength={140}
+          />
+        </div>
+        <BigButton onClick={save} disabled={busy}>
+          {busy ? 'Saving…' : 'Save changes'}
         </BigButton>
       </div>
     </Sheet>

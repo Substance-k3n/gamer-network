@@ -13,10 +13,13 @@ export default function Login() {
   const [password, setPassword] = useState('');
 
   const submit = async () => {
-    if (!email.includes('@')) return toast('Log in with your email');
+    const id = email.trim();
+    if (!id) return toast('Enter your email or username');
     if (!password) return toast('Enter your password');
+    // An "@" after the first character means an email; anything else is a username.
+    const who = id.indexOf('@') > 0 ? { email: id } : { username: id.replace(/^@/, '') };
     const r = await run(() =>
-      api<{ user: Me }>('auth/login', { method: 'POST', body: { email: email.trim(), password } }),
+      api<{ user: Me }>('auth/login', { method: 'POST', body: { ...who, password } }),
     );
     if (!r) return;
     if (r.user.onboardedAt) toast(`Welcome back, ${r.user.displayName}`);
@@ -62,15 +65,15 @@ export default function Login() {
       <Field
         value={email}
         onChange={setEmail}
-        placeholder="Email"
-        type="email"
+        placeholder="Email or username"
+        type="text"
         autoComplete="username"
-        inputMode="email"
+        autoCapitalize="none"
       />
       <PasswordField value={password} onChange={setPassword} />
       <div style={{ textAlign: 'right' }}>
         <Link
-          href={`/app/forgot${email.includes('@') ? `?email=${encodeURIComponent(email.trim())}` : ''}`}
+          href={`/app/forgot${email.indexOf('@') > 0 ? `?email=${encodeURIComponent(email.trim())}` : ''}`}
           style={{ fontSize: 13, fontWeight: 600, textDecoration: 'underline' }}
         >
           Forgot password?

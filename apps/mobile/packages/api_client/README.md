@@ -99,6 +99,7 @@ Class | Method | HTTP request | Description
 [*ListingsApi*](doc/ListingsApi.md) | [**listingsFeed**](doc/ListingsApi.md#listingsfeed) | **GET** /v1/listings | Find Players. Open listings in your city, newest first; yours and blocked people&#39;s left out.
 [*ListingsApi*](doc/ListingsApi.md) | [**listingsGet**](doc/ListingsApi.md#listingsget) | **GET** /v1/listings/{id} | One listing, as the signed-in player sees it.
 [*ListingsApi*](doc/ListingsApi.md) | [**listingsStats**](doc/ListingsApi.md#listingsstats) | **GET** /v1/listings/stats | The Home counter.
+[*ListingsApi*](doc/ListingsApi.md) | [**listingsUpdate**](doc/ListingsApi.md#listingsupdate) | **PATCH** /v1/listings/{id} | Fix a live listing: voice, style, when, note. Owner only; 409 listing_not_live once it has ended.
 [*ListingsApi*](doc/ListingsApi.md) | [**myListingGet**](doc/ListingsApi.md#mylistingget) | **GET** /v1/me/listing | Your live listing for Home, or null.
 [*ListingsApi*](doc/ListingsApi.md) | [**publicListingsGet**](doc/ListingsApi.md#publiclistingsget) | **GET** /v1/public/listings/{id} | For the share page: no sign-in, no ids or gaming IDs.
 [*MeApi*](doc/MeApi.md) | [**meAvatarUploadUrl**](doc/MeApi.md#meavataruploadurl) | **POST** /v1/me/avatar/upload-url | Where to upload a new avatar (JPEG, PNG or WebP, ≤ 2 MB). Then PUT /v1/me/avatar.
@@ -228,6 +229,7 @@ Class | Method | HTTP request | Description
  - [SetTagsBody](doc/SetTagsBody.md)
  - [SignupBody](doc/SignupBody.md)
  - [UnreadCountDto](doc/UnreadCountDto.md)
+ - [UpdateListingBody](doc/UpdateListingBody.md)
  - [UpdateMeBody](doc/UpdateMeBody.md)
  - [UserCardDto](doc/UserCardDto.md)
  - [UserGameDto](doc/UserGameDto.md)
@@ -237,6 +239,7 @@ Class | Method | HTTP request | Description
  - [UsernameAvailability](doc/UsernameAvailability.md)
  - [Voice](doc/Voice.md)
  - [WaitlistBody](doc/WaitlistBody.md)
+ - [WaitlistCountDto](doc/WaitlistCountDto.md)
 
 
 ## Documentation For Authorization

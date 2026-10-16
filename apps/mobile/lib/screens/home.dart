@@ -555,6 +555,14 @@ class _MyListing extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
+              Pill(
+                'Edit',
+                onTap: s.busy ? null : s.openEditListing,
+                height: 42,
+                padH: 16,
+                size: 14,
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: Pill(
                   'Close listing',

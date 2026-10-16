@@ -34,6 +34,7 @@ part 'profile_dto.g.dart';
 /// * [gamingIds] - Only the ones you may see.
 /// * [stats]
 /// * [incomingRequestId] - Set when relationship is incoming_request, to accept from the profile.
+/// * [outgoingRequestId] - Set when relationship is outgoing_request, to withdraw from the profile.
 /// * [id]
 /// * [username]
 /// * [displayName]
@@ -86,6 +87,10 @@ abstract class ProfileDto implements Built<ProfileDto, ProfileDtoBuilder> {
   /// Set when relationship is incoming_request, to accept from the profile.
   @BuiltValueField(wireName: r'incomingRequestId')
   String? get incomingRequestId;
+
+  /// Set when relationship is outgoing_request, to withdraw from the profile.
+  @BuiltValueField(wireName: r'outgoingRequestId')
+  String? get outgoingRequestId;
 
   @BuiltValueField(wireName: r'id')
   String get id;
@@ -197,6 +202,13 @@ class _$ProfileDtoSerializer implements PrimitiveSerializer<ProfileDto> {
         ? null
         : serializers.serialize(
             object.incomingRequestId,
+            specifiedType: const FullType.nullable(String),
+          );
+    yield r'outgoingRequestId';
+    yield object.outgoingRequestId == null
+        ? null
+        : serializers.serialize(
+            object.outgoingRequestId,
             specifiedType: const FullType.nullable(String),
           );
     yield r'id';
@@ -351,6 +363,14 @@ class _$ProfileDtoSerializer implements PrimitiveSerializer<ProfileDto> {
           ) as String?;
           if (valueDes == null) continue;
           result.incomingRequestId = valueDes;
+          break;
+        case r'outgoingRequestId':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.outgoingRequestId = valueDes;
           break;
         case r'id':
           final valueDes = serializers.deserialize(

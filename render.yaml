@@ -42,6 +42,9 @@ services:
         sync: false
       - key: LAUNCH_CITY
         value: Addis Ababa
+      # Home feed in the apps (ADR-0012). "true" to switch it on.
+      - key: FEED_ENABLED
+        value: 'false'
       - key: MIN_APP_VERSION
         value: 0.0.0
       - key: LATEST_APP_VERSION

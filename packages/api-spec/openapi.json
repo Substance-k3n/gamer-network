@@ -1771,6 +1771,963 @@
         ]
       }
     },
+    "/v1/feed": {
+      "get": {
+        "operationId": "feedGet",
+        "parameters": [
+          {
+            "name": "filter",
+            "required": false,
+            "in": "query",
+            "description": "for_you: every post you may see. connections: yours and your connections'. lfg: recruitment and looking_for_players. game: needs `game`.",
+            "schema": {
+              "$ref": "#/components/schemas/FeedFilter"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1–30, default 20.",
+            "schema": {
+              "minimum": 1,
+              "maximum": 30,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "game",
+            "required": false,
+            "in": "query",
+            "description": "Game id, for filter=game.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "`nextCursor` from the previous page.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostPageDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Home, newest first. Blocked people's posts and connections-only posts of strangers are left out.",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/v1/posts": {
+      "post": {
+        "operationId": "postsCreate",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "A UUID per create. A retry with the same key returns the first answer.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePostBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Post to Home. Photos, polls and recruitment come later (422 on those types). 10 an hour: 429 rate_limited.",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/v1/posts/{id}": {
+      "get": {
+        "operationId": "postsGet",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One post.",
+        "tags": [
+          "feed"
+        ]
+      },
+      "delete": {
+        "operationId": "postsDelete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Author only (403 not_owner).",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/v1/posts/{id}/gg": {
+      "put": {
+        "operationId": "postsGg",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GgDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "GG it. Repeating it is fine.",
+        "tags": [
+          "feed"
+        ]
+      },
+      "delete": {
+        "operationId": "postsUnGg",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GgDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take your GG back.",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/v1/posts/{id}/save": {
+      "put": {
+        "operationId": "postsSave",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Bookmark it.",
+        "tags": [
+          "feed"
+        ]
+      },
+      "delete": {
+        "operationId": "postsUnsave",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove the bookmark.",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/v1/posts/{id}/comments": {
+      "get": {
+        "operationId": "commentsList",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "description": "oldest (default), or top: most GG first, for discussions.",
+            "schema": {
+              "$ref": "#/components/schemas/CommentSort"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1–50, default 20.",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "`nextCursor` from the previous page.",
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentPageDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Top-level comments, oldest first; sort=top for discussions.",
+        "tags": [
+          "feed"
+        ]
+      },
+      "post": {
+        "operationId": "commentsCreate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "A UUID per create. A retry with the same key returns the first answer.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCommentBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Comment, or reply with parentId. Tells the post's author, the one you answered and anyone you @mention. 60 an hour.",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/v1/comments/{id}/replies": {
+      "get": {
+        "operationId": "commentsReplies",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "description": "oldest (default), or top: most GG first, for discussions.",
+            "schema": {
+              "$ref": "#/components/schemas/CommentSort"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1–50, default 20.",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "`nextCursor` from the previous page.",
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentPageDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Replies under a top-level comment, oldest first.",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/v1/comments/{id}": {
+      "delete": {
+        "operationId": "commentsDelete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Its author or the post's author (403 not_owner).",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/v1/comments/{id}/gg": {
+      "put": {
+        "operationId": "commentsGg",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GgDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "GG a comment.",
+        "tags": [
+          "feed"
+        ]
+      },
+      "delete": {
+        "operationId": "commentsUnGg",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GgDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take your GG back.",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/v1/me/posts": {
+      "get": {
+        "operationId": "myPostsList",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1–50, default 20.",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "`nextCursor` from the previous page.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostPageDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Your posts, newest first, connections-only ones included.",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/v1/me/saved": {
+      "get": {
+        "operationId": "myPostsSaved",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1–50, default 20.",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "`nextCursor` from the previous page.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostPageDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Saved posts, most recently saved first.",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/v1/users/{username}/posts": {
+      "get": {
+        "operationId": "userPostsList",
+        "parameters": [
+          {
+            "name": "username",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1–50, default 20.",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "`nextCursor` from the previous page.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostPageDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Moments: their posts you may see, newest first.",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/v1/public/posts/{id}": {
+      "get": {
+        "operationId": "publicPostsGet",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicPostDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "summary": "For the share page /p/<id>: no sign-in. Only live posts for everyone.",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
     "/v1/connection-requests": {
       "post": {
         "operationId": "connectionRequestsSend",
@@ -2703,7 +3660,7 @@
             "bearer": []
           }
         ],
-        "summary": "dismiss, warn, remove_listing or ban. 409 report_closed if already handled.",
+        "summary": "dismiss, warn, remove_listing, remove_post, remove_comment or ban. 409 report_closed if already handled.",
         "tags": [
           "admin"
         ]
@@ -2994,6 +3951,104 @@
         ]
       }
     },
+    "/v1/admin/posts/{id}/remove": {
+      "post": {
+        "operationId": "adminRemovePost",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take a post down.",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/comments/{id}/remove": {
+      "post": {
+        "operationId": "adminRemoveComment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take a comment down, with its replies.",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/v1/admin/games/{id}": {
       "patch": {
         "operationId": "adminSetLaunch",
@@ -3128,7 +4183,11 @@
           "play_invite_accepted",
           "check_in_due",
           "listing_expiring",
-          "report_resolved"
+          "report_resolved",
+          "post_gg",
+          "post_comment",
+          "comment_reply",
+          "mention"
         ]
       },
       "PlayerStatus": {
@@ -3346,6 +4405,15 @@
             "type": "string",
             "nullable": true
           },
+          "postId": {
+            "type": "string",
+            "nullable": true,
+            "description": "The post it is about (post_gg, post_comment, comment_reply, mention)."
+          },
+          "commentId": {
+            "type": "string",
+            "nullable": true
+          },
           "title": {
             "type": "string",
             "description": "Push title."
@@ -3376,6 +4444,8 @@
           "connectionRequestId",
           "playInviteId",
           "checkInId",
+          "postId",
+          "commentId",
           "title",
           "text",
           "route",
@@ -4031,13 +5101,23 @@
           "groupsComingSoon": {
             "type": "boolean",
             "description": "Show the Groups tab as \"coming soon\" with a waitlist."
+          },
+          "feedEnabled": {
+            "type": "boolean",
+            "description": "Show the Home feed (posts, comments, GG). Off: today's Home."
+          },
+          "groupsEnabled": {
+            "type": "boolean",
+            "description": "Show Groups for real. Off until groups ship; then groupsComingSoon goes away."
           }
         },
         "required": [
           "minSupportedVersion",
           "latestVersion",
           "launchCity",
-          "groupsComingSoon"
+          "groupsComingSoon",
+          "feedEnabled",
+          "groupsEnabled"
         ]
       },
       "RankDto": {
@@ -5061,6 +6141,379 @@
           "note"
         ]
       },
+      "FeedFilter": {
+        "type": "string",
+        "enum": [
+          "for_you",
+          "connections",
+          "lfg",
+          "game"
+        ]
+      },
+      "PostType": {
+        "type": "string",
+        "enum": [
+          "discussion",
+          "gameplay",
+          "recruitment",
+          "poll",
+          "milestone",
+          "question",
+          "looking_for_players",
+          "tip_guide",
+          "review",
+          "event",
+          "meme"
+        ]
+      },
+      "PostKind": {
+        "type": "string",
+        "enum": [
+          "text",
+          "moment",
+          "discussion",
+          "poll",
+          "recruit"
+        ],
+        "description": "Draw by this: follows from type."
+      },
+      "PostAudience": {
+        "type": "string",
+        "enum": [
+          "everyone",
+          "connections"
+        ]
+      },
+      "CommentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "postId": {
+            "type": "string"
+          },
+          "parentId": {
+            "type": "string",
+            "nullable": true,
+            "description": "The top-level comment this replies to, or null."
+          },
+          "author": {
+            "$ref": "#/components/schemas/UserCardDto"
+          },
+          "text": {
+            "type": "string"
+          },
+          "ggCount": {
+            "type": "number"
+          },
+          "myGG": {
+            "type": "boolean"
+          },
+          "mine": {
+            "type": "boolean"
+          },
+          "replies": {
+            "type": "number",
+            "description": "Replies under it; 0 on replies."
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "postId",
+          "parentId",
+          "author",
+          "text",
+          "ggCount",
+          "myGG",
+          "mine",
+          "replies",
+          "createdAt"
+        ]
+      },
+      "PostDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PostType"
+              }
+            ]
+          },
+          "kind": {
+            "description": "Draw by this: follows from type.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PostKind"
+              }
+            ]
+          },
+          "audience": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PostAudience"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "author": {
+            "description": "topGame gives \"Diamond Valorant\" for the header.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserCardDto"
+              }
+            ]
+          },
+          "game": {
+            "nullable": true,
+            "description": "Null: \"Any game\".",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GameRefDto"
+              }
+            ]
+          },
+          "text": {
+            "type": "string"
+          },
+          "topComment": {
+            "nullable": true,
+            "description": "Discussions: the most-GG'd answer. Null on other kinds.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CommentDto"
+              }
+            ]
+          },
+          "ggCount": {
+            "type": "number"
+          },
+          "commentCount": {
+            "type": "number",
+            "description": "Comments and replies you can see the count of (\"answers\" on discussions)."
+          },
+          "myGG": {
+            "type": "boolean"
+          },
+          "saved": {
+            "type": "boolean"
+          },
+          "mine": {
+            "type": "boolean"
+          },
+          "shareUrl": {
+            "type": "string",
+            "description": "Link for Telegram/WhatsApp."
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "kind",
+          "audience",
+          "id",
+          "author",
+          "game",
+          "text",
+          "topComment",
+          "ggCount",
+          "commentCount",
+          "myGG",
+          "saved",
+          "mine",
+          "shareUrl",
+          "createdAt"
+        ]
+      },
+      "PostPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PostDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "CreatePostBody": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PostType"
+              }
+            ]
+          },
+          "audience": {
+            "default": "everyone",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PostAudience"
+              }
+            ]
+          },
+          "text": {
+            "type": "string",
+            "description": "1–2000 characters, trimmed.",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "gameId": {
+            "type": "string",
+            "nullable": true,
+            "description": "One of GET /v1/games. Null or left out: \"Any game\"."
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ]
+      },
+      "GgDto": {
+        "type": "object",
+        "properties": {
+          "ggCount": {
+            "type": "number"
+          },
+          "myGG": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ggCount",
+          "myGG"
+        ]
+      },
+      "CommentSort": {
+        "type": "string",
+        "enum": [
+          "oldest",
+          "top"
+        ]
+      },
+      "CommentPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommentDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "CreateCommentBody": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "1–500 characters, trimmed.",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "parentId": {
+            "type": "string",
+            "description": "The comment you're replying to. A reply to a reply goes under the same top-level comment.",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "text"
+        ]
+      },
+      "PublicPostAuthorDto": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "displayName",
+          "username",
+          "avatarUrl"
+        ]
+      },
+      "PublicPostDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PostType"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string",
+            "description": "The first 300 characters."
+          },
+          "author": {
+            "$ref": "#/components/schemas/PublicPostAuthorDto"
+          },
+          "game": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GameRefDto"
+              }
+            ]
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "text",
+          "author",
+          "game",
+          "createdAt"
+        ]
+      },
       "SendRequestBody": {
         "type": "object",
         "properties": {
@@ -5454,6 +6907,16 @@
             "description": "When reporting from a listing card: one of their listings.",
             "format": "uuid"
           },
+          "postId": {
+            "type": "string",
+            "description": "When reporting a post: one of their posts.",
+            "format": "uuid"
+          },
+          "commentId": {
+            "type": "string",
+            "description": "When reporting a comment: one of their comments.",
+            "format": "uuid"
+          },
           "details": {
             "type": "string",
             "nullable": true,
@@ -5610,6 +7073,19 @@
             "type": "string",
             "nullable": true
           },
+          "postId": {
+            "type": "string",
+            "nullable": true
+          },
+          "commentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "excerpt": {
+            "type": "string",
+            "nullable": true,
+            "description": "What was reported: the first 300 characters of the post or comment."
+          },
           "details": {
             "type": "string",
             "nullable": true
@@ -5635,6 +7111,9 @@
           "reporter",
           "target",
           "listingId",
+          "postId",
+          "commentId",
+          "excerpt",
           "details",
           "createdAt",
           "resolvedAt",
@@ -5666,15 +7145,17 @@
           "dismiss",
           "warn",
           "remove_listing",
+          "remove_post",
+          "remove_comment",
           "ban"
         ],
-        "description": "dismiss: no action. warn, remove_listing (the reported listing), ban (the target)."
+        "description": "dismiss: no action. warn, remove_listing, remove_post, remove_comment (the reported one), ban (the target)."
       },
       "ResolveReportBody": {
         "type": "object",
         "properties": {
           "action": {
-            "description": "dismiss: no action. warn, remove_listing (the reported listing), ban (the target).",
+            "description": "dismiss: no action. warn, remove_listing, remove_post, remove_comment (the reported one), ban (the target).",
             "allOf": [
               {
                 "$ref": "#/components/schemas/ResolveAction"

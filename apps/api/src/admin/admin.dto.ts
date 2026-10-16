@@ -7,7 +7,14 @@ import { REPORT_REASONS, type ReportReason } from '../safety/safety.dto.js';
 
 export const REPORT_STATUSES = reportStatus.enumValues;
 export type ReportStatus = (typeof REPORT_STATUSES)[number];
-export const RESOLVE_ACTIONS = ['dismiss', 'warn', 'remove_listing', 'ban'] as const;
+export const RESOLVE_ACTIONS = [
+  'dismiss',
+  'warn',
+  'remove_listing',
+  'remove_post',
+  'remove_comment',
+  'ban',
+] as const;
 export type ResolveAction = (typeof RESOLVE_ACTIONS)[number];
 export const ACCOUNT_STATES = ['active', 'banned', 'deleted'] as const;
 export type AccountState = (typeof ACCOUNT_STATES)[number];
@@ -62,6 +69,10 @@ export class AdminReportDto {
   reporter: AdminUserDto;
   target: AdminUserDto;
   listingId: string | null;
+  postId: string | null;
+  commentId: string | null;
+  /** What was reported: the first 300 characters of the post or comment. */
+  excerpt: string | null;
 
   @ApiProperty({ enum: REPORT_REASONS, enumName: 'ReportReason' })
   reason: ReportReason;
@@ -89,7 +100,7 @@ export class AdminReportsQuery extends PageQuery {
 }
 
 export class ResolveReportBody {
-  /** dismiss: no action. warn, remove_listing (the reported listing), ban (the target). */
+  /** dismiss: no action. warn, remove_listing, remove_post, remove_comment (the reported one), ban (the target). */
   @ApiProperty({ enum: RESOLVE_ACTIONS, enumName: 'ResolveAction' })
   @IsIn(RESOLVE_ACTIONS)
   action: ResolveAction;

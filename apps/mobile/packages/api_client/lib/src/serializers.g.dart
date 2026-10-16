@@ -104,6 +104,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(SetTagsBody.serializer)
       ..add(SignupBody.serializer)
       ..add(UnreadCountDto.serializer)
+      ..add(UpdateListingBody.serializer)
       ..add(UpdateMeBody.serializer)
       ..add(UserCardDto.serializer)
       ..add(UserGameDto.serializer)
@@ -114,6 +115,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(UsernameAvailabilityReasonEnum.serializer)
       ..add(Voice.serializer)
       ..add(WaitlistBody.serializer)
+      ..add(WaitlistCountDto.serializer)
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(AdminReportDto)]),
           () => ListBuilder<AdminReportDto>())
@@ -139,6 +141,9 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(PlayTag)]),
           () => ListBuilder<PlayTag>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(String)]),
+          () => ListBuilder<String>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(UserGameDto)]),
           () => ListBuilder<UserGameDto>())
@@ -196,6 +201,9 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(UserGameInput)]),
           () => ListBuilder<UserGameInput>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(WaitlistCountDto)]),
+          () => ListBuilder<WaitlistCountDto>())
       ..addBuilderFactory(
           const FullType(
               BuiltMap, const [const FullType(String), const FullType(String)]),

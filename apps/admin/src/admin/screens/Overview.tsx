@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, query, type Metrics } from '../api';
-import { ago, RANGES, REASON, SEV_ORDER, severity } from '../data';
+import { ago, RANGES, REASON, SEV_ORDER, severity, subject } from '../data';
 import type { Admin } from '../state';
 import {
   ACC,
@@ -21,6 +21,9 @@ import {
   pad2,
   pill,
 } from '../tokens';
+
+/** Waitlist topics the apps send (POST /v1/waitlist). */
+const TOPIC: Record<string, string> = { groups: 'Groups' };
 
 const pct = (part: number, whole: number) => (whole ? Math.round((part / whole) * 100) : 0);
 
@@ -214,7 +217,7 @@ export function Overview({ admin }: { admin: Admin }) {
                     {REASON[r.reason]} · @{r.target.username}
                   </div>
                   <div style={{ fontSize: 12, color: MUT }}>
-                    {r.listingId ? 'Listing' : 'Profile'} · {ago(r.createdAt)}
+                    {subject(r).kind} · {ago(r.createdAt)}
                   </div>
                 </div>
               </div>
@@ -222,6 +225,46 @@ export function Overview({ admin }: { admin: Admin }) {
           })}
           {!urgent.length && (
             <div style={{ fontSize: 14, color: MUT, padding: '8px 0' }}>Queue is clear.</div>
+          )}
+        </div>
+
+        <div style={{ ...card, gap: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <span style={heading(22)}>Waitlist</span>
+            <span style={{ font: mono(400, 11), color: MUT }}>ALL TIME</span>
+          </div>
+          <div style={{ fontSize: 13, color: MUT, lineHeight: 1.45 }}>
+            People who tapped &ldquo;Notify me&rdquo; on a feature that isn&rsquo;t built yet. It
+            says which one to launch first.
+          </div>
+          {m?.waitlist.map((w) => (
+            <div
+              key={w.topic}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '130px minmax(0,1fr) 60px',
+                alignItems: 'center',
+                gap: 12,
+              }}
+            >
+              <span style={{ fontWeight: 600, fontSize: 14 }}>{TOPIC[w.topic] ?? w.topic}</span>
+              <div
+                style={{ height: 14, borderRadius: 99, overflow: 'hidden', background: '#232323' }}
+              >
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${pct(w.count, m.waitlist[0]!.count)}%`,
+                    background: ACC,
+                    borderRadius: 99,
+                  }}
+                />
+              </div>
+              <span style={{ font: mono(700, 12), textAlign: 'right' }}>{fmt(w.count)}</span>
+            </div>
+          ))}
+          {m && !m.waitlist.length && (
+            <div style={{ fontSize: 14, color: MUT }}>Nobody has joined a waitlist yet.</div>
           )}
         </div>
       </div>

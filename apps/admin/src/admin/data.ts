@@ -67,3 +67,13 @@ export function ago(iso: string) {
 }
 
 export const lastSeen = (u: AdminUser) => (u.lastSeenAt ? ago(u.lastSeenAt) : 'never');
+
+/** What the report is about, and the action that takes it down. */
+export const subject = (r: AdminReport) =>
+  r.commentId
+    ? { kind: 'Comment', remove: 'remove_comment' as const }
+    : r.postId
+      ? { kind: 'Post', remove: 'remove_post' as const }
+      : r.listingId
+        ? { kind: 'Listing', remove: 'remove_listing' as const }
+        : { kind: 'Profile', remove: null };

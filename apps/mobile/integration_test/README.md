@@ -51,3 +51,21 @@ flutter drive --driver=test_driver/integration_test.dart \
 make someone's check-ins due now (they normally fall due the next day).
 It is for local runs only: it reads the API's log and writes to the dev
 database.
+
+## Against the deployed API
+
+There is no helper there, so the players are made beforehand: sign up
+`dave.exe`, `yonasjg`, `hanaplays` and the test player through the API,
+confirm their emails with the codes from the inbox, onboard all but the
+test player, and give Dave and Yonas a live listing. Then:
+
+```bash
+flutter test integration_test/app_e2e_test.dart -d emulator-5554 \
+  --dart-define=API_URL=https://gn-api-c763.onrender.com \
+  --dart-define=E2E_EMAIL=<the test player's email>
+```
+
+With `E2E_EMAIL` the test logs that player in instead of signing up, and
+skips the check-in (it can't be made due remotely) and the password reset
+(it needs another emailed code). It still deletes the test player at the
+end; delete the other three with `DELETE /v1/me`.

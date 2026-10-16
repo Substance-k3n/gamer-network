@@ -50,6 +50,7 @@ services:
       WEB_ORIGINS: https://${WEB_DOMAIN},https://${ADMIN_DOMAIN}
       PUBLIC_WEB_URL: https://${WEB_DOMAIN}
       LAUNCH_CITY: ${LAUNCH_CITY:-Addis Ababa}
+      FEED_ENABLED: ${FEED_ENABLED:-false}
       MIN_APP_VERSION: ${MIN_APP_VERSION:-0.0.0}
       LATEST_APP_VERSION: ${LATEST_APP_VERSION:-1.0.0}
       RESEND_API_KEY: ${RESEND_API_KEY:-}

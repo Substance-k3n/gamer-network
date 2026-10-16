@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import type { Response } from 'express';
+import { RateLimited } from './app-error.js';
 
 const DEFAULT_CODES: Record<number, [string, string]> = {
   400: ['bad_request', 'The request is malformed.'],
@@ -38,6 +39,9 @@ export class ErrorFilter implements ExceptionFilter {
     }
 
     const status = exception.getStatus();
+    if (exception instanceof RateLimited) {
+      res.setHeader('Retry-After', String(exception.retryAfterSeconds));
+    }
     const body = exception.getResponse();
     const [defaultCode, defaultMessage] = DEFAULT_CODES[status] ?? ['error', exception.message];
     const given =

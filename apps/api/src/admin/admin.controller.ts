@@ -32,7 +32,8 @@ import { AdminService } from './admin.service.js';
 const uuid = (what: string) => new ParseUUIDPipe({ exceptionFactory: () => notFound(what) });
 
 // For apps/admin. Operation ids: adminReports, adminResolveReport, adminUsers,
-// adminUser, adminBan, adminUnban, adminRemoveListing, adminSetLaunch, adminMetrics.
+// adminUser, adminBan, adminUnban, adminRemoveListing, adminRemovePost,
+// adminRemoveComment, adminSetLaunch, adminMetrics.
 
 @ApiTags('admin')
 @ApiBearerAuth()
@@ -48,7 +49,7 @@ export class AdminController {
     return this.admin.reports(q.status ?? 'open', q.limit, q.cursor);
   }
 
-  /** dismiss, warn, remove_listing or ban. 409 report_closed if already handled. */
+  /** dismiss, warn, remove_listing, remove_post, remove_comment or ban. 409 report_closed if already handled. */
   @Post('reports/:id/resolve')
   @HttpCode(200)
   @ApiOkResponse({ type: AdminReportDto })
@@ -108,6 +109,30 @@ export class AdminController {
     @Body() body: NoteBody,
   ): Promise<void> {
     await this.admin.removeListing(admin, id, body.note);
+  }
+
+  /** Take a post down. */
+  @Post('posts/:id/remove')
+  @HttpCode(204)
+  @ApiNoContentResponse()
+  async removePost(
+    @CurrentUser() admin: User,
+    @Param('id', uuid('That post')) id: string,
+    @Body() body: NoteBody,
+  ): Promise<void> {
+    await this.admin.removePost(admin, id, body.note);
+  }
+
+  /** Take a comment down, with its replies. */
+  @Post('comments/:id/remove')
+  @HttpCode(204)
+  @ApiNoContentResponse()
+  async removeComment(
+    @CurrentUser() admin: User,
+    @Param('id', uuid('That comment')) id: string,
+    @Body() body: NoteBody,
+  ): Promise<void> {
+    await this.admin.removeComment(admin, id, body.note);
   }
 
   /** Puts a game on Find Players, or takes it off. */

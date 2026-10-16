@@ -107,15 +107,20 @@ export function PlayerMenu({
   );
 }
 
-function ReportDialog({
+export function ReportDialog({
   userId,
   name,
   listingId,
+  postId,
+  commentId,
   onClose,
 }: {
   userId: string;
   name: string;
   listingId?: string;
+  /** Reporting a post or a comment of theirs, not the person. */
+  postId?: string;
+  commentId?: string;
   onClose: () => void;
 }) {
   const { run, toast, busy } = useApp();
@@ -132,6 +137,8 @@ function ReportDialog({
           userId,
           reason,
           ...(listingId ? { listingId } : {}),
+          ...(postId ? { postId } : {}),
+          ...(commentId ? { commentId } : {}),
           ...(details.trim() ? { details: details.trim() } : {}),
         },
       }).then(() => true),
@@ -142,7 +149,9 @@ function ReportDialog({
   };
   return (
     <Dialog onClose={onClose}>
-      <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.6 }}>Report {name}</div>
+      <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.6 }}>
+        {commentId ? 'Report comment' : postId ? 'Report post' : `Report ${name}`}
+      </div>
       <div className="muted" style={{ fontSize: 14 }}>
         Only our team sees reports. What’s wrong?
       </div>

@@ -45,6 +45,7 @@ Map<String, Object?> profile(
   String name, {
   String relationship = 'none',
   bool onboarded = true,
+  String? outgoingRequestId,
 }) => {
   ...card(id, username, name),
   'bio': 'Ranked most nights.',
@@ -66,9 +67,14 @@ Map<String, Object?> profile(
   'stats': {'connections': 3, 'games': 1, 'playedWith': 2},
   'relationship': relationship,
   'incomingRequestId': null,
+  'outgoingRequestId': outgoingRequestId,
 };
 
-Map<String, Object?> me({bool onboarded = true, bool verified = true}) => {
+Map<String, Object?> me({
+  bool onboarded = true,
+  bool verified = true,
+  List<String> waitlist = const [],
+}) => {
   ...profile('me-1', 'kaleb.gg', 'Kaleb', relationship: 'self'),
   'email': 'kaleb@example.com',
   'emailVerified': verified,
@@ -77,6 +83,7 @@ Map<String, Object?> me({bool onboarded = true, bool verified = true}) => {
   'onboardedAt': onboarded ? _at(const Duration(days: -3)) : null,
   'createdAt': _at(const Duration(days: -3)),
   'role': 'player',
+  'waitlist': waitlist,
 };
 
 Map<String, Object?> game(

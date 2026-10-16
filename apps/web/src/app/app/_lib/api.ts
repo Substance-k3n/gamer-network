@@ -26,6 +26,12 @@ export type GamingIdKind = S['GamingIdKind'];
 export type ReportReason = S['ReportReason'];
 export type PlayWhen = S['PlayWhen'];
 export type InviteWhen = S['InviteWhen'];
+export type Post = S['PostDto'];
+export type PostType = S['PostType'];
+export type PostAudience = S['PostAudience'];
+export type FeedFilter = S['FeedFilter'];
+export type Comment = S['CommentDto'];
+export type Gg = S['GgDto'];
 export type Page<T> = { items: T[]; nextCursor: string | null };
 
 /** The API's error shape (docs/API.md "Errors"): branch on `code`, show `message`. */

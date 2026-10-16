@@ -281,6 +281,7 @@ class Profile {
     required this.stats,
     required this.relationship,
     required this.incomingRequestId,
+    this.outgoingRequestId,
     required this.availableDays,
   });
 
@@ -319,11 +320,12 @@ class Profile {
     stats: p.stats,
     relationship: p.relationship,
     incomingRequestId: p.incomingRequestId,
+    outgoingRequestId: p.outgoingRequestId,
     availableDays: p.availableDays.toList(),
   );
 
   final String id, username, displayName, city;
-  final String? avatarUrl, bio, incomingRequestId;
+  final String? avatarUrl, bio, incomingRequestId, outgoingRequestId;
   final PlayerStatus status;
   final GameRefDto? statusGame;
   final List<UserGameDto> games;

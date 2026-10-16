@@ -8,14 +8,17 @@ part of 'login_body.dart';
 
 class _$LoginBody extends LoginBody {
   @override
-  final String email;
+  final String? email;
+  @override
+  final String? username;
   @override
   final String password;
 
   factory _$LoginBody([void Function(LoginBodyBuilder)? updates]) =>
       (LoginBodyBuilder()..update(updates))._build();
 
-  _$LoginBody._({required this.email, required this.password}) : super._();
+  _$LoginBody._({this.email, this.username, required this.password})
+      : super._();
   @override
   LoginBody rebuild(void Function(LoginBodyBuilder) updates) =>
       (toBuilder()..update(updates)).build();
@@ -28,6 +31,7 @@ class _$LoginBody extends LoginBody {
     if (identical(other, this)) return true;
     return other is LoginBody &&
         email == other.email &&
+        username == other.username &&
         password == other.password;
   }
 
@@ -35,6 +39,7 @@ class _$LoginBody extends LoginBody {
   int get hashCode {
     var _$hash = 0;
     _$hash = $jc(_$hash, email.hashCode);
+    _$hash = $jc(_$hash, username.hashCode);
     _$hash = $jc(_$hash, password.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
@@ -44,6 +49,7 @@ class _$LoginBody extends LoginBody {
   String toString() {
     return (newBuiltValueToStringHelper(r'LoginBody')
           ..add('email', email)
+          ..add('username', username)
           ..add('password', password))
         .toString();
   }
@@ -55,6 +61,10 @@ class LoginBodyBuilder implements Builder<LoginBody, LoginBodyBuilder> {
   String? _email;
   String? get email => _$this._email;
   set email(String? email) => _$this._email = email;
+
+  String? _username;
+  String? get username => _$this._username;
+  set username(String? username) => _$this._username = username;
 
   String? _password;
   String? get password => _$this._password;
@@ -68,6 +78,7 @@ class LoginBodyBuilder implements Builder<LoginBody, LoginBodyBuilder> {
     final $v = _$v;
     if ($v != null) {
       _email = $v.email;
+      _username = $v.username;
       _password = $v.password;
       _$v = null;
     }
@@ -90,8 +101,8 @@ class LoginBodyBuilder implements Builder<LoginBody, LoginBodyBuilder> {
   _$LoginBody _build() {
     final _$result = _$v ??
         _$LoginBody._(
-          email: BuiltValueNullFieldError.checkNotNull(
-              email, r'LoginBody', 'email'),
+          email: email,
+          username: username,
           password: BuiltValueNullFieldError.checkNotNull(
               password, r'LoginBody', 'password'),
         );

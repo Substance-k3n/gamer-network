@@ -740,7 +740,7 @@ class LoginScreen extends StatelessWidget {
         const SizedBox(height: 0),
         BoxField(
           value: s.loginUser,
-          hint: 'Email',
+          hint: 'Email or username',
           keyboardType: TextInputType.emailAddress,
           onChanged: (v) => s.loginUser = v,
         ),
@@ -749,7 +749,9 @@ class LoginScreen extends StatelessWidget {
           alignment: Alignment.centerRight,
           child: GestureDetector(
             onTap: () => s.go(Screen.forgot, () {
-              s.resetEmail = s.loginUser.trim();
+              s.resetEmail = s.loginUser.contains('@')
+                  ? s.loginUser.trim()
+                  : '';
               s.resetSent = false;
             }),
             child: Text(

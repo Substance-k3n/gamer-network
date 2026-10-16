@@ -18,3 +18,20 @@ export async function getPublicListing(id: string): Promise<PublicListing | null
   if (!res.ok) throw new Error(`public listing ${id}: ${res.status}`);
   return res.json() as Promise<PublicListing>;
 }
+
+export type PublicPost = components['schemas']['PublicPostDto'];
+
+/**
+ * GET /v1/public/posts/{id}. Null when it doesn't exist or isn't public
+ * (connections-only, deleted, removed, author banned or deleted).
+ */
+export async function getPublicPost(id: string): Promise<PublicPost | null> {
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
+  const res = await fetch(`${config.apiUrl}/v1/public/posts/${id}`, {
+    cache: 'no-store',
+    headers: { accept: 'application/json' },
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`public post ${id}: ${res.status}`);
+  return res.json() as Promise<PublicPost>;
+}

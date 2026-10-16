@@ -11,6 +11,10 @@ export interface NotificationFacts {
   gameName: string | null;
   listingId: string | null;
   checkInId: string | null;
+  postId: string | null;
+  commentId: string | null;
+  /** post_gg: how many more people GG'd while it was unread. */
+  others: number;
 }
 
 export interface NotificationText {
@@ -26,6 +30,7 @@ export interface NotificationText {
 export function notificationText(n: NotificationFacts): NotificationText {
   const who = n.actorName ?? 'Someone';
   const game = n.gameName ?? 'a game';
+  const post = n.postId ? `/posts/${n.postId}` : '/alerts';
   const profile = n.actorUsername ? `/players/${n.actorUsername}` : '/alerts';
   switch (n.type) {
     case 'connection_request':
@@ -57,6 +62,28 @@ export function notificationText(n: NotificationFacts): NotificationText {
         title: 'Report reviewed',
         text: 'We reviewed your report. Thanks for keeping it safe.',
         route: '/alerts',
+      };
+    case 'post_gg': {
+      const more = n.others === 0 ? '' : ` and ${n.others} ${n.others === 1 ? 'other' : 'others'}`;
+      return { title: 'GG', text: `${who}${more} reacted GG to your post`, route: post };
+    }
+    case 'post_comment':
+      return {
+        title: 'New comment',
+        text: `${who} commented on your post`,
+        route: n.postId ? `${post}?comments=1` : post,
+      };
+    case 'comment_reply':
+      return {
+        title: 'New reply',
+        text: `${who} replied to your comment`,
+        route: n.postId ? `${post}?comments=1` : post,
+      };
+    case 'mention':
+      return {
+        title: 'Mention',
+        text: `${who} mentioned you in ${n.commentId ? 'a comment' : 'a post'}`,
+        route: n.commentId && n.postId ? `${post}?comments=1` : post,
       };
   }
 }

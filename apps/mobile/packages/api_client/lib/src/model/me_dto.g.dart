@@ -34,6 +34,8 @@ class _$MeDto extends MeDto {
   @override
   final DateTime createdAt;
   @override
+  final BuiltList<String> waitlist;
+  @override
   final String? bio;
   @override
   final DateTime? statusUntil;
@@ -45,6 +47,8 @@ class _$MeDto extends MeDto {
   final ProfileStatsDto stats;
   @override
   final String? incomingRequestId;
+  @override
+  final String? outgoingRequestId;
   @override
   final String id;
   @override
@@ -77,12 +81,14 @@ class _$MeDto extends MeDto {
       required this.country,
       this.onboardedAt,
       required this.createdAt,
+      required this.waitlist,
       this.bio,
       this.statusUntil,
       required this.games,
       required this.gamingIds,
       required this.stats,
       this.incomingRequestId,
+      this.outgoingRequestId,
       required this.id,
       required this.username,
       required this.displayName,
@@ -115,12 +121,14 @@ class _$MeDto extends MeDto {
         country == other.country &&
         onboardedAt == other.onboardedAt &&
         createdAt == other.createdAt &&
+        waitlist == other.waitlist &&
         bio == other.bio &&
         statusUntil == other.statusUntil &&
         games == other.games &&
         gamingIds == other.gamingIds &&
         stats == other.stats &&
         incomingRequestId == other.incomingRequestId &&
+        outgoingRequestId == other.outgoingRequestId &&
         id == other.id &&
         username == other.username &&
         displayName == other.displayName &&
@@ -146,12 +154,14 @@ class _$MeDto extends MeDto {
     _$hash = $jc(_$hash, country.hashCode);
     _$hash = $jc(_$hash, onboardedAt.hashCode);
     _$hash = $jc(_$hash, createdAt.hashCode);
+    _$hash = $jc(_$hash, waitlist.hashCode);
     _$hash = $jc(_$hash, bio.hashCode);
     _$hash = $jc(_$hash, statusUntil.hashCode);
     _$hash = $jc(_$hash, games.hashCode);
     _$hash = $jc(_$hash, gamingIds.hashCode);
     _$hash = $jc(_$hash, stats.hashCode);
     _$hash = $jc(_$hash, incomingRequestId.hashCode);
+    _$hash = $jc(_$hash, outgoingRequestId.hashCode);
     _$hash = $jc(_$hash, id.hashCode);
     _$hash = $jc(_$hash, username.hashCode);
     _$hash = $jc(_$hash, displayName.hashCode);
@@ -179,12 +189,14 @@ class _$MeDto extends MeDto {
           ..add('country', country)
           ..add('onboardedAt', onboardedAt)
           ..add('createdAt', createdAt)
+          ..add('waitlist', waitlist)
           ..add('bio', bio)
           ..add('statusUntil', statusUntil)
           ..add('games', games)
           ..add('gamingIds', gamingIds)
           ..add('stats', stats)
           ..add('incomingRequestId', incomingRequestId)
+          ..add('outgoingRequestId', outgoingRequestId)
           ..add('id', id)
           ..add('username', username)
           ..add('displayName', displayName)
@@ -257,6 +269,11 @@ class MeDtoBuilder implements Builder<MeDto, MeDtoBuilder> {
   DateTime? get createdAt => _$this._createdAt;
   set createdAt(DateTime? createdAt) => _$this._createdAt = createdAt;
 
+  ListBuilder<String>? _waitlist;
+  ListBuilder<String> get waitlist =>
+      _$this._waitlist ??= ListBuilder<String>();
+  set waitlist(ListBuilder<String>? waitlist) => _$this._waitlist = waitlist;
+
   String? _bio;
   String? get bio => _$this._bio;
   set bio(String? bio) => _$this._bio = bio;
@@ -285,6 +302,11 @@ class MeDtoBuilder implements Builder<MeDto, MeDtoBuilder> {
   String? get incomingRequestId => _$this._incomingRequestId;
   set incomingRequestId(String? incomingRequestId) =>
       _$this._incomingRequestId = incomingRequestId;
+
+  String? _outgoingRequestId;
+  String? get outgoingRequestId => _$this._outgoingRequestId;
+  set outgoingRequestId(String? outgoingRequestId) =>
+      _$this._outgoingRequestId = outgoingRequestId;
 
   String? _id;
   String? get id => _$this._id;
@@ -336,12 +358,14 @@ class MeDtoBuilder implements Builder<MeDto, MeDtoBuilder> {
       _country = $v.country;
       _onboardedAt = $v.onboardedAt;
       _createdAt = $v.createdAt;
+      _waitlist = $v.waitlist.toBuilder();
       _bio = $v.bio;
       _statusUntil = $v.statusUntil;
       _games = $v.games.toBuilder();
       _gamingIds = $v.gamingIds.toBuilder();
       _stats = $v.stats.toBuilder();
       _incomingRequestId = $v.incomingRequestId;
+      _outgoingRequestId = $v.outgoingRequestId;
       _id = $v.id;
       _username = $v.username;
       _displayName = $v.displayName;
@@ -393,12 +417,14 @@ class MeDtoBuilder implements Builder<MeDto, MeDtoBuilder> {
             onboardedAt: onboardedAt,
             createdAt: BuiltValueNullFieldError.checkNotNull(
                 createdAt, r'MeDto', 'createdAt'),
+            waitlist: waitlist.build(),
             bio: bio,
             statusUntil: statusUntil,
             games: games.build(),
             gamingIds: gamingIds.build(),
             stats: stats.build(),
             incomingRequestId: incomingRequestId,
+            outgoingRequestId: outgoingRequestId,
             id: BuiltValueNullFieldError.checkNotNull(id, r'MeDto', 'id'),
             username: BuiltValueNullFieldError.checkNotNull(
                 username, r'MeDto', 'username'),
@@ -418,6 +444,9 @@ class MeDtoBuilder implements Builder<MeDto, MeDtoBuilder> {
         platforms.build();
         _$failedField = 'tags';
         tags.build();
+
+        _$failedField = 'waitlist';
+        waitlist.build();
 
         _$failedField = 'games';
         games.build();

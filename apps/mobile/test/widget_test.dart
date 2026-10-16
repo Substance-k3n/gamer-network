@@ -190,6 +190,27 @@ void main() {
     await done(t);
   });
 
+  testWidgets('log in with a username', (t) async {
+    final api = FakeApi();
+    api.routes['POST /v1/auth/login'] = {
+      'token': 't-1',
+      'user': me(),
+      'isNew': false,
+    };
+    await pumpApp(t, api);
+    await tapText(t, 'Log in');
+    await t.enterText(find.byType(TextField).at(0), '@kaleb.gg');
+    await t.enterText(find.byType(TextField).at(1), 'secret-pass');
+    await tapText(t, 'Log in');
+    await settle(t);
+    expect(api.bodiesOf('POST /v1/auth/login').last, {
+      'username': 'kaleb.gg',
+      'password': 'secret-pass',
+    });
+    expect(find.text('YOUR STATUS'), findsOneWidget);
+    await done(t);
+  });
+
   testWidgets('Home: the check-in is one tap, invites can be answered', (
     t,
   ) async {
@@ -416,6 +437,60 @@ void main() {
     await done(t);
   });
 
+  testWidgets('edit my live listing without reposting it', (t) async {
+    final api = FakeApi();
+    final mine = listing('l-mine', card('me-1', 'kaleb.gg', 'Kaleb'));
+    api.routes['GET /v1/me/listing'] = {'listing': mine};
+    api.routes['PATCH /v1/listings/l-mine'] = {
+      ...mine,
+      'voice': 'optional',
+      'playWhen': 'now',
+      'note': 'Chill games only',
+    };
+    await pumpApp(t, api, token: 't-1');
+    expect(find.text('YOUR LIVE LISTING'), findsOneWidget);
+    await tapText(t, 'Edit');
+    expect(find.text('Edit your listing'), findsOneWidget);
+    expect(find.text('EXPIRES AFTER'), findsNothing);
+    await tapText(t, 'Mic optional');
+    await tapText(t, 'Now');
+    await t.enterText(find.byType(TextField).last, 'Chill games only');
+    await tapText(t, 'Save changes');
+    expect(api.bodiesOf('PATCH /v1/listings/l-mine').single, {
+      'voice': 'optional',
+      'style': 'competitive',
+      'playWhen': 'now',
+      'note': 'Chill games only',
+    });
+    expect(find.text('Listing updated'), findsOneWidget);
+    expect(
+      api.sent.where((r) => r.method == 'POST' && r.path == '/v1/listings'),
+      isEmpty,
+    );
+    await done(t);
+  });
+
+  testWidgets('withdraw a request from their profile', (t) async {
+    final api = FakeApi();
+    api.routes['GET /v1/users/hanaplays'] = profile(
+      'u-hana',
+      'hanaplays',
+      'Hana',
+      relationship: 'outgoing_request',
+      outgoingRequestId: 'cr-mine',
+    );
+    final s = await pumpApp(t, api, token: 't-1');
+    s.openPlayer('hanaplays');
+    await settle(t);
+    await tapText(t, 'Requested…');
+    await tapText(t, 'Withdraw');
+    expect(api.sent.where((r) => r.method == 'DELETE').map((r) => r.path), [
+      '/v1/connection-requests/cr-mine',
+    ]);
+    expect(api.sent.any((r) => r.path == '/v1/connection-requests'), isFalse);
+    await done(t);
+  });
+
   testWidgets('remove a connection from their profile menu', (t) async {
     final api = FakeApi();
     final s = await pumpApp(t, api, token: 't-1');
@@ -493,6 +568,17 @@ void main() {
       await done(t);
     },
   );
+
+  testWidgets('groups remembers the waitlist after a restart', (t) async {
+    final api = FakeApi();
+    api.routes['GET /v1/me'] = me(waitlist: ['groups']);
+    final s = await pumpApp(t, api, token: 't-1');
+    s.go(Screen.communities);
+    await t.pump();
+    expect(find.text('You’re on the list ✓'), findsOneWidget);
+    expect(find.text('Notify me'), findsNothing);
+    await done(t);
+  });
 
   testWidgets('groups waitlist and a report from a profile', (t) async {
     final api = FakeApi();

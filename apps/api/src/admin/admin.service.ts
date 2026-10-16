@@ -23,10 +23,12 @@ import { DB } from '../db/db.module.js';
 import {
   adminActions,
   checkIns,
+  comments,
   connectionRequests,
   connections,
   games,
   listings,
+  posts,
   reports,
   sessions,
   userGames,
@@ -49,6 +51,16 @@ const DAY_MS = 24 * 3600_000;
 
 /** `%`, `_` and `\` match literally. */
 const likePrefix = (q: string) => `${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+
+const notAbout = (what: string) =>
+  new AppError(
+    HttpStatus.UNPROCESSABLE_ENTITY,
+    'validation_failed',
+    `This report has no ${what.slice(2)}.`,
+    {
+      action: `This report is not about ${what}`,
+    },
+  );
 
 /** Every admin action goes through here and leaves an admin_actions row. */
 @Injectable()
@@ -161,11 +173,31 @@ export class AdminService {
       .from(users)
       .where(inArray(users.id, [...new Set(rows.flatMap((r) => [r.reporterId, r.targetUserId]))]));
     const byId = new Map((await this.adminUsers(people)).map((u) => [u.id, u]));
+    const postIds = rows.flatMap((r) => (r.postId ? [r.postId] : []));
+    const commentIds = rows.flatMap((r) => (r.commentId ? [r.commentId] : []));
+    const [postTexts, commentTexts] = await Promise.all([
+      postIds.length
+        ? this.db
+            .select({ id: posts.id, text: posts.text })
+            .from(posts)
+            .where(inArray(posts.id, postIds))
+        : [],
+      commentIds.length
+        ? this.db
+            .select({ id: comments.id, text: comments.text })
+            .from(comments)
+            .where(inArray(comments.id, commentIds))
+        : [],
+    ]);
+    const text = new Map([...postTexts, ...commentTexts].map((t) => [t.id, t.text]));
     return rows.map((r) => ({
       id: r.id,
       reporter: byId.get(r.reporterId)!,
       target: byId.get(r.targetUserId)!,
       listingId: r.listingId,
+      postId: r.postId,
+      commentId: r.commentId,
+      excerpt: text.get(r.commentId ?? r.postId ?? '')?.slice(0, 300) ?? null,
       reason: r.reason,
       details: r.details,
       status: r.status,
@@ -282,6 +314,50 @@ export class AdminService {
     else await this.db.transaction(run);
   }
 
+  /** Takes a post down: hidden everywhere, logged. */
+  async removePost(admin: User, postId: string, note = '', tx?: Tx, reportId?: string) {
+    const run = async (t: Tx) => {
+      const [row] = await t
+        .update(posts)
+        .set({ status: 'removed', removedAt: new Date(), removedBy: admin.id })
+        .where(eq(posts.id, postId))
+        .returning({ authorId: posts.authorId });
+      if (!row) throw notFound('That post');
+      await this.log(t, {
+        adminId: admin.id,
+        kind: 'remove_post',
+        postId,
+        targetUserId: row.authorId,
+        reportId,
+        note,
+      });
+    };
+    if (tx) await run(tx);
+    else await this.db.transaction(run);
+  }
+
+  /** Takes a comment down, and the replies under it with it. */
+  async removeComment(admin: User, commentId: string, note = '', tx?: Tx, reportId?: string) {
+    const run = async (t: Tx) => {
+      const [row] = await t
+        .update(comments)
+        .set({ status: 'removed', removedAt: new Date(), removedBy: admin.id })
+        .where(eq(comments.id, commentId))
+        .returning({ authorId: comments.authorId });
+      if (!row) throw notFound('That comment');
+      await this.log(t, {
+        adminId: admin.id,
+        kind: 'remove_comment',
+        commentId,
+        targetUserId: row.authorId,
+        reportId,
+        note,
+      });
+    };
+    if (tx) await run(tx);
+    else await this.db.transaction(run);
+  }
+
   /** Closes a report with an action; the reporter hears back unless it was dismissed. */
   async resolve(admin: User, reportId: string, action: ResolveAction, note: string) {
     let banned: string | undefined;
@@ -331,6 +407,14 @@ export class AdminService {
             );
           }
           await this.removeListing(admin, report.listingId, note, tx, reportId);
+          break;
+        case 'remove_post':
+          if (!report.postId) throw notAbout('a post');
+          await this.removePost(admin, report.postId, note, tx, reportId);
+          break;
+        case 'remove_comment':
+          if (!report.commentId) throw notAbout('a comment');
+          await this.removeComment(admin, report.commentId, note, tx, reportId);
           break;
         case 'ban':
           await this.banIn(tx, admin, report.targetUserId, note || report.reason, reportId);
