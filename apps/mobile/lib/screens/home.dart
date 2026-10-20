@@ -908,13 +908,27 @@ Future<void> showPhotos(BuildContext context, List<MediaDto> media, int at) =>
       },
     );
 
-/// "ENDS IN 2D 4H" style time left on a poll.
+/// Time left on a poll in its largest whole unit: "2 DAYS", "5 HOURS",
+/// "30 MIN" (D29).
 String endsIn(DateTime end, DateTime now) {
   final d = end.difference(now);
-  if (d.isNegative) return 'SOON';
-  if (d.inDays > 0) return '${d.inDays}D ${d.inHours % 24}H';
-  if (d.inHours > 0) return '${d.inHours}H ${d.inMinutes % 60}M';
-  return '${d.inMinutes < 1 ? 1 : d.inMinutes}M';
+  if (d.inDays > 0) return '${d.inDays} ${d.inDays == 1 ? 'DAY' : 'DAYS'}';
+  if (d.inHours > 0) {
+    return '${d.inHours} ${d.inHours == 1 ? 'HOUR' : 'HOURS'}';
+  }
+  return '${d.inMinutes < 1 ? 1 : d.inMinutes} MIN';
+}
+
+/// "1 VOTE · YOU VOTED", "4 VOTES · ENDS IN 2 DAYS", "3 VOTES · CLOSED".
+String pollFooter(PollDto pl, DateTime now) {
+  final n = pl.totalVotes.toInt();
+  final votes = '$n ${n == 1 ? 'VOTE' : 'VOTES'}';
+  final state = pl.closed
+      ? 'CLOSED'
+      : pl.myVote != null
+      ? 'YOU VOTED'
+      : 'ENDS IN ${endsIn(pl.endsAt, now)}';
+  return '$votes · $state';
 }
 
 /// A poll: bars stay hidden until I vote (or it closes).
@@ -930,11 +944,6 @@ class _PollView extends StatelessWidget {
     final mine = pl.myVote?.toInt();
     final shown = mine != null || pl.closed;
     final tot = pl.totalVotes.toInt();
-    final caption = pl.closed
-        ? 'CLOSED'
-        : mine != null
-        ? 'YOU VOTED'
-        : 'ENDS IN ${endsIn(pl.endsAt, s.now.value)}';
     return Gap(
       7,
       children: [
@@ -996,7 +1005,7 @@ class _PollView extends StatelessWidget {
               );
             },
           ),
-        Label('$tot VOTES · $caption', padLeft: 4),
+        Label(pollFooter(pl, s.now.value), padLeft: 4),
       ],
     );
   }
