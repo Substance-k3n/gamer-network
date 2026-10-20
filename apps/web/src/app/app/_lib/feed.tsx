@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useRef, useState, type ReactNode } from 'react';
 import { api, query, uuid, type Comment, type Gg, type Page, type Post } from './api';
 import { ago, postTypeInfo, rankLine, toneFor } from './data';
+import { PhotoGrid, PollView, RecruitBox } from './postparts';
 import { ReportDialog } from './safety';
 import { useApp, useLoad } from './store';
 import {
@@ -13,9 +14,7 @@ import {
   Icon,
   Label,
   Pill,
-  PlayIcon,
   Spinner,
-  StripeBox,
   TypeTag,
   keepFocus,
   toneColor,
@@ -108,11 +107,14 @@ export function FeedPost({
   onChange,
   onGone,
   openComments = false,
+  openApplications = false,
 }: {
   p: Post;
   onChange: (p: Post) => void;
   onGone: () => void;
   openComments?: boolean;
+  /** Mine with recruitment: the applications sheet starts open (an alert). */
+  openApplications?: boolean;
 }) {
   const { run, toast } = useApp();
   const router = useRouter();
@@ -218,7 +220,9 @@ export function FeedPost({
         >
           {p.text}
         </div>
-        {p.kind === 'moment' && <Clip />}
+        <PhotoGrid media={p.media} />
+        {p.poll && <PollView p={p} onChange={onChange} />}
+        {p.recruit && <RecruitBox p={p} onChange={onChange} openApplications={openApplications} />}
         {top && (
           <button
             type="button"
@@ -278,32 +282,6 @@ export function FeedPost({
         )}
       </div>
     </article>
-  );
-}
-
-function Clip() {
-  return (
-    <StripeBox height={190}>
-      <span style={{ position: 'absolute', top: 10, left: 12 }}>
-        <Label color="var(--accent-text)">GAME MOMENT · CLIP</Label>
-      </span>
-      <span
-        className="row"
-        style={{
-          position: 'absolute',
-          inset: 0,
-          margin: 'auto',
-          width: 58,
-          height: 58,
-          justifyContent: 'center',
-          borderRadius: '50%',
-          background: 'var(--accent)',
-          border: '2px solid var(--on-dark)',
-        }}
-      >
-        <PlayIcon />
-      </span>
-    </StripeBox>
   );
 }
 

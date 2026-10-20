@@ -27,8 +27,10 @@ import {
   tagLabel,
   toneFor,
 } from './data';
+import { FeedPost } from './feed';
 import { GroupCard, GroupStrip } from './groupui';
 import { groupsOf, useGroups } from './groups';
+import { PhotoGrid } from './postparts';
 import { PlayerMenu } from './safety';
 import { skins, useApp, useLoad, type Skin } from './store';
 import {
@@ -47,6 +49,7 @@ import {
   PasswordField,
   Pill,
   Rows,
+  Spinner,
   StripeBox,
   toneColor,
   useConfirm,
@@ -66,7 +69,7 @@ export function ProfileView({ p, onReload }: { p: View; onReload: () => void }) 
   // Sample groups know only me; real players other than me are in none (D5).
   const groups = p.isMe ? groupsOf(groupsState, 'me') : [];
   const tabs = p.isMe
-    ? ['Overview', 'Games', 'Groups', 'Posts', 'Moments', 'Connections']
+    ? ['Overview', 'Games', 'Groups', 'Posts', 'Moments', 'Saved', 'Connections']
     : ['Overview', 'Games', 'Groups', 'Posts', 'Moments'];
   const [postsMore, setPostsMore] = useState<string | null>(null);
   const postsPath = p.isMe ? 'me/posts' : `users/${encodeURIComponent(p.username)}/posts`;
@@ -318,6 +321,7 @@ export function ProfileView({ p, onReload }: { p: View; onReload: () => void }) 
           ))}
         {tab === 'Connections' && <Connections />}
       </div>
+      {tab === 'Saved' && p.isMe && <Saved />}
       {menu && (
         <PlayerMenu
           userId={p.id}
@@ -658,6 +662,7 @@ function MiniPost({ p }: { p: Post }) {
           >
             {p.text}
           </div>
+          <PhotoGrid media={p.media} still />
           <div style={{ fontSize: 12, fontWeight: 700 }}>
             GG {pad2(p.ggCount)} · {n} {n === 1 ? 'comment' : 'comments'}
           </div>
@@ -668,9 +673,23 @@ function MiniPost({ p }: { p: Post }) {
 }
 
 function MomentTile({ m }: { m: Post }) {
+  const photo = m.media[0]?.url;
   return (
     <Link href={`/app/posts/${m.id}?comments=1`} style={{ display: 'block' }}>
-      <StripeBox style={{ aspectRatio: '1' }}>
+      <StripeBox
+        style={{
+          aspectRatio: '1',
+          // The first photo, darkened at the edges so the caption reads.
+          ...(photo
+            ? {
+                backgroundImage: `linear-gradient(rgba(0,0,0,.45), rgba(0,0,0,0) 40%, rgba(0,0,0,.65)), url("${photo}")`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                color: '#fff',
+              }
+            : {}),
+        }}
+      >
         <div
           className="gap"
           style={{ position: 'absolute', inset: 0, padding: 10, justifyContent: 'space-between' }}
@@ -759,6 +778,60 @@ function StatusCard() {
         </div>
       </div>
     </Card>
+  );
+}
+
+/** My bookmarked posts, most recently saved first; unsaving one drops it. */
+function Saved() {
+  const { run, putPost, dropPost } = useApp();
+  const [more, setMore] = useState<string | null>(null);
+  const { data, setData, loaded } = useLoad(async () => {
+    const pg = await api<Page<Post>>('me/saved');
+    setMore(pg.nextCursor);
+    return pg.items;
+  }, []);
+  const items = data ?? [];
+  const loadMore = async () => {
+    const pg = await run(() => api<Page<Post>>(`me/saved?cursor=${encodeURIComponent(more!)}`), {
+      busy: false,
+    });
+    if (!pg) return;
+    setData([...items, ...pg.items.filter((x) => !items.some((y) => y.id === x.id))]);
+    setMore(pg.nextCursor);
+  };
+  if (!loaded) return <Spinner />;
+  // Unsaved cards leave the list; kept underneath so a failed unsave brings one back.
+  const shown = items.filter((x) => x.saved);
+  if (!shown.length && !more)
+    return (
+      <div className="rl-pad">
+        <EmptyNote>Nothing saved yet. Tap the bookmark on a post to keep it here.</EmptyNote>
+      </div>
+    );
+  return (
+    <div style={{ borderTop: '1.5px solid var(--divider)' }}>
+      {shown.map((x) => (
+        <FeedPost
+          key={x.id}
+          p={x}
+          onChange={(n) => {
+            setData((list) => (list ?? []).map((y) => (y.id === n.id ? n : y)));
+            putPost(n);
+          }}
+          onGone={() => {
+            setData(items.filter((y) => y.id !== x.id));
+            dropPost(x.id);
+          }}
+        />
+      ))}
+      {more && (
+        <div style={{ textAlign: 'center', padding: 14 }}>
+          <Pill h={42} padH={18} size={14} bold onClick={loadMore}>
+            Load more
+          </Pill>
+        </div>
+      )}
+    </div>
   );
 }
 

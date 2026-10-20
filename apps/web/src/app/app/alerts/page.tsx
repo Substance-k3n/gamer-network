@@ -49,9 +49,11 @@ export default function Alerts() {
   };
   /** Follows a notification's route (docs/API.md "Push"). */
   const open = (route: string) => {
-    const [kind, id] = route.split('/').filter(Boolean);
+    const [kind, id, sub] = route.split('/').filter(Boolean);
     if (kind === 'players' && id) router.push(`/app/players/${id}`);
     else if (kind === 'listings' && id) router.push(`/app/listings/${id}`);
+    else if (kind === 'posts' && id && sub === 'applications')
+      router.push(`/app/posts/${id}?applications=1`);
     else if (kind === 'posts' && id) router.push(`/app/posts/${id}`);
     else if (kind === 'check-ins') router.push('/app');
   };
