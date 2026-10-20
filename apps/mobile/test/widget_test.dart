@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rally/groups_data.dart';
 import 'package:rally/main.dart';
 import 'package:rally/shell.dart';
 import 'package:rally/state.dart';
@@ -104,6 +105,14 @@ Future<void> settle(WidgetTester t) async {
   }
 }
 
+/// The fixture post in the Home feed (fake_api.dart).
+const feedText = 'Best co-op game you played this month?';
+
+/// A widget with this semantics label (the feed's icon actions).
+Finder labelled(String label) => find.byWidgetPredicate(
+  (w) => w is Semantics && w.properties.label == label,
+);
+
 Finder icon(Ic i) => find.byWidgetPredicate((w) => w is SvgIcon && w.icon == i);
 
 RallyTheme activeTheme(WidgetTester t) =>
@@ -152,7 +161,7 @@ void main() {
     expect(find.text('Can’t reach rally right now.'), findsOneWidget);
     api.routes['GET /v1/app/config'] = config;
     await tapText(t, 'Try again');
-    expect(find.text('YOUR STATUS'), findsOneWidget);
+    expect(find.text(feedText), findsOneWidget);
     await done(t);
   });
 
@@ -184,7 +193,7 @@ void main() {
       'password': 'nope-nope',
     });
     expect(find.text('Did you play with Dave?'), findsOneWidget);
-    expect(find.text('YOUR STATUS'), findsOneWidget);
+    expect(find.text(feedText), findsOneWidget);
     expect(find.text('2'), findsOneWidget); // unread badge
     expect(api.sent.last.path, isNotEmpty);
     await done(t);
@@ -207,7 +216,7 @@ void main() {
       'username': 'kaleb.gg',
       'password': 'secret-pass',
     });
-    expect(find.text('YOUR STATUS'), findsOneWidget);
+    expect(find.text(feedText), findsOneWidget);
     await done(t);
   });
 
@@ -519,7 +528,7 @@ void main() {
     expect(find.text('“Ranked grind, mics on.”'), findsOneWidget);
     s.handleBack();
     await settle(t);
-    expect(find.text('YOUR STATUS'), findsOneWidget);
+    expect(find.text(feedText), findsOneWidget);
     await done(t);
   });
 
@@ -569,25 +578,9 @@ void main() {
     },
   );
 
-  testWidgets('groups remembers the waitlist after a restart', (t) async {
-    final api = FakeApi();
-    api.routes['GET /v1/me'] = me(waitlist: ['groups']);
-    final s = await pumpApp(t, api, token: 't-1');
-    s.go(Screen.communities);
-    await t.pump();
-    expect(find.text('You’re on the list ✓'), findsOneWidget);
-    expect(find.text('Notify me'), findsNothing);
-    await done(t);
-  });
-
-  testWidgets('groups waitlist and a report from a profile', (t) async {
+  testWidgets('a report from a profile', (t) async {
     final api = FakeApi();
     final s = await pumpApp(t, api, token: 't-1');
-    s.go(Screen.communities);
-    await t.pump();
-    await tapText(t, 'Notify me');
-    expect(api.bodiesOf('POST /v1/waitlist').single, {'topic': 'groups'});
-    expect(find.text('You’re on the list ✓'), findsOneWidget);
     s.openPlayer('hanaplays');
     await settle(t);
     await t.tap(icon(Ic.more));
@@ -602,10 +595,288 @@ void main() {
     await done(t);
   });
 
+  testWidgets('groups: join an open group, ask to join one with approval', (
+    t,
+  ) async {
+    final api = FakeApi();
+    final s = await pumpApp(t, api, token: 't-1');
+    s.go(Screen.communities);
+    await settle(t);
+    expect(find.text('Yours (1)'), findsOneWidget);
+    await tapText(t, 'Join'); // Ethiopian FC Players
+    expect(find.text('You joined Ethiopian FC Players'), findsOneWidget);
+    expect(find.text('Yours (2)'), findsOneWidget);
+    await tapText(t, 'Ask to join'); // AAU Gamers
+    expect(find.text('Requested…'), findsOneWidget);
+    await t.pump(const Duration(seconds: 4));
+    await settle(t);
+    expect(find.text('Yours (3)'), findsOneWidget);
+    expect(
+      find.text('You’re in — AAU Gamers approved your request'),
+      findsOneWidget,
+    );
+    // Nothing about groups goes to the server.
+    expect(api.sent.where((r) => r.path.contains('group')), isEmpty);
+    await done(t);
+  });
+
+  testWidgets('groups: create one, it opens on About and is in Yours', (
+    t,
+  ) async {
+    final api = FakeApi();
+    final s = await pumpApp(t, api, token: 't-1');
+    s.go(Screen.communities);
+    await settle(t);
+    await tapText(t, 'Create group');
+    expect(find.text('New group'), findsOneWidget);
+    await t.enterText(
+      find.widgetWithText(TextField, 'e.g. Valorant Addis Duo Queue'),
+      'Addis CODM Duo',
+    );
+    await t.pump();
+    await tapText(t, 'Approval');
+    await tapText(t, 'Create');
+    expect(
+      find.text('Addis CODM Duo is live — invite your squad'),
+      findsOneWidget,
+    );
+    expect(find.text('Admins approve requests'), findsOneWidget); // About tab
+    expect(find.text('YOU’RE ADMIN'), findsOneWidget);
+    expect(s.myGroups.map((g) => g.name), contains('Addis CODM Duo'));
+    await tapText(t, 'Feed');
+    await t.enterText(
+      find.widgetWithText(TextField, 'Share with Addis CODM Duo…'),
+      'Scrims Friday',
+    );
+    await tapText(t, 'Post');
+    expect(find.text('Scrims Friday'), findsOneWidget);
+    await done(t);
+  });
+
+  testWidgets('Home feed: a post renders, GG toggles its count', (t) async {
+    final api = FakeApi();
+    await pumpApp(t, api, token: 't-1');
+    expect(find.text(feedText), findsOneWidget);
+    expect(api.queries, contains(startsWith('GET /v1/feed?filter=for_you')));
+    expect(find.text('4'), findsOneWidget);
+    await t.tap(labelled('GG'));
+    await settle(t);
+    expect(
+      api.sent.where((r) => r.method == 'PUT' && r.path == '/v1/posts/p-1/gg'),
+      hasLength(1),
+    );
+    expect(find.text('5'), findsOneWidget);
+    await t.tap(labelled('GG'));
+    await settle(t);
+    expect(
+      api.sent.where(
+        (r) => r.method == 'DELETE' && r.path == '/v1/posts/p-1/gg',
+      ),
+      hasLength(1),
+    );
+    expect(find.text('4'), findsOneWidget);
+    await done(t);
+  });
+
+  testWidgets('Home feed: open comments and send one', (t) async {
+    final api = FakeApi();
+    final s = await pumpApp(t, api, token: 't-1');
+    await t.tap(labelled('Answers'));
+    await settle(t);
+    expect(find.text('It Takes Two, easily.'), findsOneWidget);
+    await t.enterText(
+      find.widgetWithText(TextField, 'Add your answer…'),
+      'Portal 2',
+    );
+    // The keyboard's send (the + button floats over Send at this size).
+    await t.testTextInput.receiveAction(TextInputAction.done);
+    await settle(t);
+    expect(api.bodiesOf('POST /v1/posts/p-1/comments').single, {
+      'text': 'Portal 2',
+    });
+    expect(find.text('Portal 2'), findsOneWidget);
+    expect(s.posts.first.commentCount, 2);
+    await done(t);
+  });
+
+  testWidgets('an alert with ?comments=1 opens the post with its comments', (
+    t,
+  ) async {
+    final api = FakeApi();
+    final s = await pumpApp(t, api, token: 't-1');
+    s.go(Screen.notifs);
+    await settle(t);
+    api.queries.clear();
+    s.openRoute('/posts/p-1?comments=1');
+    await settle(t);
+    expect(s.screen, Screen.home);
+    expect(api.queries, contains('GET /v1/posts/p-1?'));
+    expect(api.queries, contains(startsWith('GET /v1/posts/p-1/comments?')));
+    expect(api.queries.where((q) => q.contains('comments=1')), isEmpty);
+    expect(s.openC, {'p-1'});
+    expect(find.text('It Takes Two, easily.'), findsOneWidget);
+    await done(t);
+  });
+
+  testWidgets('an alert for a post that is gone lands on Home', (t) async {
+    final api = FakeApi()
+      ..fail('GET /v1/posts/p-gone', 404, 'not_found', 'Post not found.');
+    final s = await pumpApp(t, api, token: 't-1');
+    s.go(Screen.notifs);
+    await settle(t);
+    s.openRoute('/posts/p-gone?comments=1');
+    await settle(t);
+    expect(s.screen, Screen.home);
+    expect(find.text('Post not found.'), findsOneWidget);
+    await done(t);
+  });
+
+  testWidgets('deleting a comment says so; reporting a post is titled', (
+    t,
+  ) async {
+    final api = FakeApi();
+    final s = await pumpApp(t, api, token: 't-1');
+    await t.tap(labelled('Answers'));
+    await settle(t);
+    // Not awaited: the fake API answers while the test pumps.
+    s.deleteComment(s.comments['p-1']!.first);
+    await settle(t);
+    expect(
+      api.sent.where(
+        (r) => r.method == 'DELETE' && r.path == '/v1/comments/c-1',
+      ),
+      hasLength(1),
+    );
+    expect(find.text('Comment deleted'), findsOneWidget);
+    await t.tap(labelled('Post options'));
+    await settle(t);
+    await tapText(t, 'Report post');
+    expect(find.text('Report post'), findsOneWidget); // the dialog title
+    expect(find.text('Report Dave'), findsNothing);
+    await done(t);
+  });
+
+  testWidgets('compose: type, game and audience go out with a key', (t) async {
+    final api = FakeApi();
+    final s = await pumpApp(t, api, token: 't-1');
+    s.openCompose();
+    await settle(t);
+    expect(find.text('New post'), findsOneWidget);
+    // Only the types the API takes today.
+    expect(find.text('Poll'), findsNothing);
+    expect(find.text('Gameplay'), findsNothing);
+    await tapText(t, 'Milestone');
+    await tapText(t, 'Connections');
+    await tapText(t, 'Post'); // empty text: nothing sent
+    expect(api.bodiesOf('POST /v1/posts'), isEmpty);
+    expect(find.text('Write something first'), findsOneWidget);
+    await t.enterText(
+      find.widgetWithText(TextField, 'Finally hit Diamond? Share it…'),
+      'Hit Legendary!',
+    );
+    await t.pump();
+    final key = s.cp.key;
+    await tapText(t, 'Post');
+    expect(api.bodiesOf('POST /v1/posts').single, {
+      'type': 'milestone',
+      'text': 'Hit Legendary!',
+      'gameId': 'codm',
+      'audience': 'connections',
+    });
+    final headers = api.headers.lastWhere((h) => h.$1 == 'POST /v1/posts').$2;
+    expect(headers['Idempotency-Key'] ?? headers['idempotency-key'], key);
+    expect(s.screen, Screen.home);
+    expect(find.text('Milestone posted'), findsOneWidget);
+    expect(find.text('Hit Legendary!'), findsOneWidget);
+    await done(t);
+  });
+
+  testWidgets('compose: Any game sends no game', (t) async {
+    final api = FakeApi();
+    final s = await pumpApp(t, api, token: 't-1');
+    s.openCompose();
+    await settle(t);
+    await tapText(t, 'Any game');
+    await t.enterText(find.byType(TextField), 'Who is up tonight?');
+    await t.pump();
+    await tapText(t, 'Post');
+    final body = api.bodiesOf('POST /v1/posts').single! as Map;
+    expect(body['type'], 'discussion');
+    expect(body['audience'], 'everyone');
+    expect(body.containsKey('gameId') ? body['gameId'] : null, isNull);
+    await done(t);
+  });
+
+  testWidgets('compose: Any game survives closing and reopening', (t) async {
+    final api = FakeApi();
+    final s = await pumpApp(t, api, token: 't-1');
+    s.openCompose();
+    await settle(t);
+    expect(s.cp.gameId, 'codm'); // a fresh draft starts on my first game
+    await tapText(t, 'Any game');
+    s.handleBack(); // close the composer
+    await settle(t);
+    s.openCompose();
+    await settle(t);
+    expect(s.cp.gameId, isNull);
+    await t.enterText(find.byType(TextField), 'Anyone up?');
+    await t.pump();
+    await tapText(t, 'Post');
+    final body = api.bodiesOf('POST /v1/posts').single! as Map;
+    expect(body['gameId'], isNull);
+    // After posting, the next draft starts on my first game again.
+    s.openCompose();
+    await settle(t);
+    expect(s.cp.gameId, 'codm');
+    await done(t);
+  });
+
+  testWidgets('profile: Posts lists mine, Groups shows my sample groups', (
+    t,
+  ) async {
+    final api = FakeApi();
+    final s = await pumpApp(t, api, token: 't-1');
+    s.goProfileTab();
+    await settle(t);
+    expect(find.text('YOUR STATUS'), findsOneWidget); // moved from Home
+    expect(find.text('GROUPS · 1'), findsOneWidget);
+    await tapText(t, 'Posts');
+    expect(find.text('Finally hit Legendary in ranked.'), findsOneWidget);
+    expect(find.text('GG 12 · 3 comments'), findsOneWidget);
+    await tapText(t, 'Groups');
+    expect(find.text('Valorant Ethiopia'), findsOneWidget);
+    await tapText(t, 'Moments');
+    expect(find.textContaining('No clips yet.'), findsOneWidget);
+    await tapText(t, 'Posts');
+    await tapText(t, 'Finally hit Legendary in ranked.');
+    expect(s.screen, Screen.home);
+    await done(t);
+  });
+
+  testWidgets('someone else’s profile: invite banner, no groups', (t) async {
+    final api = FakeApi();
+    final s = await pumpApp(t, api, token: 't-1');
+    s.openPlayer('dave.exe');
+    await settle(t);
+    expect(find.text('SESSION INVITE SENT'), findsOneWidget);
+    expect(find.text('CoD Mobile with Dave'), findsOneWidget);
+    expect(find.text('Connections'), findsNothing);
+    await tapText(t, 'Groups');
+    expect(find.text('Dave isn’t in any groups yet.'), findsOneWidget);
+    await tapText(t, 'Posts');
+    expect(api.queries, contains(startsWith('GET /v1/users/dave.exe/posts')));
+    expect(
+      find.text('No posts yet. Share a milestone from Home.'),
+      findsOneWidget,
+    );
+    await done(t);
+  });
+
   testWidgets('theme picker switches and persists the skin', (t) async {
     final saved = <String>[];
     await pumpApp(t, FakeApi(), token: 't-1', persist: saved.add);
-    await t.tap(find.byType(Avatar).first); // top bar → You
+    final s = t.state<RallyAppState>(find.byType(RallyApp)).state;
+    s.goProfileTab();
     await settle(t);
     expect(activeTheme(t).id, 'inked');
     for (final name in ['Dot matrix', 'Glass', 'Soft clay', 'Inked']) {
@@ -638,12 +909,23 @@ void main() {
               s.edit = ProfileDraft.from(s.me!, s.catalog);
             }
             if (screen == Screen.ranks) s.onboard.games = ['codm', 'mc'];
+            if (screen == Screen.group) s.groupId = 'g-val';
+            if (screen == Screen.createGroup) s.newGroup = GroupDraft();
           });
         }
         await settle(t);
       }
+      // The group page's and my profile's tabs.
+      s.openGroup('g-val');
+      for (final tab in ['Feed', 'Members', 'Events', 'About']) {
+        s.update(() => s.groupTab = tab);
+        await settle(t);
+      }
       s.goProfileTab();
-      await settle(t);
+      for (final tab in ['Groups', 'Posts', 'Moments', 'Overview']) {
+        s.update(() => s.ptab = tab);
+        await settle(t);
+      }
       s.openListingSheet();
       await settle(t);
       expect(find.text('EXPIRES AFTER'), findsOneWidget);

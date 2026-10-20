@@ -24,9 +24,9 @@ listing ("duo for ranked tonight, voice required"), other players ask to
 join, and once you accept a request you can see each other's gaming IDs.
 
 The app runs on `apps/api` through a client generated from
-`packages/api-spec/openapi.json`. The screens keep the prototype's look;
-what the MVP leaves out (the Home feed, posts, groups) is gone
-([ADR-0001](../../docs/decisions/0001-mvp-is-find-players-only.md)).
+`packages/api-spec/openapi.json`. The screens keep the prototype's look,
+including its Home feed and Groups, without the feature flags
+([ADR-0013](../../docs/decisions/0013-apps-show-the-prototype-screens-without-flags.md)).
 
 > Owner: Natnael Sisay ([@Natnsis](https://github.com/Natnsis)). Scope lives in
 > [`docs/PRD.md`](../../docs/PRD.md), and decisions live in
@@ -40,10 +40,11 @@ what the MVP leaves out (the Home feed, posts, groups) is gone
 | 🔎 **Find Players** | Browse open listings, or post your own with game, mode, squad size, voice, time and duration. Listings expire. |
 | 🤝 **Connections** | Request to join, and the owner accepts. Gaming IDs unlock only after acceptance. |
 | 🎯 **Play together** | Invite a connection to play now, in 30 minutes or tonight; the next day, “Did you play?” in one tap. |
-| 🏠 **Home** | Your status and play days, your live listing, invites, check-ins and who's looking right now. |
-| 👥 **Groups** | "Coming soon" with a waitlist. |
+| 🏠 **Home feed** | Posts from players and connections (filter by connections, LFG or one of your games), GG, save, share and comments with replies. Invites, check-ins and your live listing are pinned on top. |
+| ✍️ **Compose** | Discussion, milestone, question, looking for players, tip, review, event or meme; for one of your games or any; for everyone or connections. |
+| 👥 **Groups** | Discover, join, post, events and create a group, on sample data that stays on the phone until the API has groups. |
 | 🔔 **Alerts** | Connection requests and activity in one place. |
-| 🖼️ **Profile** | Photo, bio, games and ranks, play style and gaming IDs, edited in place. |
+| 🖼️ **Profile** | Photo, bio, games and ranks, status and play days, groups, posts and moments, play style and gaming IDs, edited in place. |
 | 🛡️ **Safety** | Block and report on every profile and listing, Blocked users and Delete account in Settings. |
 | 🕹️ **49 games** | From Valorant and CS2 to PUBG Mobile, CoD Mobile, eFootball, MLBB and Free Fire, each with its rank ladder, from the API. |
 
@@ -101,17 +102,19 @@ lib/
 ├── main.dart          # app entry, theme persistence, the Api
 ├── api.dart           # Dio + generated client: token, version headers, errors
 ├── state.dart         # AppState: navigation, drafts, every API call
-├── data.dart          # game catalog, labels for the API's enums, Profile
+├── data.dart          # game catalog, labels for the API's enums, Profile, post types
+├── groups_data.dart   # sample groups and members (no groups API yet)
 ├── shell.dart         # screen switcher, header, bottom nav, sheets
 ├── theme.dart         # RallyTheme + the four skins
 ├── widgets.dart       # shared UI kit (Pill, cards, backgrounds…)
 └── screens/
     ├── onboarding.dart     # intro, log in, sign-up, email code, reset, game/rank/platform steps
     ├── games.dart          # game picker and rank cards
-    ├── home.dart           # status, live listing, invites, check-ins
+    ├── home.dart           # feed, comments, pinned invites/check-ins/listing, status card
+    ├── compose.dart        # new post
     ├── find.dart           # Find Players, Alerts, search
-    ├── groups.dart         # coming soon + waitlist
-    ├── profile.dart        # player profile, settings
+    ├── groups.dart         # Groups tab, group page, create group
+    ├── profile.dart        # player profile (posts, groups, moments), theme, settings
     ├── edit_profile.dart
     └── safety.dart         # block, report, blocked users, delete account
 packages/api_client/   # generated from the spec (tool/generate_api_client.sh)

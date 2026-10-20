@@ -15,6 +15,8 @@ part 'app_config_response.g.dart';
 /// * [latestVersion] - Newest released version, for a gentle \"Update available\".
 /// * [launchCity] - The one city the beta runs in.
 /// * [groupsComingSoon] - Show the Groups tab as \"coming soon\" with a waitlist.
+/// * [feedEnabled] - Show the Home feed (posts, comments, GG). Off: today's Home.
+/// * [groupsEnabled] - Show Groups for real. Off until groups ship; then groupsComingSoon goes away.
 @BuiltValue()
 abstract class AppConfigResponse
     implements Built<AppConfigResponse, AppConfigResponseBuilder> {
@@ -33,6 +35,14 @@ abstract class AppConfigResponse
   /// Show the Groups tab as \"coming soon\" with a waitlist.
   @BuiltValueField(wireName: r'groupsComingSoon')
   bool get groupsComingSoon;
+
+  /// Show the Home feed (posts, comments, GG). Off: today's Home.
+  @BuiltValueField(wireName: r'feedEnabled')
+  bool get feedEnabled;
+
+  /// Show Groups for real. Off until groups ship; then groupsComingSoon goes away.
+  @BuiltValueField(wireName: r'groupsEnabled')
+  bool get groupsEnabled;
 
   AppConfigResponse._();
 
@@ -78,6 +88,16 @@ class _$AppConfigResponseSerializer
     yield r'groupsComingSoon';
     yield serializers.serialize(
       object.groupsComingSoon,
+      specifiedType: const FullType(bool),
+    );
+    yield r'feedEnabled';
+    yield serializers.serialize(
+      object.feedEnabled,
+      specifiedType: const FullType(bool),
+    );
+    yield r'groupsEnabled';
+    yield serializers.serialize(
+      object.groupsEnabled,
       specifiedType: const FullType(bool),
     );
   }
@@ -132,6 +152,20 @@ class _$AppConfigResponseSerializer
             specifiedType: const FullType(bool),
           ) as bool;
           result.groupsComingSoon = valueDes;
+          break;
+        case r'feedEnabled':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(bool),
+          ) as bool;
+          result.feedEnabled = valueDes;
+          break;
+        case r'groupsEnabled':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(bool),
+          ) as bool;
+          result.groupsEnabled = valueDes;
           break;
         default:
           unhandled.add(key);

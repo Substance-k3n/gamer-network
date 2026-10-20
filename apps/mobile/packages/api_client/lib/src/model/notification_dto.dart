@@ -20,6 +20,8 @@ part 'notification_dto.g.dart';
 /// * [connectionRequestId]
 /// * [playInviteId]
 /// * [checkInId]
+/// * [postId] - The post it is about (post_gg, post_comment, comment_reply, mention).
+/// * [commentId]
 /// * [title] - Push title.
 /// * [text] - Ready to show, e.g. \"Hana wants to play PUBG Mobile with you\".
 /// * [route] - In-app path to open on tap, same as the push's data.route.
@@ -30,7 +32,7 @@ abstract class NotificationDto
     implements Built<NotificationDto, NotificationDtoBuilder> {
   @BuiltValueField(wireName: r'type')
   NotificationType get type;
-  // enum typeEnum {  connection_request,  connection_accepted,  play_invite,  play_invite_accepted,  check_in_due,  listing_expiring,  report_resolved,  };
+  // enum typeEnum {  connection_request,  connection_accepted,  play_invite,  play_invite_accepted,  check_in_due,  listing_expiring,  report_resolved,  post_gg,  post_comment,  comment_reply,  mention,  };
 
   @BuiltValueField(wireName: r'id')
   String get id;
@@ -50,6 +52,13 @@ abstract class NotificationDto
 
   @BuiltValueField(wireName: r'checkInId')
   String? get checkInId;
+
+  /// The post it is about (post_gg, post_comment, comment_reply, mention).
+  @BuiltValueField(wireName: r'postId')
+  String? get postId;
+
+  @BuiltValueField(wireName: r'commentId')
+  String? get commentId;
 
   /// Push title.
   @BuiltValueField(wireName: r'title')
@@ -138,6 +147,20 @@ class _$NotificationDtoSerializer
         ? null
         : serializers.serialize(
             object.checkInId,
+            specifiedType: const FullType.nullable(String),
+          );
+    yield r'postId';
+    yield object.postId == null
+        ? null
+        : serializers.serialize(
+            object.postId,
+            specifiedType: const FullType.nullable(String),
+          );
+    yield r'commentId';
+    yield object.commentId == null
+        ? null
+        : serializers.serialize(
+            object.commentId,
             specifiedType: const FullType.nullable(String),
           );
     yield r'title';
@@ -245,6 +268,22 @@ class _$NotificationDtoSerializer
           ) as String?;
           if (valueDes == null) continue;
           result.checkInId = valueDes;
+          break;
+        case r'postId':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.postId = valueDes;
+          break;
+        case r'commentId':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.commentId = valueDes;
           break;
         case r'title':
           final valueDes = serializers.deserialize(
