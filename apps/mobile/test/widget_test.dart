@@ -5,7 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rally/groups_data.dart';
 import 'package:rally/main.dart';
-import 'package:rally/screens/home.dart' show ApplicationsSheet;
+import 'package:rally/screens/home.dart'
+    show ApplicationsSheet, endsIn, pollFooter;
 import 'package:rally/shell.dart';
 import 'package:rally/state.dart';
 import 'package:rally/theme.dart';
@@ -934,6 +935,54 @@ void main() {
     await done(t);
   });
 
+  test('poll footer copy and plurals (D29)', () {
+    final now = DateTime.utc(2026, 10, 20, 12);
+    PollDto poll(int votes, {int? mine, bool closed = false, Duration? left}) =>
+        PollDto(
+          (b) => b
+            ..totalVotes = votes
+            ..myVote = mine
+            ..closed = closed
+            ..endsAt = now.add(left ?? const Duration(days: 2, hours: 5)),
+        );
+    expect(pollFooter(poll(1, mine: 0), now), '1 VOTE · YOU VOTED');
+    expect(pollFooter(poll(2), now), '2 VOTES · ENDS IN 2 DAYS');
+    expect(pollFooter(poll(0, closed: true), now), '0 VOTES · CLOSED');
+    expect(pollFooter(poll(3, mine: 1, closed: true), now), '3 VOTES · CLOSED');
+    expect(
+      endsIn(now.add(const Duration(hours: 5, minutes: 40)), now),
+      '5 HOURS',
+    );
+    expect(
+      endsIn(now.add(const Duration(hours: 1, minutes: 2)), now),
+      '1 HOUR',
+    );
+    expect(endsIn(now.add(const Duration(days: 1, hours: 3)), now), '1 DAY');
+    expect(endsIn(now.add(const Duration(minutes: 30)), now), '30 MIN');
+  });
+
+  testWidgets('a closed poll shows results to everyone', (t) async {
+    final api = FakeApi();
+    final feed = api.routes['GET /v1/feed']! as Map;
+    (feed['items'] as List)[1] = post(
+      'p-poll',
+      hana,
+      type: 'poll',
+      kind: 'poll',
+      text: pollText,
+      poll: pollOf(['Firing Range', 'Standoff'], votes: [3, 1], closed: true),
+    );
+    await pumpApp(t, api, token: 't-1');
+    await Scrollable.ensureVisible(t.element(find.text(pollText)));
+    await t.pump();
+    expect(find.text('4 VOTES · CLOSED'), findsOneWidget);
+    expect(find.text('75%'), findsOneWidget); // not voted, still shown
+    await t.tap(labelled('Vote Standoff'));
+    await settle(t);
+    expect(api.bodiesOf('POST /v1/posts/p-poll/vote'), isEmpty);
+    await done(t);
+  });
+
   testWidgets('vote on a poll: bars show after my vote', (t) async {
     final api = FakeApi();
     await pumpApp(t, api, token: 't-1');
@@ -1041,6 +1090,7 @@ void main() {
       isTrue,
     );
     expect(inSheet('ACCEPTED'), findsOneWidget);
+    expect(find.text('Accepted — Hana can see your gamer ID'), findsOneWidget);
     await t.tap(inSheet('Decline').first);
     await settle(t);
     expect(
@@ -1048,6 +1098,7 @@ void main() {
       isTrue,
     );
     expect(inSheet('DECLINED'), findsOneWidget);
+    expect(find.text('Declined'), findsOneWidget);
     s.closeSheet();
     await settle(t);
     // The post is on top of Home, marked as mine.

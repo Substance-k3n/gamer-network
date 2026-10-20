@@ -1814,8 +1814,8 @@ class AppState extends ChangeNotifier {
     });
     toast(
       accept
-          ? '${a.user.displayName} is in — they get a notification'
-          : 'Application declined',
+          ? 'Accepted — ${a.user.displayName} can see your gamer ID'
+          : 'Declined',
     );
   }
 
