@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
-import { ComposeSheet } from './feed';
 import { InviteSheet, ListingSheet } from './sheets';
 import { AppProvider, mayShow, skins, useApp } from './store';
 import { Icon, Logo, Pill, Toast, Wordmark, type IconName } from './ui';
@@ -25,7 +24,7 @@ export function Shell({ children }: { children: ReactNode }) {
 }
 
 function Frame({ children }: { children: ReactNode }) {
-  const { skin, ready, waking, offline, boot, sheet, setSheet, me, config } = useApp();
+  const { skin, ready, waking, offline, boot, sheet, setSheet, me } = useApp();
   const path = usePathname();
 
   useEffect(() => {
@@ -83,21 +82,6 @@ function Frame({ children }: { children: ReactNode }) {
       </div>
       {nav && (
         <>
-          {path === '/app' && config?.feedEnabled && (
-            <div className="fab">
-              <Pill
-                h={52}
-                padH={20}
-                size={15}
-                bold
-                look="accent"
-                shadow={4}
-                onClick={() => setSheet({ kind: 'post' })}
-              >
-                <span style={{ fontSize: 22, lineHeight: 1 }}>+</span> Post
-              </Pill>
-            </div>
-          )}
           {path === '/app/find' && (
             <div className="fab">
               <Pill
@@ -131,7 +115,6 @@ function Frame({ children }: { children: ReactNode }) {
         </>
       )}
       {sheet?.kind === 'listing' && <ListingSheet onClose={() => setSheet(null)} />}
-      {sheet?.kind === 'post' && <ComposeSheet onClose={() => setSheet(null)} />}
       {sheet?.kind === 'invite' && <InviteSheet sheet={sheet} onClose={() => setSheet(null)} />}
       <Toast />
     </div>

@@ -77,34 +77,58 @@ export const inviteWhenLabel: Record<InviteWhen, string> = {
   tonight: 'Tonight 21:00',
 };
 
-/** "Duo", "Trio"… for a party size (including the poster). */
-/** The composer's types, in the prototype's order. Media, poll and recruitment come later. */
-export const postTypes: { id: PostType; label: string; placeholder: string }[] = [
-  {
-    id: 'milestone',
-    label: 'Milestone',
-    placeholder: 'Hit a new rank? Won a tournament? Share it.',
-  },
+/** Every post type, in the composer's order (apps/mobile/lib/data.dart `postTypes`). */
+export const postTypes: { id: PostType; label: string; tone: Tone; placeholder: string }[] = [
   {
     id: 'discussion',
     label: 'Discussion',
-    placeholder: 'Start a discussion: ask the community anything.',
+    tone: 'lav',
+    placeholder: 'Start a conversation — e.g. Best co-op game you’ve played recently?',
   },
-  { id: 'question', label: 'Question', placeholder: 'What do you want to know?' },
+  {
+    id: 'gameplay',
+    label: 'Gameplay',
+    tone: 'accent',
+    placeholder: 'Add a caption for your clip or screenshot…',
+  },
+  {
+    id: 'recruitment',
+    label: 'Recruitment',
+    tone: 'soft',
+    placeholder: 'Tell players about your team and what you’re looking for…',
+  },
+  { id: 'poll', label: 'Poll', tone: 'lav', placeholder: 'Ask the community something…' },
+  {
+    id: 'milestone',
+    label: 'Milestone',
+    tone: 'accent',
+    placeholder: 'Finally hit Diamond? Share it…',
+  },
+  { id: 'question', label: 'Question', tone: 'soft', placeholder: 'What do you want to know?' },
   {
     id: 'looking_for_players',
     label: 'Looking for players',
-    placeholder: 'Who are you looking for, and when?',
+    tone: 'accent',
+    placeholder: 'What are you playing, and when?',
   },
-  { id: 'tip_guide', label: 'Tip / guide', placeholder: 'Share a tip that helped you climb.' },
-  { id: 'review', label: 'Review', placeholder: 'What did you think of it?' },
-  { id: 'event', label: 'Event', placeholder: 'What’s happening, where and when?' },
-  { id: 'meme', label: 'Meme', placeholder: 'Make us laugh.' },
+  {
+    id: 'tip_guide',
+    label: 'Tip / Guide',
+    tone: 'lav',
+    placeholder: 'Share a tip that helped you climb…',
+  },
+  { id: 'review', label: 'Review', tone: 'soft', placeholder: 'What did you think of it?' },
+  { id: 'event', label: 'Event', tone: 'lav', placeholder: 'What’s happening, where and when?' },
+  { id: 'meme', label: 'Meme', tone: 'soft', placeholder: 'Caption it…' },
 ];
 
-export const postTypeLabel = (t: PostType) =>
-  (postTypes.find((p) => p.id === t)?.label ?? t.replace(/_/g, ' ')).toUpperCase();
+/** The types the API takes today; photos, polls and recruitment come with its later phases. */
+const notYet: PostType[] = ['gameplay', 'recruitment', 'poll'];
+export const postable = postTypes.filter((t) => !notYet.includes(t.id));
 
+export const postTypeInfo = (t: PostType) => postTypes.find((p) => p.id === t) ?? postTypes[0]!;
+
+/** "Duo", "Trio"… for a party size (including the poster). */
 export const partyLabel = (n: number) =>
   ({ 2: 'Duo', 3: 'Trio', 4: 'Squad', 5: '5-stack' })[n] ?? `${n} players`;
 
@@ -241,13 +265,15 @@ export function countdown(to: string, now: number) {
 export const clock = (iso: string) =>
   new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
-/** "now", "5m", "3h", "2d". */
+/** "now", "12m", "3h", "2d", then the date: how long ago `iso` was. */
 export function ago(iso: string) {
-  const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  const t = new Date(iso);
+  const m = Math.floor((Date.now() - t.getTime()) / 60000);
   if (m < 1) return 'now';
   if (m < 60) return `${m}m`;
   if (m < 1440) return `${Math.floor(m / 60)}h`;
-  return `${Math.floor(m / 1440)}d`;
+  if (m < 10080) return `${Math.floor(m / 1440)}d`;
+  return `${t.getDate()}/${t.getMonth() + 1}`;
 }
 
 export const pad2 = (n: number) => String(n).padStart(2, '0');

@@ -251,7 +251,10 @@
   margin: 0 auto;
   min-height: 100dvh;
   padding-bottom: calc(110px + env(safe-area-inset-bottom));
+  /* clip, not hidden: hidden would make this the scroll container of the
+     sticky top bar, which then never sticks (the window scrolls). */
   overflow-x: hidden;
+  overflow-x: clip;
 }
 .rl-page.bare {
   padding-bottom: 0;
@@ -808,4 +811,8 @@
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+.rl input::placeholder,
+.rl textarea::placeholder {
+  color: var(--faint);
 }
