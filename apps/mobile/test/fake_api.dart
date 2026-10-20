@@ -149,6 +149,10 @@ Map<String, Object?> post(
   int gg = 4,
   int comments = 1,
   bool mine = false,
+  bool saved = false,
+  List<String> photos = const [],
+  Map<String, Object?>? poll,
+  Map<String, Object?>? recruit,
 }) => {
   'id': id,
   'type': type,
@@ -161,8 +165,22 @@ Map<String, Object?> post(
   'ggCount': gg,
   'commentCount': comments,
   'myGG': false,
-  'saved': false,
+  'saved': saved,
   'mine': mine,
+  'media': [
+    for (var i = 0; i < photos.length; i++)
+      {
+        'id': 'm-$id-$i',
+        'kind': 'image',
+        'url': photos[i],
+        'posterUrl': null,
+        'width': null,
+        'height': null,
+        'durationMs': null,
+      },
+  ],
+  'poll': poll,
+  'recruit': recruit,
   'shareUrl': 'https://example.com/p/$id',
   'createdAt': _at(const Duration(hours: -2)),
 };
@@ -186,6 +204,52 @@ Map<String, Object?> comment(
   'replies': 0,
   'createdAt': _at(const Duration(minutes: -30)),
 };
+
+Map<String, Object?> pollOf(
+  List<String> labels, {
+  List<int>? votes,
+  int? myVote,
+  bool closed = false,
+}) {
+  final v = votes ?? [for (final _ in labels) 0];
+  return {
+    'options': [
+      for (var i = 0; i < labels.length; i++)
+        {'position': i, 'label': labels[i], 'votes': v[i]},
+    ],
+    'totalVotes': v.fold<int>(0, (a, b) => a + b),
+    'myVote': myVote,
+    'endsAt': _at(closed ? const Duration(hours: -1) : const Duration(days: 2)),
+    'closed': closed,
+  };
+}
+
+Map<String, Object?> recruitOf({
+  int slots = 3,
+  String roles = 'Sniper, IGL',
+  int applications = 1,
+  String? myApplication,
+}) => {
+  'slots': slots,
+  'roles': roles,
+  'applications': applications,
+  'myApplication': myApplication,
+};
+
+Map<String, Object?> application(
+  String id,
+  Map<String, Object?> user, {
+  String status = 'pending',
+}) => {
+  'id': id,
+  'user': user,
+  'status': status,
+  'createdAt': _at(const Duration(minutes: -20)),
+};
+
+const pollText = 'Best map for ranked?';
+const recruitText = 'Recruiting for our CODM squad, scrims weekly.';
+const photoText = 'Clutch of the week.';
 
 Object? _bodyOf(RequestOptions o) =>
     o.data is String ? jsonDecode(o.data as String) : o.data;
@@ -387,12 +451,107 @@ class FakeApi implements HttpClientAdapter {
       'DELETE /v1/connection-requests/cr-mine': null,
       'GET /v1/listings/l-1': listing('l-1', dave),
       'GET /v1/feed': {
-        'items': [post('p-1', dave)],
+        'items': [
+          post('p-1', dave),
+          post(
+            'p-poll',
+            hana,
+            type: 'poll',
+            kind: 'poll',
+            text: pollText,
+            gg: 7,
+            comments: 0,
+            poll: pollOf(['Firing Range', 'Standoff'], votes: [3, 1]),
+          ),
+          post(
+            'p-rec',
+            dave,
+            type: 'recruitment',
+            kind: 'recruit',
+            text: recruitText,
+            gg: 9,
+            comments: 0,
+            recruit: recruitOf(),
+          ),
+          post(
+            'p-photo',
+            hana,
+            type: 'gameplay',
+            kind: 'moment',
+            text: photoText,
+            gg: 11,
+            comments: 0,
+            photos: ['http://media.test/a.jpg', 'http://media.test/b.jpg'],
+          ),
+        ],
         'nextCursor': null,
       },
+      'POST /v1/media/upload-url': (RequestOptions o) {
+        final n = ++uploads;
+        return {
+          'uploadUrl': 'http://storage.test/upload/$n',
+          'headers': {'content-type': (_bodyOf(o)! as Map)['contentType']},
+          'key': 'media/me-1/k$n.jpg',
+          'expiresAt': _at(const Duration(hours: 1)),
+        };
+      },
+      for (var n = 1; n <= 8; n++) 'PUT /upload/$n': null,
+      'POST /v1/posts/p-poll/vote': (RequestOptions o) => pollOf(
+        ['Firing Range', 'Standoff'],
+        votes: [3, 2],
+        myVote: (_bodyOf(o)! as Map)['position'] as int,
+      ),
+      'GET /v1/posts/p-poll': post(
+        'p-poll',
+        hana,
+        type: 'poll',
+        kind: 'poll',
+        text: pollText,
+        poll: pollOf(['Firing Range', 'Standoff'], votes: [3, 1], closed: true),
+      ),
+      'POST /v1/posts/p-rec/apply': recruitOf(
+        applications: 2,
+        myApplication: 'pending',
+      ),
+      'GET /v1/posts/p-myrec': post(
+        'p-myrec',
+        card('me-1', 'kaleb.gg', 'Kaleb'),
+        type: 'recruitment',
+        kind: 'recruit',
+        text: 'Need two for our eFootball club.',
+        mine: true,
+        recruit: recruitOf(slots: 2, applications: 2),
+      ),
+      'GET /v1/posts/p-myrec/applications': {
+        'items': [application('ra-1', hana), application('ra-2', dave)],
+        'nextCursor': null,
+      },
+      'POST /v1/recruit-applications/ra-1/accept': {
+        'id': 'ra-1',
+        'status': 'accepted',
+      },
+      'POST /v1/recruit-applications/ra-2/decline': {
+        'id': 'ra-2',
+        'status': 'declined',
+      },
+      'GET /v1/me/saved': {
+        'items': [
+          post(
+            'p-saved',
+            dave,
+            text: 'Saved: smoke lineups for every map.',
+            saved: true,
+            gg: 21,
+            comments: 0,
+          ),
+        ],
+        'nextCursor': null,
+      },
+      'DELETE /v1/posts/p-saved/save': null,
       'GET /v1/posts/p-1': post('p-1', dave),
       'POST /v1/posts': (RequestOptions o) {
         final b = _bodyOf(o)! as Map;
+        final opts = (b['poll'] as Map?)?['options'] as List?;
         return post(
           'p-new',
           card('me-1', 'kaleb.gg', 'Kaleb'),
@@ -406,6 +565,18 @@ class FakeApi implements HttpClientAdapter {
           gg: 0,
           comments: 0,
           mine: true,
+          photos: [
+            for (final k in (b['media'] as List?) ?? const [])
+              'http://media.test/$k',
+          ],
+          poll: opts == null ? null : pollOf([for (final x in opts) '$x']),
+          recruit: b['recruit'] == null
+              ? null
+              : recruitOf(
+                  slots: (b['recruit'] as Map)['slots'] as int,
+                  roles: ((b['recruit'] as Map)['roles'] as String?) ?? '',
+                  applications: 0,
+                ),
         );
       },
       'PUT /v1/posts/p-1/gg': {'ggCount': 5, 'myGG': true},
@@ -453,6 +624,9 @@ class FakeApi implements HttpClientAdapter {
   }
 
   final routes = <String, Object?>{};
+
+  /// Upload URLs handed out so far (each gets its own PUT path).
+  int uploads = 0;
 
   /// Every request as "METHOD /path?query", for checking filters.
   final queries = <String>[];

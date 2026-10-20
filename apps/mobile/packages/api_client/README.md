@@ -101,16 +101,22 @@ Class | Method | HTTP request | Description
 [*FeedApi*](doc/FeedApi.md) | [**commentsReplies**](doc/FeedApi.md#commentsreplies) | **GET** /v1/comments/{id}/replies | Replies under a top-level comment, oldest first.
 [*FeedApi*](doc/FeedApi.md) | [**commentsUnGg**](doc/FeedApi.md#commentsungg) | **DELETE** /v1/comments/{id}/gg | Take your GG back.
 [*FeedApi*](doc/FeedApi.md) | [**feedGet**](doc/FeedApi.md#feedget) | **GET** /v1/feed | Home, newest first. Blocked people&#39;s posts and connections-only posts of strangers are left out.
+[*FeedApi*](doc/FeedApi.md) | [**mediaUploadUrl**](doc/FeedApi.md#mediauploadurl) | **POST** /v1/media/upload-url | Where to upload one photo for a post (JPEG, PNG or WebP, ≤ 10 MB). Then send its key in POST /v1/posts. 30 an hour.
 [*FeedApi*](doc/FeedApi.md) | [**myPostsList**](doc/FeedApi.md#mypostslist) | **GET** /v1/me/posts | Your posts, newest first, connections-only ones included.
 [*FeedApi*](doc/FeedApi.md) | [**myPostsSaved**](doc/FeedApi.md#mypostssaved) | **GET** /v1/me/saved | Saved posts, most recently saved first.
-[*FeedApi*](doc/FeedApi.md) | [**postsCreate**](doc/FeedApi.md#postscreate) | **POST** /v1/posts | Post to Home. Photos, polls and recruitment come later (422 on those types). 10 an hour: 429 rate_limited.
+[*FeedApi*](doc/FeedApi.md) | [**postsApplications**](doc/FeedApi.md#postsapplications) | **GET** /v1/posts/{id}/applications | Who applied, first come first. The post&#39;s author only (403 not_owner).
+[*FeedApi*](doc/FeedApi.md) | [**postsApply**](doc/FeedApi.md#postsapply) | **POST** /v1/posts/{id}/apply | Apply to a recruitment post; tells its author. 409 already_applied or recruitment_full, 403 own_post. 20 a day.
+[*FeedApi*](doc/FeedApi.md) | [**postsCreate**](doc/FeedApi.md#postscreate) | **POST** /v1/posts | Post to Home, with up to 4 photo keys (gameplay needs one), a poll or recruitment slots. 10 an hour: 429 rate_limited.
 [*FeedApi*](doc/FeedApi.md) | [**postsDelete**](doc/FeedApi.md#postsdelete) | **DELETE** /v1/posts/{id} | Author only (403 not_owner).
 [*FeedApi*](doc/FeedApi.md) | [**postsGet**](doc/FeedApi.md#postsget) | **GET** /v1/posts/{id} | One post.
 [*FeedApi*](doc/FeedApi.md) | [**postsGg**](doc/FeedApi.md#postsgg) | **PUT** /v1/posts/{id}/gg | GG it. Repeating it is fine.
 [*FeedApi*](doc/FeedApi.md) | [**postsSave**](doc/FeedApi.md#postssave) | **PUT** /v1/posts/{id}/save | Bookmark it.
 [*FeedApi*](doc/FeedApi.md) | [**postsUnGg**](doc/FeedApi.md#postsungg) | **DELETE** /v1/posts/{id}/gg | Take your GG back.
 [*FeedApi*](doc/FeedApi.md) | [**postsUnsave**](doc/FeedApi.md#postsunsave) | **DELETE** /v1/posts/{id}/save | Remove the bookmark.
+[*FeedApi*](doc/FeedApi.md) | [**postsVote**](doc/FeedApi.md#postsvote) | **POST** /v1/posts/{id}/vote | Vote on a poll, once and final; your own is fine. 409 already_voted or poll_closed.
 [*FeedApi*](doc/FeedApi.md) | [**publicPostsGet**](doc/FeedApi.md#publicpostsget) | **GET** /v1/public/posts/{id} | For the share page /p/&lt;id&gt;: no sign-in. Only live posts for everyone.
+[*FeedApi*](doc/FeedApi.md) | [**recruitApplicationsAccept**](doc/FeedApi.md#recruitapplicationsaccept) | **POST** /v1/recruit-applications/{id}/accept | The post&#39;s author takes them (403 not_owner): tells them and sends a connection request if you aren&#39;t connected. 409 recruitment_full.
+[*FeedApi*](doc/FeedApi.md) | [**recruitApplicationsDecline**](doc/FeedApi.md#recruitapplicationsdecline) | **POST** /v1/recruit-applications/{id}/decline | The post&#39;s author says no (403 not_owner). Tells no one.
 [*FeedApi*](doc/FeedApi.md) | [**userPostsList**](doc/FeedApi.md#userpostslist) | **GET** /v1/users/{username}/posts | Moments: their posts you may see, newest first.
 [*GamesApi*](doc/GamesApi.md) | [**gamesList**](doc/GamesApi.md#gameslist) | **GET** /v1/games | The full game catalog with ranks, roles and modes. Cache it; it rarely changes.
 [*HealthApi*](doc/HealthApi.md) | [**healthCheck**](doc/HealthApi.md#healthcheck) | **GET** /health | Liveness and database check for uptime monitors and the deploy.
@@ -165,6 +171,7 @@ Class | Method | HTTP request | Description
  - [AgeRange](doc/AgeRange.md)
  - [AnswerCheckInBody](doc/AnswerCheckInBody.md)
  - [AppConfigResponse](doc/AppConfigResponse.md)
+ - [ApplicationStatus](doc/ApplicationStatus.md)
  - [AuthResponse](doc/AuthResponse.md)
  - [AvatarType](doc/AvatarType.md)
  - [AvatarUploadBody](doc/AvatarUploadBody.md)
@@ -212,6 +219,11 @@ Class | Method | HTTP request | Description
  - [LoginBody](doc/LoginBody.md)
  - [MarkReadBody](doc/MarkReadBody.md)
  - [MeDto](doc/MeDto.md)
+ - [MediaContentType](doc/MediaContentType.md)
+ - [MediaDto](doc/MediaDto.md)
+ - [MediaKind](doc/MediaKind.md)
+ - [MediaUploadBody](doc/MediaUploadBody.md)
+ - [MediaUploadDto](doc/MediaUploadDto.md)
  - [MetricsDto](doc/MetricsDto.md)
  - [ModeDto](doc/ModeDto.md)
  - [ModeRefDto](doc/ModeRefDto.md)
@@ -228,6 +240,10 @@ Class | Method | HTTP request | Description
  - [PlayTag](doc/PlayTag.md)
  - [PlayWhen](doc/PlayWhen.md)
  - [PlayerStatus](doc/PlayerStatus.md)
+ - [PollBody](doc/PollBody.md)
+ - [PollDto](doc/PollDto.md)
+ - [PollDuration](doc/PollDuration.md)
+ - [PollOptionDto](doc/PollOptionDto.md)
  - [PostAudience](doc/PostAudience.md)
  - [PostDto](doc/PostDto.md)
  - [PostKind](doc/PostKind.md)
@@ -240,6 +256,11 @@ Class | Method | HTTP request | Description
  - [PublicPostDto](doc/PublicPostDto.md)
  - [RankDto](doc/RankDto.md)
  - [RankRefDto](doc/RankRefDto.md)
+ - [RecruitApplicationDto](doc/RecruitApplicationDto.md)
+ - [RecruitApplicationPageDto](doc/RecruitApplicationPageDto.md)
+ - [RecruitBody](doc/RecruitBody.md)
+ - [RecruitDecisionDto](doc/RecruitDecisionDto.md)
+ - [RecruitDto](doc/RecruitDto.md)
  - [RegisterDeviceBody](doc/RegisterDeviceBody.md)
  - [Relationship](doc/Relationship.md)
  - [ReportBody](doc/ReportBody.md)
@@ -272,6 +293,7 @@ Class | Method | HTTP request | Description
  - [UserSearchResponse](doc/UserSearchResponse.md)
  - [UsernameAvailability](doc/UsernameAvailability.md)
  - [Voice](doc/Voice.md)
+ - [VoteBody](doc/VoteBody.md)
  - [WaitlistBody](doc/WaitlistBody.md)
  - [WaitlistCountDto](doc/WaitlistCountDto.md)
 

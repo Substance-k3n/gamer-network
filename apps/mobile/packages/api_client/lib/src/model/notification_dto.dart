@@ -20,8 +20,9 @@ part 'notification_dto.g.dart';
 /// * [connectionRequestId]
 /// * [playInviteId]
 /// * [checkInId]
-/// * [postId] - The post it is about (post_gg, post_comment, comment_reply, mention).
+/// * [postId] - The post it is about (post_gg, post_comment, comment_reply, mention, recruit_*).
 /// * [commentId]
+/// * [recruitApplicationId] - recruit_application and recruit_accepted: the application (its post is postId).
 /// * [title] - Push title.
 /// * [text] - Ready to show, e.g. \"Hana wants to play PUBG Mobile with you\".
 /// * [route] - In-app path to open on tap, same as the push's data.route.
@@ -32,7 +33,7 @@ abstract class NotificationDto
     implements Built<NotificationDto, NotificationDtoBuilder> {
   @BuiltValueField(wireName: r'type')
   NotificationType get type;
-  // enum typeEnum {  connection_request,  connection_accepted,  play_invite,  play_invite_accepted,  check_in_due,  listing_expiring,  report_resolved,  post_gg,  post_comment,  comment_reply,  mention,  };
+  // enum typeEnum {  connection_request,  connection_accepted,  play_invite,  play_invite_accepted,  check_in_due,  listing_expiring,  report_resolved,  post_gg,  post_comment,  comment_reply,  mention,  recruit_application,  recruit_accepted,  };
 
   @BuiltValueField(wireName: r'id')
   String get id;
@@ -53,12 +54,16 @@ abstract class NotificationDto
   @BuiltValueField(wireName: r'checkInId')
   String? get checkInId;
 
-  /// The post it is about (post_gg, post_comment, comment_reply, mention).
+  /// The post it is about (post_gg, post_comment, comment_reply, mention, recruit_*).
   @BuiltValueField(wireName: r'postId')
   String? get postId;
 
   @BuiltValueField(wireName: r'commentId')
   String? get commentId;
+
+  /// recruit_application and recruit_accepted: the application (its post is postId).
+  @BuiltValueField(wireName: r'recruitApplicationId')
+  String? get recruitApplicationId;
 
   /// Push title.
   @BuiltValueField(wireName: r'title')
@@ -161,6 +166,13 @@ class _$NotificationDtoSerializer
         ? null
         : serializers.serialize(
             object.commentId,
+            specifiedType: const FullType.nullable(String),
+          );
+    yield r'recruitApplicationId';
+    yield object.recruitApplicationId == null
+        ? null
+        : serializers.serialize(
+            object.recruitApplicationId,
             specifiedType: const FullType.nullable(String),
           );
     yield r'title';
@@ -284,6 +296,14 @@ class _$NotificationDtoSerializer
           ) as String?;
           if (valueDes == null) continue;
           result.commentId = valueDes;
+          break;
+        case r'recruitApplicationId':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.recruitApplicationId = valueDes;
           break;
         case r'title':
           final valueDes = serializers.deserialize(

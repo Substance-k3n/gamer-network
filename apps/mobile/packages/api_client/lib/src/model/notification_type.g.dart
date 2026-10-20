@@ -23,6 +23,10 @@ const NotificationType _$postComment = const NotificationType._('postComment');
 const NotificationType _$commentReply =
     const NotificationType._('commentReply');
 const NotificationType _$mention = const NotificationType._('mention');
+const NotificationType _$recruitApplication =
+    const NotificationType._('recruitApplication');
+const NotificationType _$recruitAccepted =
+    const NotificationType._('recruitAccepted');
 
 NotificationType _$valueOf(String name) {
   switch (name) {
@@ -48,6 +52,10 @@ NotificationType _$valueOf(String name) {
       return _$commentReply;
     case 'mention':
       return _$mention;
+    case 'recruitApplication':
+      return _$recruitApplication;
+    case 'recruitAccepted':
+      return _$recruitAccepted;
     default:
       throw ArgumentError(name);
   }
@@ -66,6 +74,8 @@ final BuiltSet<NotificationType> _$values =
   _$postComment,
   _$commentReply,
   _$mention,
+  _$recruitApplication,
+  _$recruitAccepted,
 ]);
 
 class _$NotificationTypeMeta {
@@ -81,6 +91,8 @@ class _$NotificationTypeMeta {
   NotificationType get postComment => _$postComment;
   NotificationType get commentReply => _$commentReply;
   NotificationType get mention => _$mention;
+  NotificationType get recruitApplication => _$recruitApplication;
+  NotificationType get recruitAccepted => _$recruitAccepted;
   NotificationType valueOf(String name) => _$valueOf(name);
   BuiltSet<NotificationType> get values => _$values;
 }
@@ -107,6 +119,8 @@ class _$NotificationTypeSerializer
     'postComment': 'post_comment',
     'commentReply': 'comment_reply',
     'mention': 'mention',
+    'recruitApplication': 'recruit_application',
+    'recruitAccepted': 'recruit_accepted',
   };
   static const Map<Object, String> _fromWire = const <Object, String>{
     'connection_request': 'connectionRequest',
@@ -120,6 +134,8 @@ class _$NotificationTypeSerializer
     'post_comment': 'postComment',
     'comment_reply': 'commentReply',
     'mention': 'mention',
+    'recruit_application': 'recruitApplication',
+    'recruit_accepted': 'recruitAccepted',
   };
 
   @override

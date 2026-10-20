@@ -26,6 +26,8 @@ class _$NotificationDto extends NotificationDto {
   @override
   final String? commentId;
   @override
+  final String? recruitApplicationId;
+  @override
   final String title;
   @override
   final String text;
@@ -49,6 +51,7 @@ class _$NotificationDto extends NotificationDto {
       this.checkInId,
       this.postId,
       this.commentId,
+      this.recruitApplicationId,
       required this.title,
       required this.text,
       required this.route,
@@ -75,6 +78,7 @@ class _$NotificationDto extends NotificationDto {
         checkInId == other.checkInId &&
         postId == other.postId &&
         commentId == other.commentId &&
+        recruitApplicationId == other.recruitApplicationId &&
         title == other.title &&
         text == other.text &&
         route == other.route &&
@@ -94,6 +98,7 @@ class _$NotificationDto extends NotificationDto {
     _$hash = $jc(_$hash, checkInId.hashCode);
     _$hash = $jc(_$hash, postId.hashCode);
     _$hash = $jc(_$hash, commentId.hashCode);
+    _$hash = $jc(_$hash, recruitApplicationId.hashCode);
     _$hash = $jc(_$hash, title.hashCode);
     _$hash = $jc(_$hash, text.hashCode);
     _$hash = $jc(_$hash, route.hashCode);
@@ -115,6 +120,7 @@ class _$NotificationDto extends NotificationDto {
           ..add('checkInId', checkInId)
           ..add('postId', postId)
           ..add('commentId', commentId)
+          ..add('recruitApplicationId', recruitApplicationId)
           ..add('title', title)
           ..add('text', text)
           ..add('route', route)
@@ -165,6 +171,11 @@ class NotificationDtoBuilder
   String? get commentId => _$this._commentId;
   set commentId(String? commentId) => _$this._commentId = commentId;
 
+  String? _recruitApplicationId;
+  String? get recruitApplicationId => _$this._recruitApplicationId;
+  set recruitApplicationId(String? recruitApplicationId) =>
+      _$this._recruitApplicationId = recruitApplicationId;
+
   String? _title;
   String? get title => _$this._title;
   set title(String? title) => _$this._title = title;
@@ -201,6 +212,7 @@ class NotificationDtoBuilder
       _checkInId = $v.checkInId;
       _postId = $v.postId;
       _commentId = $v.commentId;
+      _recruitApplicationId = $v.recruitApplicationId;
       _title = $v.title;
       _text = $v.text;
       _route = $v.route;
@@ -240,6 +252,7 @@ class NotificationDtoBuilder
             checkInId: checkInId,
             postId: postId,
             commentId: commentId,
+            recruitApplicationId: recruitApplicationId,
             title: BuiltValueNullFieldError.checkNotNull(
                 title, r'NotificationDto', 'title'),
             text: BuiltValueNullFieldError.checkNotNull(
