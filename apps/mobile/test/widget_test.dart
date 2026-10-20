@@ -1,9 +1,11 @@
+import 'package:api_client/api_client.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rally/groups_data.dart';
 import 'package:rally/main.dart';
+import 'package:rally/screens/home.dart' show ApplicationsSheet;
 import 'package:rally/shell.dart';
 import 'package:rally/state.dart';
 import 'package:rally/theme.dart';
@@ -659,14 +661,14 @@ void main() {
     expect(find.text(feedText), findsOneWidget);
     expect(api.queries, contains(startsWith('GET /v1/feed?filter=for_you')));
     expect(find.text('4'), findsOneWidget);
-    await t.tap(labelled('GG'));
+    await t.tap(labelled('GG').first);
     await settle(t);
     expect(
       api.sent.where((r) => r.method == 'PUT' && r.path == '/v1/posts/p-1/gg'),
       hasLength(1),
     );
     expect(find.text('5'), findsOneWidget);
-    await t.tap(labelled('GG'));
+    await t.tap(labelled('GG').first);
     await settle(t);
     expect(
       api.sent.where(
@@ -748,11 +750,356 @@ void main() {
       hasLength(1),
     );
     expect(find.text('Comment deleted'), findsOneWidget);
-    await t.tap(labelled('Post options'));
+    await t.tap(labelled('Post options').first);
     await settle(t);
     await tapText(t, 'Report post');
     expect(find.text('Report post'), findsOneWidget); // the dialog title
     expect(find.text('Report Dave'), findsNothing);
+    await done(t);
+  });
+
+  /// Scrolls the Home feed until [f] is built and visible.
+  Future<void> scrollFeedTo(WidgetTester t, Finder f) async {
+    await t.scrollUntilVisible(
+      f,
+      300,
+      scrollable: find
+          .byWidgetPredicate(
+            (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
+          )
+          .first,
+    );
+    await t.pump();
+  }
+
+  List<PickedPhoto> photos(int n) => [
+    for (var i = 0; i < n; i++)
+      PickedPhoto(
+        Uint8List.fromList([1, 2, 3]),
+        MediaContentType.imageSlashJpeg,
+      ),
+  ];
+
+  /// "METHOD /path" of the calls a photo post makes, in order.
+  List<String> uploadCalls(FakeApi api) => [
+    for (final r in api.sent)
+      if (r.path == '/v1/media/upload-url' ||
+          r.path.startsWith('/upload/') ||
+          r.path == '/v1/posts')
+        '${r.method} ${r.path}',
+  ];
+
+  testWidgets('photo post: upload each photo, then create with the keys', (
+    t,
+  ) async {
+    final api = FakeApi();
+    final s = await pumpApp(t, api, token: 't-1');
+    s.openCompose();
+    await settle(t);
+    expect(find.text('Add photos'), findsOneWidget);
+    expect(find.text('Up to 4 photos'), findsOneWidget);
+    s.addPhotos(photos(5));
+    await settle(t);
+    expect(s.cp.photos, hasLength(4));
+    expect(find.text('Up to 4 photos per post'), findsOneWidget);
+    expect(find.text('04/04'), findsOneWidget);
+    s.removePhoto(3);
+    s.removePhoto(2);
+    await settle(t);
+    expect(find.text('02/04'), findsOneWidget);
+    await tapText(t, 'Gameplay');
+    await t.enterText(
+      find.widgetWithText(TextField, 'Add a caption for your screenshots…'),
+      'Ace on Standoff',
+    );
+    await t.pump();
+    await tapText(t, 'Post');
+    expect(uploadCalls(api), [
+      'POST /v1/media/upload-url',
+      'PUT /upload/1',
+      'POST /v1/media/upload-url',
+      'PUT /upload/2',
+      'POST /v1/posts',
+    ]);
+    expect(api.bodiesOf('POST /v1/media/upload-url').first, {
+      'contentType': 'image/jpeg',
+      'size': 3,
+    });
+    final body = api.bodiesOf('POST /v1/posts').single! as Map;
+    expect(body['type'], 'gameplay');
+    expect(body['media'], ['media/me-1/k1.jpg', 'media/me-1/k2.jpg']);
+    expect(find.text('Gameplay posted'), findsOneWidget);
+    expect(s.posts.first.media, hasLength(2));
+    await done(t);
+  });
+
+  testWidgets('photo post: a failed upload keeps the draft', (t) async {
+    final api = FakeApi()
+      ..fail(
+        'POST /v1/media/upload-url',
+        429,
+        'rate_limited',
+        'You can upload 30 photos an hour.',
+      );
+    final s = await pumpApp(t, api, token: 't-1');
+    s.openCompose();
+    await settle(t);
+    // Gameplay needs a photo first.
+    await tapText(t, 'Gameplay');
+    expect(
+      find.text('A gameplay post needs at least one photo.'),
+      findsOneWidget,
+    );
+    await t.enterText(find.byType(TextField).first, 'Ace');
+    await t.pump();
+    await tapText(t, 'Post');
+    expect(
+      find.text('Add at least one photo for a gameplay post'),
+      findsOneWidget,
+    );
+    s.addPhotos(photos(1));
+    await settle(t);
+    await tapText(t, 'Post');
+    expect(find.text('You can upload 30 photos an hour.'), findsOneWidget);
+    expect(api.bodiesOf('POST /v1/posts'), isEmpty);
+    expect(s.screen, Screen.compose);
+    expect(s.cp.photos, hasLength(1));
+    expect(s.cp.text, 'Ace');
+    await done(t);
+  });
+
+  testWidgets('compose a poll and a recruitment post', (t) async {
+    final api = FakeApi();
+    final s = await pumpApp(t, api, token: 't-1');
+    s.openCompose();
+    await settle(t);
+    await tapText(t, 'Poll'); // the type chip
+    await t.enterText(
+      find.widgetWithText(TextField, 'Ask the community something…'),
+      'Best map?',
+    );
+    await t.enterText(find.widgetWithText(TextField, 'Option 1'), 'Crash');
+    await t.pump();
+    await tapText(t, 'Post'); // one option isn't enough
+    expect(find.text('Add at least two options'), findsOneWidget);
+    await t.enterText(find.widgetWithText(TextField, 'Option 2'), 'Nuketown');
+    await tapText(t, '+ Add option');
+    await t.enterText(find.widgetWithText(TextField, 'Option 3'), 'Raid');
+    await tapText(t, '1 week');
+    await tapText(t, 'Post');
+    expect((api.bodiesOf('POST /v1/posts').single! as Map)['poll'], {
+      'options': ['Crash', 'Nuketown', 'Raid'],
+      'duration': '1w',
+    });
+    expect(find.text('Poll posted'), findsOneWidget);
+
+    s.openCompose();
+    await settle(t);
+    await tapText(t, 'Recruitment');
+    await t.enterText(
+      find.widgetWithText(
+        TextField,
+        'Tell players about your team and what you’re looking for…',
+      ),
+      'Squad for scrims',
+    );
+    await tapText(t, '4+');
+    await tapText(t, '6');
+    await t.enterText(
+      find.widgetWithText(TextField, 'Roles needed — e.g. Sniper, Support'),
+      'Sniper',
+    );
+    await t.pump();
+    await tapText(t, 'Post');
+    expect((api.bodiesOf('POST /v1/posts').last! as Map)['recruit'], {
+      'slots': 6,
+      'roles': 'Sniper',
+    });
+    expect(find.text('Recruitment posted'), findsOneWidget);
+    await done(t);
+  });
+
+  testWidgets('recruitment roles stop at 80 characters', (t) async {
+    final api = FakeApi();
+    final s = await pumpApp(t, api, token: 't-1');
+    s.openCompose();
+    await settle(t);
+    await tapText(t, 'Recruitment');
+    await t.enterText(
+      find.widgetWithText(TextField, 'Roles needed — e.g. Sniper, Support'),
+      'x' * 100,
+    );
+    await t.pump();
+    expect(s.cp.roles, hasLength(80));
+    await done(t);
+  });
+
+  testWidgets('vote on a poll: bars show after my vote', (t) async {
+    final api = FakeApi();
+    await pumpApp(t, api, token: 't-1');
+    await Scrollable.ensureVisible(t.element(find.text(pollText)));
+    await t.pump();
+    expect(find.textContaining('4 VOTES · ENDS IN'), findsOneWidget);
+    expect(find.text('75%'), findsNothing); // hidden until I vote
+    await t.tap(labelled('Vote Standoff'));
+    await settle(t);
+    expect(api.bodiesOf('POST /v1/posts/p-poll/vote').single, {'position': 1});
+    expect(find.text('5 VOTES · YOU VOTED'), findsOneWidget);
+    expect(find.text('60%'), findsOneWidget);
+    expect(find.text('Standoff  ✓'), findsOneWidget);
+    // One final vote: another tap sends nothing.
+    await t.tap(labelled('Vote Firing Range'));
+    await settle(t);
+    expect(api.bodiesOf('POST /v1/posts/p-poll/vote'), hasLength(1));
+    await done(t);
+  });
+
+  testWidgets('a closed poll says so and refreshes the card', (t) async {
+    final api = FakeApi()
+      ..fail(
+        'POST /v1/posts/p-poll/vote',
+        409,
+        'poll_closed',
+        'This poll has closed.',
+      );
+    await pumpApp(t, api, token: 't-1');
+    await Scrollable.ensureVisible(t.element(find.text(pollText)));
+    await t.pump();
+    await t.tap(labelled('Vote Standoff'));
+    await settle(t);
+    expect(find.text('This poll has closed.'), findsOneWidget);
+    expect(api.queries, contains('GET /v1/posts/p-poll?'));
+    expect(find.text('4 VOTES · CLOSED'), findsOneWidget);
+    await done(t);
+  });
+
+  testWidgets('apply to a recruitment post', (t) async {
+    final api = FakeApi();
+    final s = await pumpApp(t, api, token: 't-1');
+    await scrollFeedTo(t, find.text('Apply'));
+    await tapText(t, 'Apply');
+    expect(api.bodiesOf('POST /v1/posts/p-rec/apply'), hasLength(1));
+    final h = api.headers.lastWhere(
+      (h) => h.$1 == 'POST /v1/posts/p-rec/apply',
+    );
+    expect(h.$2['Idempotency-Key'] ?? h.$2['idempotency-key'], isNotNull);
+    expect(find.text('Applied ✓'), findsOneWidget);
+    expect(
+      s.posts.firstWhere((p) => p.id == 'p-rec').recruit!.myApplication,
+      ApplicationStatus.pending,
+    );
+    await done(t);
+  });
+
+  testWidgets('a full recruitment post says so and refreshes', (t) async {
+    final api = FakeApi()
+      ..fail(
+        'POST /v1/posts/p-rec/apply',
+        409,
+        'recruitment_full',
+        'This squad is full.',
+      );
+    api.routes['GET /v1/posts/p-rec'] = post(
+      'p-rec',
+      dave,
+      type: 'recruitment',
+      kind: 'recruit',
+      text: recruitText,
+      recruit: recruitOf(slots: 1, applications: 3),
+    );
+    await pumpApp(t, api, token: 't-1');
+    await scrollFeedTo(t, find.text('Apply'));
+    await tapText(t, 'Apply');
+    expect(find.text('This squad is full.'), findsOneWidget);
+    expect(api.queries, contains('GET /v1/posts/p-rec?'));
+    expect(find.text('01'), findsOneWidget); // slots from the refresh
+    await done(t);
+  });
+
+  testWidgets('a recruit_application alert opens my applications', (t) async {
+    final api = FakeApi();
+    final s = await pumpApp(t, api, token: 't-1');
+    s.go(Screen.notifs);
+    await settle(t);
+    s.openRoute('/posts/p-myrec/applications');
+    await settle(t);
+    expect(s.screen, Screen.home);
+    expect(s.sheet, SheetKind.applications);
+    expect(
+      api.queries,
+      contains(startsWith('GET /v1/posts/p-myrec/applications?')),
+    );
+    final sheet = find.byType(ApplicationsSheet);
+    Finder inSheet(String text) =>
+        find.descendant(of: sheet, matching: find.text(text));
+    expect(inSheet('Hana'), findsOneWidget);
+    expect(inSheet('Dave'), findsOneWidget);
+    await t.tap(inSheet('Accept').first);
+    await settle(t);
+    expect(
+      api.sent.any((r) => r.path == '/v1/recruit-applications/ra-1/accept'),
+      isTrue,
+    );
+    expect(inSheet('ACCEPTED'), findsOneWidget);
+    await t.tap(inSheet('Decline').first);
+    await settle(t);
+    expect(
+      api.sent.any((r) => r.path == '/v1/recruit-applications/ra-2/decline'),
+      isTrue,
+    );
+    expect(inSheet('DECLINED'), findsOneWidget);
+    s.closeSheet();
+    await settle(t);
+    // The post is on top of Home, marked as mine.
+    expect(find.text('Yours · 2 applied'), findsOneWidget);
+    await done(t);
+  });
+
+  testWidgets('a recruit_accepted alert opens their profile', (t) async {
+    final s = await pumpApp(t, FakeApi(), token: 't-1');
+    s.openRoute('/players/dave.exe');
+    await settle(t);
+    expect(find.text('@dave.exe · Addis Ababa'), findsOneWidget);
+    await done(t);
+  });
+
+  testWidgets('photos open full screen', (t) async {
+    await pumpApp(t, FakeApi(), token: 't-1');
+    await scrollFeedTo(t, labelled('Photo 2 of 2'));
+    await t.tap(labelled('Photo 2 of 2'));
+    await settle(t);
+    expect(find.text('2 PHOTOS · SWIPE'), findsOneWidget);
+    await t.tap(labelled('Close photos'));
+    await settle(t);
+    expect(find.text('2 PHOTOS · SWIPE'), findsNothing);
+    await done(t);
+  });
+
+  testWidgets('Saved tab lists my bookmarks; unsave removes the card', (
+    t,
+  ) async {
+    final api = FakeApi();
+    final s = await pumpApp(t, api, token: 't-1');
+    s.goProfileTab();
+    await settle(t);
+    await tapText(t, 'Saved');
+    expect(api.queries, contains(startsWith('GET /v1/me/saved')));
+    expect(find.text('Saved: smoke lineups for every map.'), findsOneWidget);
+    await t.tap(labelled('Saved'));
+    await settle(t);
+    expect(
+      api.sent.any(
+        (r) => r.method == 'DELETE' && r.path == '/v1/posts/p-saved/save',
+      ),
+      isTrue,
+    );
+    expect(find.text('Saved: smoke lineups for every map.'), findsNothing);
+    expect(
+      find.text(
+        'Nothing saved yet. Tap the bookmark on a post to keep it here.',
+      ),
+      findsOneWidget,
+    );
     await done(t);
   });
 
@@ -762,9 +1109,9 @@ void main() {
     s.openCompose();
     await settle(t);
     expect(find.text('New post'), findsOneWidget);
-    // Only the types the API takes today.
-    expect(find.text('Poll'), findsNothing);
-    expect(find.text('Gameplay'), findsNothing);
+    // All 11 types again (round 2).
+    expect(find.text('Gameplay'), findsOneWidget);
+    expect(find.text('Recruitment'), findsOneWidget);
     await tapText(t, 'Milestone');
     await tapText(t, 'Connections');
     await tapText(t, 'Post'); // empty text: nothing sent
@@ -922,10 +1269,15 @@ void main() {
         await settle(t);
       }
       s.goProfileTab();
-      for (final tab in ['Groups', 'Posts', 'Moments', 'Overview']) {
+      for (final tab in ['Groups', 'Posts', 'Moments', 'Saved', 'Overview']) {
         s.update(() => s.ptab = tab);
         await settle(t);
       }
+      // Poll, recruitment and photo cards on Home, and the applications sheet.
+      s.go(Screen.home);
+      await settle(t);
+      s.openRoute('/posts/p-myrec/applications');
+      await settle(t);
       s.openListingSheet();
       await settle(t);
       expect(find.text('EXPIRES AFTER'), findsOneWidget);

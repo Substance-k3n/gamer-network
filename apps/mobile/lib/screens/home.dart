@@ -598,7 +598,12 @@ class FeedPost extends StatelessWidget {
                   p.text,
                   style: t.body(big ? 19 : 15, w: big ? w700 : w400, h: 1.4),
                 ),
-                if (p.kind == PostKind.moment) const _Clip(),
+                if (p.media.isNotEmpty)
+                  PhotoGrid(p.media.toList())
+                else if (p.kind == PostKind.moment)
+                  const _Clip(),
+                if (p.poll != null) _PollView(p),
+                if (p.recruit != null) _RecruitBox(p),
                 if (top != null)
                   Dashed(
                     radius: 16,
@@ -791,6 +796,406 @@ class _Clip extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// A post's photos: one 220 tall, 2–4 in a 2-column grid of 140,
+/// cover-cropped (D23). Tap opens them full screen.
+class PhotoGrid extends StatelessWidget {
+  const PhotoGrid(this.media, {super.key});
+  final List<MediaDto> media;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.rt;
+    final one = media.length == 1;
+    return LayoutBuilder(
+      builder: (context, c) {
+        final w = one ? c.maxWidth : (c.maxWidth - 6) / 2;
+        return Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (var i = 0; i < media.length; i++)
+              Semantics(
+                button: true,
+                label: 'Photo ${i + 1} of ${media.length}',
+                child: GestureDetector(
+                  onTap: () => showPhotos(context, media, i),
+                  child: Container(
+                    width: w,
+                    height: one ? 220 : 140,
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: t.dark,
+                      border: t.border(),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: NetPhoto(media[i].url),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// A photo from the API, cover-cropped; a dark box until (or if) it loads.
+class NetPhoto extends StatelessWidget {
+  const NetPhoto(this.url, {super.key, this.fit = BoxFit.cover});
+  final String url;
+  final BoxFit fit;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = ColoredBox(color: context.rt.dark);
+    return Image.network(
+      url,
+      fit: fit,
+      width: double.infinity,
+      height: double.infinity,
+      gaplessPlayback: true,
+      loadingBuilder: (_, child, progress) => progress == null ? child : dark,
+      errorBuilder: (_, _, _) => dark,
+    );
+  }
+}
+
+/// Full-screen photos, swipe between them, pinch to zoom.
+Future<void> showPhotos(BuildContext context, List<MediaDto> media, int at) =>
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black,
+      useSafeArea: false,
+      builder: (context) {
+        final t = context.rt;
+        return Stack(
+          children: [
+            PageView(
+              controller: PageController(initialPage: at),
+              children: [
+                for (final m in media)
+                  InteractiveViewer(
+                    child: NetPhoto(m.url, fit: BoxFit.contain),
+                  ),
+              ],
+            ),
+            Positioned(
+              top: MediaQuery.paddingOf(context).top + 10,
+              right: 14,
+              child: Semantics(
+                label: 'Close photos',
+                child: CloseBtn(onTap: () => Navigator.pop(context)),
+              ),
+            ),
+            if (media.length > 1)
+              Positioned(
+                bottom: MediaQuery.paddingOf(context).bottom + 18,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Text(
+                    t.up('${media.length} PHOTOS · SWIPE'),
+                    style: t.label(9, c: Colors.white70),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+
+/// "ENDS IN 2D 4H" style time left on a poll.
+String endsIn(DateTime end, DateTime now) {
+  final d = end.difference(now);
+  if (d.isNegative) return 'SOON';
+  if (d.inDays > 0) return '${d.inDays}D ${d.inHours % 24}H';
+  if (d.inHours > 0) return '${d.inHours}H ${d.inMinutes % 60}M';
+  return '${d.inMinutes < 1 ? 1 : d.inMinutes}M';
+}
+
+/// A poll: bars stay hidden until I vote (or it closes).
+class _PollView extends StatelessWidget {
+  const _PollView(this.p);
+  final PostDto p;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.app;
+    final t = context.rt;
+    final pl = p.poll!;
+    final mine = pl.myVote?.toInt();
+    final shown = mine != null || pl.closed;
+    final tot = pl.totalVotes.toInt();
+    final caption = pl.closed
+        ? 'CLOSED'
+        : mine != null
+        ? 'YOU VOTED'
+        : 'ENDS IN ${endsIn(pl.endsAt, s.now.value)}';
+    return Gap(
+      7,
+      children: [
+        for (final o in pl.options)
+          Builder(
+            builder: (context) {
+              final pos = o.position.toInt();
+              final pct = (o.votes / (tot < 1 ? 1 : tot) * 100).round();
+              return Semantics(
+                button: !shown,
+                label: 'Vote ${o.label}',
+                child: Tap(
+                  onTap: shown ? null : () => s.vote(p, pos),
+                  child: Container(
+                    height: 42,
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: t.surface,
+                      border: t.border(),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: AnimatedFractionallySizedBox(
+                              duration: const Duration(milliseconds: 500),
+                              curve: Curves.ease,
+                              widthFactor: shown ? pct / 100 : 0,
+                              heightFactor: 1,
+                              child: ColoredBox(
+                                color: mine == pos ? t.pollMine : t.soft,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${o.label}${mine == pos ? '  ✓' : ''}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: t.body(14, w: w600),
+                                ),
+                              ),
+                              if (shown)
+                                Text('${pad2(pct)}%', style: t.digits(11)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        Label('$tot VOTES · $caption', padLeft: 4),
+      ],
+    );
+  }
+}
+
+/// Recruitment: slots, roles and Apply; mine opens its applications.
+class _RecruitBox extends StatelessWidget {
+  const _RecruitBox(this.p);
+  final PostDto p;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.app;
+    final t = context.rt;
+    final r = p.recruit!;
+    final applied = r.myApplication != null;
+    final done = applied || p.mine;
+    final label = p.mine
+        ? 'Yours · ${r.applications} applied'
+        : switch (r.myApplication) {
+            ApplicationStatus.accepted => 'Accepted ✓',
+            null => 'Apply',
+            _ => 'Applied ✓',
+          };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: t.soft,
+        border: t.border(),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Column(
+            children: [
+              Text(pad2(r.slots.toInt()), style: t.digits(22)),
+              const SizedBox(height: 3),
+              Text(t.up('SLOTS'), style: t.label(8)),
+            ],
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(t.up('ROLES NEEDED'), style: t.label(9)),
+                const SizedBox(height: 2),
+                Text(
+                  r.roles.isEmpty ? 'Any role' : r.roles,
+                  style: t.body(14, w: w700),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Pill(
+              label,
+              onTap: applied || s.busy ? null : () => s.apply(p),
+              height: 36,
+              padH: 14,
+              weight: w700,
+              bg: done ? t.strong : t.accent,
+              fg: done ? t.onStrong : t.onAccent,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The applications to my recruitment post, inside the app's bottom sheet.
+class ApplicationsSheet extends StatelessWidget {
+  const ApplicationsSheet({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.app;
+    final t = context.rt;
+    final list = s.apps;
+    return Gap(
+      10,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Flexible(
+              child: Text('Applications', style: t.body(24, w: w800, ls: -.8)),
+            ),
+            CloseBtn(
+              onTap: s.closeSheet,
+              size: 36,
+              fontSize: 16,
+              transparent: true,
+            ),
+          ],
+        ),
+        if (list == null)
+          const Padding(
+            padding: EdgeInsets.all(20),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (list.isEmpty)
+          const EmptyNote('No applications yet. They show up here.')
+        else
+          RowList(
+            children: [
+              for (final a in list)
+                Padding(
+                  key: ValueKey(a.id),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  child: Row(
+                    children: [
+                      Avatar(
+                        initialOf(a.user.displayName),
+                        toneFor(a.user.id),
+                        url: a.user.avatarUrl,
+                        size: 38,
+                        fontSize: 15,
+                        onTap: () => s.openPlayer(a.user.username),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              a.user.displayName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: t.body(15, w: w700),
+                            ),
+                            Text(
+                              s.rankLine(a.user.topGame).isEmpty
+                                  ? '@${a.user.username}'
+                                  : s.rankLine(a.user.topGame),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: t.body(12, c: t.muted),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      if (a.status != ApplicationStatus.pending)
+                        GestureDetector(
+                          // The author may change the answer (D24).
+                          onTap: () => s.decide(
+                            a,
+                            a.status != ApplicationStatus.accepted,
+                          ),
+                          child: TypeTag(
+                            a.status == ApplicationStatus.accepted
+                                ? 'ACCEPTED'
+                                : 'DECLINED',
+                            a.status == ApplicationStatus.accepted
+                                ? t.accent
+                                : t.grey,
+                          ),
+                        )
+                      else ...[
+                        Pill(
+                          'Decline',
+                          onTap: s.busy ? null : () => s.decide(a, false),
+                          height: 32,
+                          padH: 10,
+                          bg: Colors.transparent,
+                        ),
+                        const SizedBox(width: 6),
+                        Pill(
+                          'Accept',
+                          onTap: s.busy ? null : () => s.decide(a, true),
+                          height: 32,
+                          padH: 12,
+                          weight: w700,
+                          bg: t.accent,
+                          fg: t.onAccent,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        if (s.appsCursor != null)
+          Center(
+            child: Pill(
+              'Load more',
+              onTap: () => s.loadApplications(more: true),
+              height: 40,
+              padH: 16,
+              weight: w700,
+            ),
+          ),
+      ],
     );
   }
 }

@@ -23,6 +23,7 @@ import 'package:api_client/src/model/admin_user_page_dto.dart';
 import 'package:api_client/src/model/age_range.dart';
 import 'package:api_client/src/model/answer_check_in_body.dart';
 import 'package:api_client/src/model/app_config_response.dart';
+import 'package:api_client/src/model/application_status.dart';
 import 'package:api_client/src/model/auth_response.dart';
 import 'package:api_client/src/model/avatar_type.dart';
 import 'package:api_client/src/model/avatar_upload_body.dart';
@@ -70,6 +71,11 @@ import 'package:api_client/src/model/listing_status.dart';
 import 'package:api_client/src/model/login_body.dart';
 import 'package:api_client/src/model/mark_read_body.dart';
 import 'package:api_client/src/model/me_dto.dart';
+import 'package:api_client/src/model/media_content_type.dart';
+import 'package:api_client/src/model/media_dto.dart';
+import 'package:api_client/src/model/media_kind.dart';
+import 'package:api_client/src/model/media_upload_body.dart';
+import 'package:api_client/src/model/media_upload_dto.dart';
 import 'package:api_client/src/model/metrics_dto.dart';
 import 'package:api_client/src/model/mode_dto.dart';
 import 'package:api_client/src/model/mode_ref_dto.dart';
@@ -86,6 +92,10 @@ import 'package:api_client/src/model/play_style.dart';
 import 'package:api_client/src/model/play_tag.dart';
 import 'package:api_client/src/model/play_when.dart';
 import 'package:api_client/src/model/player_status.dart';
+import 'package:api_client/src/model/poll_body.dart';
+import 'package:api_client/src/model/poll_dto.dart';
+import 'package:api_client/src/model/poll_duration.dart';
+import 'package:api_client/src/model/poll_option_dto.dart';
 import 'package:api_client/src/model/post_audience.dart';
 import 'package:api_client/src/model/post_dto.dart';
 import 'package:api_client/src/model/post_kind.dart';
@@ -98,6 +108,11 @@ import 'package:api_client/src/model/public_post_author_dto.dart';
 import 'package:api_client/src/model/public_post_dto.dart';
 import 'package:api_client/src/model/rank_dto.dart';
 import 'package:api_client/src/model/rank_ref_dto.dart';
+import 'package:api_client/src/model/recruit_application_dto.dart';
+import 'package:api_client/src/model/recruit_application_page_dto.dart';
+import 'package:api_client/src/model/recruit_body.dart';
+import 'package:api_client/src/model/recruit_decision_dto.dart';
+import 'package:api_client/src/model/recruit_dto.dart';
 import 'package:api_client/src/model/register_device_body.dart';
 import 'package:api_client/src/model/relationship.dart';
 import 'package:api_client/src/model/report_body.dart';
@@ -130,6 +145,7 @@ import 'package:api_client/src/model/user_role.dart';
 import 'package:api_client/src/model/user_search_response.dart';
 import 'package:api_client/src/model/username_availability.dart';
 import 'package:api_client/src/model/voice.dart';
+import 'package:api_client/src/model/vote_body.dart';
 import 'package:api_client/src/model/waitlist_body.dart';
 import 'package:api_client/src/model/waitlist_count_dto.dart';
 
@@ -145,6 +161,7 @@ part 'serializers.g.dart';
   AgeRange,
   AnswerCheckInBody,
   AppConfigResponse,
+  ApplicationStatus,
   AuthResponse,
   AvatarType,
   AvatarUploadBody,
@@ -192,6 +209,11 @@ part 'serializers.g.dart';
   LoginBody,
   MarkReadBody,
   MeDto,
+  MediaContentType,
+  MediaDto,
+  MediaKind,
+  MediaUploadBody,
+  MediaUploadDto,
   MetricsDto,
   ModeDto,
   ModeRefDto,
@@ -208,6 +230,10 @@ part 'serializers.g.dart';
   PlayTag,
   PlayWhen,
   PlayerStatus,
+  PollBody,
+  PollDto,
+  PollDuration,
+  PollOptionDto,
   PostAudience,
   PostDto,
   PostKind,
@@ -220,6 +246,11 @@ part 'serializers.g.dart';
   PublicPostDto,
   RankDto,
   RankRefDto,
+  RecruitApplicationDto,
+  RecruitApplicationPageDto,
+  RecruitBody,
+  RecruitDecisionDto,
+  RecruitDto,
   RegisterDeviceBody,
   Relationship,
   ReportBody,
@@ -252,6 +283,7 @@ part 'serializers.g.dart';
   UserSearchResponse,
   UsernameAvailability,
   Voice,
+  VoteBody,
   WaitlistBody,
   WaitlistCountDto,
 ])
@@ -325,6 +357,14 @@ Serializers serializers = (_$serializers.toBuilder()
         () => SetBuilder<Platform>(),
       )
       ..addBuilderFactory(
+        const FullType(BuiltSet, [FullType(String)]),
+        () => SetBuilder<String>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(RecruitApplicationDto)]),
+        () => ListBuilder<RecruitApplicationDto>(),
+      )
+      ..addBuilderFactory(
         const FullType(BuiltList, [FullType(Day)]),
         () => ListBuilder<Day>(),
       )
@@ -341,6 +381,10 @@ Serializers serializers = (_$serializers.toBuilder()
         () => ListBuilder<UserCardDto>(),
       )
       ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(MediaDto)]),
+        () => ListBuilder<MediaDto>(),
+      )
+      ..addBuilderFactory(
         const FullType(BuiltList, [FullType(ListingDto)]),
         () => ListBuilder<ListingDto>(),
       )
@@ -351,6 +395,10 @@ Serializers serializers = (_$serializers.toBuilder()
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(Platform)]),
         () => ListBuilder<Platform>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(PollOptionDto)]),
+        () => ListBuilder<PollOptionDto>(),
       )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(PostDto)]),

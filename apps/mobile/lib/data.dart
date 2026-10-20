@@ -347,8 +347,7 @@ class PostTypeInfo {
   final Tone bg;
 }
 
-/// Every post type, in the composer's order. [postable] are the ones the API
-/// takes today; photos, polls and recruitment come with its later phases.
+/// Every post type, in the composer's order.
 const postTypes = [
   PostTypeInfo(
     PostType.discussion,
@@ -360,7 +359,7 @@ const postTypes = [
     PostType.gameplay,
     'Gameplay',
     Tone.accent,
-    'Add a caption for your clip or screenshot…',
+    'Add a caption for your screenshots…',
   ),
   PostTypeInfo(
     PostType.recruitment,
@@ -407,11 +406,6 @@ const postTypes = [
   ),
   PostTypeInfo(PostType.meme, 'Meme', Tone.soft, 'Caption it…'),
 ];
-
-const _notYet = {PostType.gameplay, PostType.recruitment, PostType.poll};
-
-List<PostTypeInfo> get postable =>
-    postTypes.where((p) => !_notYet.contains(p.type)).toList();
 
 PostTypeInfo postTypeInfo(PostType t) =>
     postTypes.firstWhere((p) => p.type == t);

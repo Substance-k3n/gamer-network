@@ -6,8 +6,8 @@ import '../state.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
-/// New post. Offers only the types the API takes today ([postable]):
-/// photos, polls and recruitment wait for its later phases.
+/// New post: any of the 11 types, up to 4 photos (images only for now),
+/// a poll or a recruitment box.
 class ComposeScreen extends StatelessWidget {
   const ComposeScreen({super.key});
 
@@ -54,7 +54,7 @@ class ComposeScreen extends StatelessWidget {
             spacing: 6,
             runSpacing: 6,
             children: [
-              for (final pt in postable)
+              for (final pt in postTypes)
                 Pill.chip(
                   pt.label,
                   c.type == pt.type,
@@ -124,6 +124,121 @@ class ComposeScreen extends StatelessWidget {
                     onChanged: (v) => setC(() => c.text = v),
                   ),
                 ),
+                if (c.type == PostType.poll) _PollEditor(c),
+                if (c.type == PostType.recruitment) _RecruitEditor(c),
+                if (c.photos.isNotEmpty)
+                  GridView.count(
+                    crossAxisCount: 3,
+                    mainAxisSpacing: 6,
+                    crossAxisSpacing: 6,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    children: [
+                      for (var i = 0; i < c.photos.length; i++)
+                        Container(
+                          clipBehavior: Clip.antiAlias,
+                          decoration: BoxDecoration(
+                            color: t.dark,
+                            border: t.border(),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Stack(
+                            children: [
+                              Positioned.fill(
+                                child: Image.memory(
+                                  c.photos[i].bytes,
+                                  fit: BoxFit.cover,
+                                  gaplessPlayback: true,
+                                  errorBuilder: (_, _, _) =>
+                                      ColoredBox(color: t.dark),
+                                ),
+                              ),
+                              Positioned(
+                                top: 5,
+                                right: 5,
+                                child: Semantics(
+                                  label: 'Remove photo',
+                                  child: CloseBtn(
+                                    size: 24,
+                                    fontSize: 12,
+                                    onTap: () => s.removePhoto(i),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  )
+                else
+                  Dashed(
+                    radius: 16,
+                    padding: const EdgeInsets.all(16),
+                    onTap: s.pickPhotos,
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: t.dark,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: SvgIcon(Ic.upload, color: t.onDark),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Add photos', style: t.body(14, w: w700)),
+                            Text(
+                              'Up to $maxPhotos photos',
+                              style: t.body(12, c: t.muted),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                if (c.type == PostType.gameplay && c.photos.isEmpty)
+                  Text(
+                    'A gameplay post needs at least one photo.',
+                    style: t.body(12, c: t.muted),
+                  ),
+                Container(
+                  padding: const EdgeInsets.only(top: 10),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      top: BorderSide(color: t.line, width: t.lineW ?? 1.5),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Pill(
+                        'Media',
+                        onTap: s.pickPhotos,
+                        padH: 12,
+                        border: 1.5,
+                        bg: Colors.transparent,
+                        leading: const SvgIcon(Ic.image, size: 15),
+                      ),
+                      const SizedBox(width: 8),
+                      Pill(
+                        'Poll',
+                        onTap: () => setC(() => c.type = PostType.poll),
+                        padH: 12,
+                        border: 1.5,
+                        bg: Colors.transparent,
+                      ),
+                      const Spacer(),
+                      Text(
+                        '${pad2(c.photos.length)}/${pad2(maxPhotos)}',
+                        style: t.digits(10, c: t.muted),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -159,6 +274,183 @@ class ComposeScreen extends StatelessWidget {
                   ? PostAudience.everyone
                   : PostAudience.connections,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 2–4 options and how long the poll runs.
+class _PollEditor extends StatelessWidget {
+  const _PollEditor(this.c);
+  final ComposeDraft c;
+
+  static const _durations = {
+    PollDuration.n1d: '1 day',
+    PollDuration.n3d: '3 days',
+    PollDuration.n1w: '1 week',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.app;
+    final t = context.rt;
+    return Gap(
+      7,
+      children: [
+        for (var i = 0; i < c.poll.length; i++)
+          Container(
+            // Index in the key so removing a row doesn't reuse another
+            // row's controller.
+            key: ValueKey('opt-$i-${c.poll.length}'),
+            height: 44,
+            padding: const EdgeInsets.fromLTRB(12, 0, 6, 0),
+            decoration: BoxDecoration(
+              color: t.sunken,
+              border: t.border(),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 22,
+                  child: Text(pad2(i + 1), style: t.digits(10)),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Field(
+                    value: c.poll[i],
+                    hint: 'Option ${i + 1}',
+                    size: 15,
+                    onChanged: (v) => s.update(() => c.poll[i] = v),
+                  ),
+                ),
+                if (c.poll.length > 2)
+                  CloseBtn(
+                    size: 28,
+                    fontSize: 14,
+                    transparent: true,
+                    onTap: () =>
+                        s.update(() => c.poll = [...c.poll]..removeAt(i)),
+                  ),
+              ],
+            ),
+          ),
+        if (c.poll.length < 4)
+          Dashed(
+            radius: 14,
+            onTap: () => s.update(() => c.poll = [...c.poll, '']),
+            child: SizedBox(
+              height: 40,
+              child: Center(
+                child: Text('+ Add option', style: t.body(14, w: w600)),
+              ),
+            ),
+          ),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(right: 4),
+              child: Label('POLL ENDS IN'),
+            ),
+            for (final d in _durations.entries)
+              Pill.chip(
+                d.value,
+                c.pollDur == d.key,
+                () => s.update(() => c.pollDur = d.key),
+                height: 30,
+                padH: 11,
+                size: 12,
+                border: 1.5,
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Open slots (1, 2, 3, or 4+ then a number up to 10) and roles wanted.
+class _RecruitEditor extends StatelessWidget {
+  const _RecruitEditor(this.c);
+  final ComposeDraft c;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.app;
+    final t = context.rt;
+    final many = c.slots >= 4;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: t.soft,
+        border: t.border(),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Gap(
+        8,
+        children: [
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(right: 4),
+                child: Label('SLOTS OPEN', color: t.text),
+              ),
+              for (final n in const [1, 2, 3])
+                Pill.chip(
+                  '$n',
+                  c.slots == n,
+                  () => s.update(() => c.slots = n),
+                  height: 30,
+                  padH: 10,
+                  minWidth: 34,
+                  border: 1.5,
+                ),
+              Pill.chip(
+                '4+',
+                many,
+                () => s.update(() => c.slots = many ? c.slots : 4),
+                height: 30,
+                padH: 10,
+                minWidth: 34,
+                border: 1.5,
+              ),
+            ],
+          ),
+          if (many)
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (var n = 4; n <= 10; n++)
+                  Pill.chip(
+                    '$n',
+                    c.slots == n,
+                    () => s.update(() => c.slots = n),
+                    height: 30,
+                    padH: 10,
+                    minWidth: 34,
+                    border: 1.5,
+                  ),
+              ],
+            ),
+          BoxField(
+            value: c.roles,
+            hint: 'Roles needed — e.g. Sniper, Support',
+            height: 40,
+            radius: 12,
+            padH: 12,
+            size: 14,
+            border: 1.5,
+            maxLength: maxRoles,
+            onChanged: (v) => c.roles = v,
           ),
         ],
       ),

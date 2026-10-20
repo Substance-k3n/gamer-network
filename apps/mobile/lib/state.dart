@@ -38,7 +38,7 @@ enum Screen {
   listing,
 }
 
-enum SheetKind { listing, session }
+enum SheetKind { listing, session, applications }
 
 const mainScreens = {
   Screen.home,
@@ -82,6 +82,19 @@ class SessionDraft {
   String key = uuid4();
 }
 
+/// A photo picked for a post, already resized on the phone.
+class PickedPhoto {
+  const PickedPhoto(this.bytes, this.type);
+  final Uint8List bytes;
+  final MediaContentType type;
+}
+
+/// Most photos a post can carry (docs/FEED_AND_GROUPS_API.md).
+const maxPhotos = 4;
+
+/// Longest recruitment roles line the API takes.
+const maxRoles = 80;
+
 /// The post being written in the composer.
 class ComposeDraft {
   ComposeDraft({this.gameId});
@@ -96,7 +109,34 @@ class ComposeDraft {
   PostAudience audience = PostAudience.everyone;
   String key = uuid4();
 
-  bool get ready => text.trim().isNotEmpty;
+  List<PickedPhoto> photos = [];
+
+  /// Poll options (2–4) and how long it runs.
+  List<String> poll = ['', ''];
+  PollDuration pollDur = PollDuration.n1d;
+
+  /// Recruitment: open slots (1–10) and the roles wanted (≤ [maxRoles]).
+  int slots = 1;
+  String roles = '';
+
+  List<String> get pollOptions => [
+    for (final o in poll)
+      if (o.trim().isNotEmpty) o.trim(),
+  ];
+
+  /// What Post still needs, or null when it can go.
+  String? get missing {
+    if (text.trim().isEmpty) return 'Write something first';
+    if (type == PostType.gameplay && photos.isEmpty) {
+      return 'Add at least one photo for a gameplay post';
+    }
+    if (type == PostType.poll && pollOptions.length < 2) {
+      return 'Add at least two options';
+    }
+    return null;
+  }
+
+  bool get ready => missing == null;
 }
 
 /// Gamer-profile fields shared by onboarding and Edit profile: games with
@@ -355,6 +395,11 @@ class AppState extends ChangeNotifier {
   Map<String, CommentDto> replyTo = {};
   ComposeDraft cp = ComposeDraft();
 
+  /// Applications to my recruitment post [appsPost] (the applications sheet).
+  String? appsPost;
+  List<RecruitApplicationDto>? apps;
+  String? appsCursor;
+
   // Find Players
   List<ListingDto> listings = [];
   String? feedCursor;
@@ -387,6 +432,10 @@ class AppState extends ChangeNotifier {
   /// The viewed profile's posts (Posts and Moments tabs).
   List<PostDto> profilePosts = [];
   String? profilePostsCursor;
+
+  /// My saved posts (the Saved tab on my profile), most recently saved first.
+  List<PostDto>? saved;
+  String? savedCursor;
 
   // Search
   String q = '';
@@ -588,6 +637,7 @@ class AppState extends ChangeNotifier {
       homeLoaded = feedLoaded = postsLoaded = false;
       listings = [];
       posts = [];
+      saved = null;
       comments = {};
       openC = {};
       requests = [];
@@ -852,6 +902,7 @@ class AppState extends ChangeNotifier {
       viewed = null;
       homeLoaded = feedLoaded = postsLoaded = false;
       posts = [];
+      saved = null;
       comments = {};
       openC = {};
       screen = Screen.landing;
@@ -1325,6 +1376,7 @@ class AppState extends ChangeNotifier {
   Future<void> loadMyProfile() async {
     await Future.wait([
       loadProfilePosts(),
+      loadSaved(),
       call(
         () async => (await api.me.meGet()).data!,
         quiet: true,
@@ -1506,6 +1558,10 @@ class AppState extends ChangeNotifier {
         openListing(id);
       case ['posts', final id]:
         openPost(id, comments: uri.queryParameters['comments'] == '1');
+      case ['posts', final id, 'applications']:
+        openPost(id).then((_) {
+          if (screen == Screen.home && _post(id) != null) openApplications(id);
+        });
       case ['check-ins', _]:
         go(Screen.home);
       default:
@@ -1593,11 +1649,22 @@ class AppState extends ChangeNotifier {
   void _putPost(PostDto p) => update(() {
     posts = [for (final x in posts) x.id == p.id ? p : x];
     profilePosts = [for (final x in profilePosts) x.id == p.id ? p : x];
+    if (saved != null) saved = [for (final x in saved!) x.id == p.id ? p : x];
   });
 
   PostDto? _post(String id) =>
       posts.where((p) => p.id == id).firstOrNull ??
-      profilePosts.where((p) => p.id == id).firstOrNull;
+      profilePosts.where((p) => p.id == id).firstOrNull ??
+      saved?.where((p) => p.id == id).firstOrNull;
+
+  /// Reloads one post after a refused action (closed poll, full slots…).
+  Future<void> refreshPost(String id) async {
+    final p = await call(
+      () async => (await api.feed.postsGet(id: id)).data!,
+      quiet: true,
+    );
+    if (p != null) _putPost(p);
+  }
 
   Future<void> toggleGG(PostDto p) async {
     final on = !p.myGG;
@@ -1645,7 +1712,111 @@ class AppState extends ChangeNotifier {
       if (now != null) _putPost(now.rebuild((b) => b..saved = p.saved));
       return;
     }
-    if (on) toast('Saved to your bookmarks');
+    if (on) {
+      toast('Saved to your bookmarks');
+    } else if (saved != null) {
+      update(() => saved = saved!.where((x) => x.id != p.id).toList());
+    }
+  }
+
+  Future<void> loadSaved({bool more = false}) async {
+    final p = await call(
+      () async =>
+          (await api.feed.myPostsSaved(cursor: more ? savedCursor : null))
+              .data!,
+      quiet: !more,
+    );
+    if (p == null) return;
+    update(() {
+      saved = more ? [...?saved, ...p.items] : p.items.toList();
+      savedCursor = p.nextCursor;
+    });
+  }
+
+  // ---- polls & recruitment ----
+
+  /// One final vote; the API's totals replace the card's.
+  Future<void> vote(PostDto p, int position) async {
+    final poll = p.poll;
+    if (poll == null || poll.closed || poll.myVote != null || busy) return;
+    final r = await _busy(
+      () async => (await api.feed.postsVote(
+        id: p.id,
+        voteBody: VoteBody((b) => b..position = position),
+      )).data!,
+    );
+    if (r == null) return refreshPost(p.id);
+    final now = _post(p.id) ?? p;
+    _putPost(now.rebuild((b) => b..poll.replace(r)));
+  }
+
+  /// Apply to someone's recruitment post; my own opens its applications.
+  Future<void> apply(PostDto p) async {
+    final rec = p.recruit;
+    if (rec == null) return;
+    if (p.mine) return openApplications(p.id);
+    if (rec.myApplication != null || busy) return;
+    final r = await _busy(
+      () async =>
+          (await api.feed.postsApply(id: p.id, idempotencyKey: uuid4())).data!,
+    );
+    if (r == null) return refreshPost(p.id);
+    final now = _post(p.id) ?? p;
+    _putPost(now.rebuild((b) => b..recruit.replace(r)));
+    toast('Applied — ${p.author.displayName} gets a notification');
+  }
+
+  void openApplications(String postId) {
+    update(() {
+      appsPost = postId;
+      apps = null;
+      appsCursor = null;
+      sheet = SheetKind.applications;
+    });
+    loadApplications();
+  }
+
+  Future<void> loadApplications({bool more = false}) async {
+    final id = appsPost;
+    if (id == null) return;
+    final p = await call(
+      () async => (await api.feed.postsApplications(
+        id: id,
+        cursor: more ? appsCursor : null,
+      )).data!,
+    );
+    if (p == null || appsPost != id) return;
+    update(() {
+      apps = more ? [...?apps, ...p.items] : p.items.toList();
+      appsCursor = p.nextCursor;
+    });
+  }
+
+  /// Accept or decline an application (the author may change the answer).
+  Future<void> decide(RecruitApplicationDto a, bool accept) async {
+    final r = await _busy(
+      () async =>
+          (accept
+                  ? await api.feed.recruitApplicationsAccept(id: a.id)
+                  : await api.feed.recruitApplicationsDecline(id: a.id))
+              .data!,
+    );
+    final id = appsPost;
+    if (r == null) {
+      if (id != null) refreshPost(id);
+      return;
+    }
+    update(() {
+      apps = [
+        for (final x in apps ?? const <RecruitApplicationDto>[])
+          x.id == r.id ? x.rebuild((b) => b..status = r.status) : x,
+      ];
+    });
+    toast(
+      accept
+          ? '${a.user.displayName} is in — they get a notification'
+          : 'Application declined',
+    );
   }
 
   Future<void> sharePost(PostDto p) async {
@@ -1836,21 +2007,88 @@ class AppState extends ChangeNotifier {
     if (!cp.gameSet) cp.gameId = me?.games.firstOrNull?.game?.id;
   });
 
+  /// Picks photos from the gallery, resized to a longest side of 1600 px.
+  Future<void> pickPhotos() async {
+    if (cp.photos.length >= maxPhotos) {
+      return toast('Up to $maxPhotos photos per post');
+    }
+    List<XFile> picked;
+    try {
+      picked = await ImagePicker().pickMultiImage(
+        maxWidth: 1600,
+        maxHeight: 1600,
+        imageQuality: 85,
+      );
+    } on PlatformException {
+      return toast('Couldn’t open your gallery');
+    }
+    final photos = <PickedPhoto>[];
+    for (final x in picked) {
+      final name = x.name.toLowerCase();
+      final type = switch (x.mimeType) {
+        'image/png' => MediaContentType.imageSlashPng,
+        'image/webp' => MediaContentType.imageSlashWebp,
+        _ when name.endsWith('.png') => MediaContentType.imageSlashPng,
+        _ when name.endsWith('.webp') => MediaContentType.imageSlashWebp,
+        _ => MediaContentType.imageSlashJpeg,
+      };
+      photos.add(PickedPhoto(await x.readAsBytes(), type));
+    }
+    addPhotos(photos);
+  }
+
+  /// Adds picked photos to the draft, keeping the first [maxPhotos].
+  void addPhotos(List<PickedPhoto> photos) {
+    final room = maxPhotos - cp.photos.length;
+    if (photos.length > room) toast('Up to $maxPhotos photos per post');
+    if (room <= 0) return;
+    update(() => cp.photos = [...cp.photos, ...photos.take(room)]);
+  }
+
+  void removePhoto(int i) =>
+      update(() => cp.photos = [...cp.photos]..removeAt(i));
+
+  /// Uploads the photos (signed URLs, docs/API.md "Images"), then creates
+  /// the post. On any failure the draft stays as it was.
   Future<void> submitPost() async {
     final c = cp;
-    if (!c.ready) return toast('Write something first');
-    final p = await _busy(
-      () async => (await api.feed.postsCreate(
+    final missing = c.missing;
+    if (missing != null) return toast(missing);
+    final p = await _busy(() async {
+      final keys = <String>[];
+      for (final ph in c.photos) {
+        final u = (await api.feed.mediaUploadUrl(
+          mediaUploadBody: MediaUploadBody(
+            (b) => b
+              ..contentType = ph.type
+              ..size = ph.bytes.length,
+          ),
+        )).data!;
+        await api.upload(u.uploadUrl, u.headers.toMap(), ph.bytes);
+        keys.add(u.key);
+      }
+      return (await api.feed.postsCreate(
         idempotencyKey: c.key,
-        createPostBody: CreatePostBody(
-          (b) => b
+        createPostBody: CreatePostBody((b) {
+          b
             ..type = c.type
             ..text = c.text.trim()
             ..gameId = c.gameId
-            ..audience = c.audience,
-        ),
-      )).data!,
-    );
+            ..audience = c.audience;
+          if (keys.isNotEmpty) b.media = SetBuilder(keys);
+          if (c.type == PostType.poll) {
+            b.poll = PollBodyBuilder()
+              ..options = SetBuilder(c.pollOptions)
+              ..duration = c.pollDur;
+          }
+          if (c.type == PostType.recruitment) {
+            b.recruit = RecruitBodyBuilder()
+              ..slots = c.slots
+              ..roles = c.roles.trim().isEmpty ? null : c.roles.trim();
+          }
+        }),
+      )).data!;
+    });
     if (p == null) return;
     final label = postTypeInfo(c.type).label;
     update(() {

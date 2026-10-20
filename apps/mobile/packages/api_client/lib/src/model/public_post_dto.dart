@@ -4,8 +4,10 @@
 
 // ignore_for_file: unused_element
 import 'package:api_client/src/model/public_post_author_dto.dart';
+import 'package:built_collection/built_collection.dart';
 import 'package:api_client/src/model/post_type.dart';
 import 'package:api_client/src/model/game_ref_dto.dart';
+import 'package:api_client/src/model/media_dto.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
@@ -19,6 +21,7 @@ part 'public_post_dto.g.dart';
 /// * [text] - The first 300 characters.
 /// * [author]
 /// * [game]
+/// * [media] - The first image only, for the preview; empty when it has none.
 /// * [createdAt]
 @BuiltValue()
 abstract class PublicPostDto
@@ -39,6 +42,10 @@ abstract class PublicPostDto
 
   @BuiltValueField(wireName: r'game')
   GameRefDto? get game;
+
+  /// The first image only, for the preview; empty when it has none.
+  @BuiltValueField(wireName: r'media')
+  BuiltList<MediaDto> get media;
 
   @BuiltValueField(wireName: r'createdAt')
   DateTime get createdAt;
@@ -95,6 +102,11 @@ class _$PublicPostDtoSerializer implements PrimitiveSerializer<PublicPostDto> {
             object.game,
             specifiedType: const FullType.nullable(GameRefDto),
           );
+    yield r'media';
+    yield serializers.serialize(
+      object.media,
+      specifiedType: const FullType(BuiltList, [FullType(MediaDto)]),
+    );
     yield r'createdAt';
     yield serializers.serialize(
       object.createdAt,
@@ -160,6 +172,13 @@ class _$PublicPostDtoSerializer implements PrimitiveSerializer<PublicPostDto> {
           ) as GameRefDto?;
           if (valueDes == null) continue;
           result.game.replace(valueDes);
+          break;
+        case r'media':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(BuiltList, [FullType(MediaDto)]),
+          ) as BuiltList<MediaDto>;
+          result.media.replace(valueDes);
           break;
         case r'createdAt':
           final valueDes = serializers.deserialize(
