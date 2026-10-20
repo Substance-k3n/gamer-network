@@ -1,7 +1,9 @@
 #!/bin/sh
 # Creates $BUCKET on the S3 server at ${S3_ENDPOINT:-http://s3:9000} with
-# public reads under avatars/ and media/ (post photos). Safe to run again.
-# Used by compose and CI.
+# public reads under avatars/ and media/ (post photos), and the CORS rule
+# production has (docs/DEPLOY.md): PUT from any origin with Content-Type,
+# so the PWA can upload from the browser. Safe to run again. Used by
+# compose and CI.
 set -eu
 endpoint=${S3_ENDPOINT:-http://s3:9000}
 aws --endpoint-url "$endpoint" s3api head-bucket --bucket "$BUCKET" 2>/dev/null ||
@@ -15,3 +17,10 @@ aws --endpoint-url "$endpoint" s3api put-bucket-policy --bucket "$BUCKET" --poli
     \"Resource\": [\"arn:aws:s3:::$BUCKET/avatars/*\", \"arn:aws:s3:::$BUCKET/media/*\"]
   }]
 }"
+aws --endpoint-url "$endpoint" s3api put-bucket-cors --bucket "$BUCKET" --cors-configuration '{
+  "CORSRules": [{
+    "AllowedOrigins": ["*"],
+    "AllowedMethods": ["PUT"],
+    "AllowedHeaders": ["Content-Type"]
+  }]
+}'
