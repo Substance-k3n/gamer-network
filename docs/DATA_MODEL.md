@@ -222,7 +222,8 @@ leaving out banned and deleted people, so they never drift.
 for), `expires_at` (an hour), `used_at` null, `created_at`. Indexes
 `(user_id, created_at)` for the 30-an-hour limit and `(created_at)` where
 unused. A post may use only its author's keys, once, before they expire,
-after a HEAD on the object matches type and size. A job deletes unused
+after a HEAD on the object matches type and size and its first bytes
+are a JPEG, PNG or WebP of that type. A job deletes unused
 ones (row and object) older than a day.
 
 **`post_media`**: `id`, `post_id`, `position` 0–3, `kind`, `key`,
@@ -361,7 +362,8 @@ accepted applications fill the slots (`recruitment_full`; the post row is
 locked while applying or accepting). Accepting tells the applicant and,
 when they aren't connected, sends a connection request from the author
 through the usual request rules. Declining tells no one. A block hides
-the applications both ways.
+the applications both ways, in the list and in the card's count. Poll
+option labels are unique ignoring case and surrounding spaces.
 
 **GG notifications don't stack.** While the author hasn't read it, one
 `post_gg` row per post names the latest person; Alerts counts the

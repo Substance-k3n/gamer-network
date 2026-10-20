@@ -16,6 +16,10 @@ export function postShapeErrors(
   }
   if (body.type === 'poll' && !body.poll) fields.poll = 'Add 2 to 4 options';
   if (body.type !== 'poll' && body.poll) fields.poll = 'Only poll posts have a poll';
+  const labels = body.poll?.options.map((o) => o.trim().toLocaleLowerCase()) ?? [];
+  if (body.type === 'poll' && new Set(labels).size !== labels.length) {
+    fields['poll.options'] = 'Each option must be different';
+  }
   if (body.type === 'recruitment' && !body.recruit) {
     fields.recruit = 'Say how many players you need';
   }
