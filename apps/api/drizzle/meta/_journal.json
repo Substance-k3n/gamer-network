@@ -43,6 +43,13 @@
       "when": 1792136519025,
       "tag": "0005_feed_posts_comments",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792477117228,
+      "tag": "0006_feed_media_polls_recruit",
+      "breakpoints": true
     }
   ]
 }

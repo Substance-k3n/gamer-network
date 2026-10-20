@@ -7,15 +7,27 @@ import {
   commentGg,
   comments,
   games,
+  pollOptions,
+  polls,
+  pollVotes,
   postGg,
   posts,
+  recruitApplications,
+  recruitments,
   savedPosts,
   users,
 } from '../db/schema/index.js';
 import { env } from '../env.js';
 import { ProfileService } from '../me/profile.service.js';
 import { isLive, visibleTo } from '../users/visibility.js';
-import { type CommentDto, kindOf, type PostDto } from './feed.dto.js';
+import {
+  type CommentDto,
+  kindOf,
+  type PollDto,
+  type PostDto,
+  type RecruitDto,
+} from './feed.dto.js';
+import { MediaService } from './media.service.js';
 import { commentLive, postVisibleTo } from './visibility.js';
 
 type Counts = Map<string, number>;
@@ -26,6 +38,7 @@ export class FeedReader {
   constructor(
     @Inject(DB) private readonly db: Db,
     private readonly profiles: ProfileService,
+    private readonly media: MediaService,
   ) {}
 
   /** Posts `viewerId` may see, with author and game. Add filters with `where`. */
@@ -69,15 +82,20 @@ export class FeedReader {
   ): Promise<PostDto[]> {
     if (rows.length === 0) return [];
     const ids = rows.map((r) => r.post.id);
-    const discussions = rows.filter((r) => r.post.type === 'discussion').map((r) => r.post.id);
-    const [authors, ggs, commentCounts, mine, saved, tops] = await Promise.all([
-      this.profiles.cards(rows.map((r) => r.author)),
-      this.ggCounts(ids),
-      this.commentCounts(ids),
-      this.mineIn(postGg, postGg.postId, postGg.userId, ids, viewerId),
-      this.mineIn(savedPosts, savedPosts.postId, savedPosts.userId, ids, viewerId),
-      this.topComments(discussions, viewerId),
-    ]);
+    const ofType = (type: PostDto['type']) =>
+      rows.filter((r) => r.post.type === type).map((r) => r.post.id);
+    const [authors, ggs, commentCounts, mine, saved, tops, media, pollOf, recruitOf] =
+      await Promise.all([
+        this.profiles.cards(rows.map((r) => r.author)),
+        this.ggCounts(ids),
+        this.commentCounts(ids),
+        this.mineIn(postGg, postGg.postId, postGg.userId, ids, viewerId),
+        this.mineIn(savedPosts, savedPosts.postId, savedPosts.userId, ids, viewerId),
+        this.topComments(ofType('discussion'), viewerId),
+        this.media.forPosts(ids),
+        this.polls(ofType('poll'), viewerId),
+        this.recruits(ofType('recruitment'), viewerId),
+      ]);
     return rows.map(({ post: p, game }, i) => ({
       id: p.id,
       type: p.type,
@@ -86,6 +104,9 @@ export class FeedReader {
       game,
       text: p.text,
       audience: p.audience,
+      media: media.get(p.id) ?? [],
+      poll: pollOf.get(p.id) ?? null,
+      recruit: recruitOf.get(p.id) ?? null,
       topComment: tops.get(p.id) ?? null,
       ggCount: ggs.get(p.id) ?? 0,
       commentCount: commentCounts.get(p.id) ?? 0,
@@ -95,6 +116,96 @@ export class FeedReader {
       shareUrl: `${env.publicWebUrl}/p/${p.id}`,
       createdAt: p.createdAt,
     }));
+  }
+
+  /** Polls on `postIds`, as `viewerId` sees them. Votes from people no longer live don't count. */
+  async polls(
+    postIds: string[],
+    viewerId: string,
+    now = new Date(),
+  ): Promise<Map<string, PollDto>> {
+    if (postIds.length === 0) return new Map();
+    const [heads, options, votes, mine] = await Promise.all([
+      this.db.select().from(polls).where(inArray(polls.postId, postIds)),
+      this.db
+        .select()
+        .from(pollOptions)
+        .where(inArray(pollOptions.postId, postIds))
+        .orderBy(asc(pollOptions.postId), asc(pollOptions.position)),
+      this.db
+        .select({
+          id: pollVotes.postId,
+          position: pollVotes.position,
+          n: sql<number>`count(*)::int`,
+        })
+        .from(pollVotes)
+        .innerJoin(users, eq(users.id, pollVotes.userId))
+        .where(and(inArray(pollVotes.postId, postIds), isLive()))
+        .groupBy(pollVotes.postId, pollVotes.position),
+      this.db
+        .select({ id: pollVotes.postId, position: pollVotes.position })
+        .from(pollVotes)
+        .where(and(eq(pollVotes.userId, viewerId), inArray(pollVotes.postId, postIds))),
+    ]);
+    const count = new Map(votes.map((v) => [`${v.id}:${v.position}`, v.n]));
+    const myVote = new Map(mine.map((m) => [m.id, m.position]));
+    return new Map(
+      heads.map((h) => {
+        const opts = options
+          .filter((o) => o.postId === h.postId)
+          .map((o) => ({
+            position: o.position,
+            label: o.label,
+            votes: count.get(`${h.postId}:${o.position}`) ?? 0,
+          }));
+        return [
+          h.postId,
+          {
+            options: opts,
+            totalVotes: opts.reduce((sum, o) => sum + o.votes, 0),
+            myVote: myVote.get(h.postId) ?? null,
+            endsAt: h.endsAt,
+            closed: h.endsAt <= now,
+          },
+        ];
+      }),
+    );
+  }
+
+  /** Recruitment on `postIds`. Applications from people no longer live don't count. */
+  async recruits(postIds: string[], viewerId: string): Promise<Map<string, RecruitDto>> {
+    if (postIds.length === 0) return new Map();
+    const [heads, counts, mine] = await Promise.all([
+      this.db.select().from(recruitments).where(inArray(recruitments.postId, postIds)),
+      this.db
+        .select({ id: recruitApplications.postId, n: sql<number>`count(*)::int` })
+        .from(recruitApplications)
+        .innerJoin(users, eq(users.id, recruitApplications.userId))
+        .where(and(inArray(recruitApplications.postId, postIds), isLive()))
+        .groupBy(recruitApplications.postId),
+      this.db
+        .select({ id: recruitApplications.postId, status: recruitApplications.status })
+        .from(recruitApplications)
+        .where(
+          and(
+            eq(recruitApplications.userId, viewerId),
+            inArray(recruitApplications.postId, postIds),
+          ),
+        ),
+    ]);
+    const applications = new Map(counts.map((c) => [c.id, c.n]));
+    const myApplication = new Map(mine.map((m) => [m.id, m.status]));
+    return new Map(
+      heads.map((h) => [
+        h.postId,
+        {
+          slots: h.slots,
+          roles: h.roles,
+          applications: applications.get(h.postId) ?? 0,
+          myApplication: myApplication.get(h.postId) ?? null,
+        },
+      ]),
+    );
   }
 
   /** GGs from people still live. */

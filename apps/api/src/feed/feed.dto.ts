@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { contentStatus, postAudience, postType } from '../db/schema/index.js';
+import {
+  applicationStatus,
+  contentStatus,
+  mediaKind,
+  postAudience,
+  postType,
+} from '../db/schema/index.js';
 import { GameRefDto, UserCardDto } from '../me/profile.dto.js';
 
 export const POST_TYPES = postType.enumValues;
@@ -9,6 +15,10 @@ export type PostAudience = (typeof POST_AUDIENCES)[number];
 export const POST_KINDS = ['text', 'moment', 'discussion', 'poll', 'recruit'] as const;
 export type PostKind = (typeof POST_KINDS)[number];
 export type ContentStatus = (typeof contentStatus.enumValues)[number];
+export const MEDIA_KINDS = mediaKind.enumValues;
+export type MediaKind = (typeof MEDIA_KINDS)[number];
+export const APPLICATION_STATUSES = applicationStatus.enumValues;
+export type ApplicationStatus = (typeof APPLICATION_STATUSES)[number];
 
 /** How the card is drawn; `type` is only its label. */
 export function kindOf(type: PostType): PostKind {
@@ -46,6 +56,55 @@ export class CommentPageDto {
   nextCursor: string | null;
 }
 
+/** A photo (or, later, a video) on a post. */
+export class MediaDto {
+  id: string;
+
+  /** Only image for now; video comes later. */
+  @ApiProperty({ enum: MEDIA_KINDS, enumName: 'MediaKind' })
+  kind: MediaKind;
+
+  /** Signed when the bucket is private: use as given (ADR-0009). */
+  url: string;
+  /** A video's still frame; null for images. */
+  posterUrl: string | null;
+  /** Null when not known: size the image from the file. */
+  width: number | null;
+  height: number | null;
+  /** Videos only. */
+  durationMs: number | null;
+}
+
+export class PollOptionDto {
+  /** 0–3, in the order the author wrote them. */
+  position: number;
+  label: string;
+  votes: number;
+}
+
+export class PollDto {
+  options: PollOptionDto[];
+  totalVotes: number;
+  /** The position you voted for, or null. */
+  myVote: number | null;
+  endsAt: Date;
+  /** Past endsAt: no more votes. */
+  closed: boolean;
+}
+
+export class RecruitDto {
+  /** 1–10 players wanted. */
+  slots: number;
+  /** "Sniper, Support"; empty when not given. */
+  roles: string;
+  /** How many applied; the author sees the list. */
+  applications: number;
+
+  /** Your application, or null. */
+  @ApiProperty({ enum: APPLICATION_STATUSES, enumName: 'ApplicationStatus', nullable: true })
+  myApplication: ApplicationStatus | null;
+}
+
 /** A post on Home or a profile's Moments. */
 export class PostDto {
   id: string;
@@ -66,6 +125,12 @@ export class PostDto {
   @ApiProperty({ enum: POST_AUDIENCES, enumName: 'PostAudience' })
   audience: PostAudience;
 
+  /** In position order, 0–4. */
+  media: MediaDto[];
+  /** Poll posts only. */
+  poll: PollDto | null;
+  /** Recruitment posts only. */
+  recruit: RecruitDto | null;
   /** Discussions: the most-GG'd answer. Null on other kinds. */
   topComment: CommentDto | null;
   ggCount: number;
@@ -106,5 +171,44 @@ export class PublicPostDto {
   text: string;
   author: PublicPostAuthorDto;
   game: GameRefDto | null;
+  /** The first image only, for the preview; empty when it has none. */
+  media: MediaDto[];
   createdAt: Date;
+}
+
+/** One application on a recruitment post, as its author sees it. */
+export class RecruitApplicationDto {
+  id: string;
+  user: UserCardDto;
+
+  @ApiProperty({ enum: APPLICATION_STATUSES, enumName: 'ApplicationStatus' })
+  status: ApplicationStatus;
+
+  createdAt: Date;
+}
+
+export class RecruitApplicationPageDto {
+  items: RecruitApplicationDto[];
+  nextCursor: string | null;
+}
+
+export class RecruitDecisionDto {
+  id: string;
+
+  @ApiProperty({ enum: APPLICATION_STATUSES, enumName: 'ApplicationStatus' })
+  status: ApplicationStatus;
+}
+
+export class MediaUploadDto {
+  /**
+   * PUT the file here before `expiresAt`, with `headers`. The body must be
+   * exactly the `size` you asked for (the URL is signed for it); let the
+   * HTTP client set Content-Length.
+   */
+  uploadUrl: string;
+  /** Send these with the upload (Content-Type). */
+  headers: Record<string, string>;
+  /** Put it in POST /v1/posts `media` once the upload succeeds, before `expiresAt`. */
+  key: string;
+  expiresAt: Date;
 }

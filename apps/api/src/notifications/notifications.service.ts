@@ -110,6 +110,7 @@ export class NotificationsService {
       checkInId: r.n.checkInId,
       postId: r.n.postId,
       commentId: r.n.commentId,
+      recruitApplicationId: r.n.recruitApplicationId,
       ...this.text(r),
       readAt: r.n.readAt,
       createdAt: r.n.createdAt,

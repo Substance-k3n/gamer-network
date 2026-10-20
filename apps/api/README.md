@@ -78,7 +78,7 @@ src/
 ## Jobs and push
 
 Timed jobs (`listing-expiry`, `check-ins-due` every minute,
-`account-scrub` hourly, `push-sweep`) run inside the API. Each run takes a
+`account-scrub` and `media-cleanup` hourly, `push-sweep`) run inside the API. Each run takes a
 Postgres advisory lock, so a second instance never doubles up.
 `JOBS_ENABLED=false` turns them off (tests run them with
 `JobRunner.runOnce`).

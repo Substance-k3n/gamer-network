@@ -6,6 +6,9 @@ import {
   devices,
   emailCodes,
   gamingIds,
+  mediaUploads,
+  postMedia,
+  posts,
   sessions,
   userGames,
   userPlatforms,
@@ -22,7 +25,8 @@ const SCRUBBED_DOMAIN = '@deleted.invalid';
 /**
  * docs/DATA_MODEL.md: deleted accounts keep their row so references
  * hold, but 30 days after deletion everything personal goes: email,
- * names, bio, avatar, password, Google link, gaming IDs, games and tags.
+ * names, bio, avatar, password, Google link, gaming IDs, games and tags,
+ * and the photos on their (already deleted) posts and any unused uploads.
  * Reports, check-in answers and the audit log stay.
  */
 @Injectable()
@@ -77,9 +81,25 @@ export class AccountScrubJob implements Job {
         due.map((u) => u.email),
       ),
     );
-    // Files last: if the transaction failed above, the avatar is still referenced.
-    for (const u of due) {
-      if (u.avatarKey) await this.storage.delete(u.avatarKey).catch(() => undefined);
-    }
+    const media = await tx
+      .delete(postMedia)
+      .where(
+        inArray(
+          postMedia.postId,
+          tx.select({ id: posts.id }).from(posts).where(inArray(posts.authorId, ids)),
+        ),
+      )
+      .returning({ key: postMedia.key, posterKey: postMedia.posterKey });
+    const uploads = await tx
+      .delete(mediaUploads)
+      .where(inArray(mediaUploads.userId, ids))
+      .returning({ key: mediaUploads.key });
+    // Files last: if the transaction failed above, they are still referenced.
+    const files = new Set([
+      ...due.flatMap((u) => (u.avatarKey ? [u.avatarKey] : [])),
+      ...media.flatMap((m) => (m.posterKey ? [m.key, m.posterKey] : [m.key])),
+      ...uploads.map((u) => u.key),
+    ]);
+    for (const key of files) await this.storage.delete(key).catch(() => undefined);
   }
 }

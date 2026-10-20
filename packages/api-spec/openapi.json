@@ -1900,7 +1900,7 @@
             "bearer": []
           }
         ],
-        "summary": "Post to Home. Photos, polls and recruitment come later (422 on those types). 10 an hour: 429 rate_limited.",
+        "summary": "Post to Home, with up to 4 photo keys (gameplay needs one), a poll or recruitment slots. 10 an hour: 429 rate_limited.",
         "tags": [
           "feed"
         ]
@@ -2150,6 +2150,277 @@
           }
         ],
         "summary": "Remove the bookmark.",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/v1/posts/{id}/vote": {
+      "post": {
+        "operationId": "postsVote",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoteBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PollDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Vote on a poll, once and final; your own is fine. 409 already_voted or poll_closed.",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/v1/posts/{id}/apply": {
+      "post": {
+        "operationId": "postsApply",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "A UUID per create. A retry with the same key returns the first answer.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecruitDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Apply to a recruitment post; tells its author. 409 already_applied or recruitment_full, 403 own_post. 20 a day.",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/v1/posts/{id}/applications": {
+      "get": {
+        "operationId": "postsApplications",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1–50, default 20.",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "`nextCursor` from the previous page.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecruitApplicationPageDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Who applied, first come first. The post's author only (403 not_owner).",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/v1/recruit-applications/{id}/accept": {
+      "post": {
+        "operationId": "recruitApplicationsAccept",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecruitDecisionDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The post's author takes them (403 not_owner): tells them and sends a connection request if you aren't connected. 409 recruitment_full.",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/v1/recruit-applications/{id}/decline": {
+      "post": {
+        "operationId": "recruitApplicationsDecline",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecruitDecisionDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The post's author says no (403 not_owner). Tells no one.",
         "tags": [
           "feed"
         ]
@@ -2497,6 +2768,53 @@
           }
         ],
         "summary": "Take your GG back.",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/v1/media/upload-url": {
+      "post": {
+        "operationId": "mediaUploadUrl",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MediaUploadBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaUploadDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Where to upload one photo for a post (JPEG, PNG or WebP, ≤ 10 MB). Then send its key in POST /v1/posts. 30 an hour.",
         "tags": [
           "feed"
         ]
@@ -4187,7 +4505,9 @@
           "post_gg",
           "post_comment",
           "comment_reply",
-          "mention"
+          "mention",
+          "recruit_application",
+          "recruit_accepted"
         ]
       },
       "PlayerStatus": {
@@ -4408,11 +4728,16 @@
           "postId": {
             "type": "string",
             "nullable": true,
-            "description": "The post it is about (post_gg, post_comment, comment_reply, mention)."
+            "description": "The post it is about (post_gg, post_comment, comment_reply, mention, recruit_*)."
           },
           "commentId": {
             "type": "string",
             "nullable": true
+          },
+          "recruitApplicationId": {
+            "type": "string",
+            "nullable": true,
+            "description": "recruit_application and recruit_accepted: the application (its post is postId)."
           },
           "title": {
             "type": "string",
@@ -4446,6 +4771,7 @@
           "checkInId",
           "postId",
           "commentId",
+          "recruitApplicationId",
           "title",
           "text",
           "route",
@@ -6184,6 +6510,157 @@
           "connections"
         ]
       },
+      "MediaKind": {
+        "type": "string",
+        "enum": [
+          "image",
+          "video"
+        ],
+        "description": "Only image for now; video comes later."
+      },
+      "MediaDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "description": "Only image for now; video comes later.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MediaKind"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "description": "Signed when the bucket is private: use as given (ADR-0009)."
+          },
+          "posterUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "A video's still frame; null for images."
+          },
+          "width": {
+            "type": "number",
+            "nullable": true,
+            "description": "Null when not known: size the image from the file."
+          },
+          "height": {
+            "type": "number",
+            "nullable": true
+          },
+          "durationMs": {
+            "type": "number",
+            "nullable": true,
+            "description": "Videos only."
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "url",
+          "posterUrl",
+          "width",
+          "height",
+          "durationMs"
+        ]
+      },
+      "PollOptionDto": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "number",
+            "description": "0–3, in the order the author wrote them."
+          },
+          "label": {
+            "type": "string"
+          },
+          "votes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "position",
+          "label",
+          "votes"
+        ]
+      },
+      "PollDto": {
+        "type": "object",
+        "properties": {
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PollOptionDto"
+            }
+          },
+          "totalVotes": {
+            "type": "number"
+          },
+          "myVote": {
+            "type": "number",
+            "nullable": true,
+            "description": "The position you voted for, or null."
+          },
+          "endsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "closed": {
+            "type": "boolean",
+            "description": "Past endsAt: no more votes."
+          }
+        },
+        "required": [
+          "options",
+          "totalVotes",
+          "myVote",
+          "endsAt",
+          "closed"
+        ]
+      },
+      "ApplicationStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "accepted",
+          "declined"
+        ],
+        "description": "Your application, or null."
+      },
+      "RecruitDto": {
+        "type": "object",
+        "properties": {
+          "myApplication": {
+            "nullable": true,
+            "description": "Your application, or null.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ApplicationStatus"
+              }
+            ]
+          },
+          "slots": {
+            "type": "number",
+            "description": "1–10 players wanted."
+          },
+          "roles": {
+            "type": "string",
+            "description": "\"Sniper, Support\"; empty when not given."
+          },
+          "applications": {
+            "type": "number",
+            "description": "How many applied; the author sees the list."
+          }
+        },
+        "required": [
+          "myApplication",
+          "slots",
+          "roles",
+          "applications"
+        ]
+      },
       "CommentDto": {
         "type": "object",
         "properties": {
@@ -6284,6 +6761,33 @@
           "text": {
             "type": "string"
           },
+          "media": {
+            "description": "In position order, 0–4.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MediaDto"
+            }
+          },
+          "poll": {
+            "nullable": true,
+            "description": "Poll posts only.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PollDto"
+              }
+            ]
+          },
+          "recruit": {
+            "nullable": true,
+            "description": "Recruitment posts only.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecruitDto"
+              }
+            ]
+          },
           "topComment": {
             "nullable": true,
             "description": "Discussions: the most-GG'd answer. Null on other kinds.",
@@ -6327,6 +6831,9 @@
           "author",
           "game",
           "text",
+          "media",
+          "poll",
+          "recruit",
           "topComment",
           "ggCount",
           "commentCount",
@@ -6354,6 +6861,63 @@
         "required": [
           "items",
           "nextCursor"
+        ]
+      },
+      "PollDuration": {
+        "type": "string",
+        "enum": [
+          "1d",
+          "3d",
+          "1w"
+        ],
+        "description": "How long it stays open: 1 day, 3 days or 1 week."
+      },
+      "PollBody": {
+        "type": "object",
+        "properties": {
+          "duration": {
+            "description": "How long it stays open: 1 day, 3 days or 1 week.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PollDuration"
+              }
+            ]
+          },
+          "options": {
+            "description": "2–4 options, 1–60 characters each, trimmed, all different.",
+            "uniqueItems": true,
+            "minItems": 2,
+            "maxItems": 4,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 60,
+              "minLength": 1
+            }
+          }
+        },
+        "required": [
+          "duration",
+          "options"
+        ]
+      },
+      "RecruitBody": {
+        "type": "object",
+        "properties": {
+          "slots": {
+            "type": "number",
+            "description": "Players wanted, 1–10.",
+            "minimum": 1,
+            "maximum": 10
+          },
+          "roles": {
+            "type": "string",
+            "description": "Free text, e.g. \"Sniper, Support\". Up to 80 characters, trimmed.",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "slots"
         ]
       },
       "CreatePostBody": {
@@ -6384,6 +6948,32 @@
             "type": "string",
             "nullable": true,
             "description": "One of GET /v1/games. Null or left out: \"Any game\"."
+          },
+          "media": {
+            "description": "Up to 4 keys from POST /v1/media/upload-url, uploaded by you and not used yet. Required on gameplay.",
+            "uniqueItems": true,
+            "maxItems": 4,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          "poll": {
+            "description": "Required on poll posts, refused on others.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PollBody"
+              }
+            ]
+          },
+          "recruit": {
+            "description": "Required on recruitment posts, refused on others.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecruitBody"
+              }
+            ]
           }
         },
         "required": [
@@ -6404,6 +6994,86 @@
         "required": [
           "ggCount",
           "myGG"
+        ]
+      },
+      "VoteBody": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "number",
+            "description": "The option's position (0–3).",
+            "minimum": 0,
+            "maximum": 3
+          }
+        },
+        "required": [
+          "position"
+        ]
+      },
+      "RecruitApplicationDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ApplicationStatus"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserCardDto"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "id",
+          "user",
+          "createdAt"
+        ]
+      },
+      "RecruitApplicationPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecruitApplicationDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "RecruitDecisionDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ApplicationStatus"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "id"
         ]
       },
       "CommentSort": {
@@ -6449,6 +7119,66 @@
         },
         "required": [
           "text"
+        ]
+      },
+      "MediaContentType": {
+        "type": "string",
+        "enum": [
+          "image/jpeg",
+          "image/png",
+          "image/webp"
+        ]
+      },
+      "MediaUploadBody": {
+        "type": "object",
+        "properties": {
+          "contentType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MediaContentType"
+              }
+            ]
+          },
+          "size": {
+            "type": "number",
+            "description": "The file's exact size in bytes, at most 10 MB. Resize on the phone first (longest side 1600 px).",
+            "minimum": 1,
+            "maximum": 10485760
+          }
+        },
+        "required": [
+          "contentType",
+          "size"
+        ]
+      },
+      "MediaUploadDto": {
+        "type": "object",
+        "properties": {
+          "uploadUrl": {
+            "type": "string",
+            "description": "PUT the file here before `expiresAt`, with `headers`. The body must be\nexactly the `size` you asked for (the URL is signed for it); let the\nHTTP client set Content-Length."
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Send these with the upload (Content-Type)."
+          },
+          "key": {
+            "type": "string",
+            "description": "Put it in POST /v1/posts `media` once the upload succeeds, before `expiresAt`."
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "uploadUrl",
+          "headers",
+          "key",
+          "expiresAt"
         ]
       },
       "PublicPostAuthorDto": {
@@ -6500,6 +7230,13 @@
               }
             ]
           },
+          "media": {
+            "description": "The first image only, for the preview; empty when it has none.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MediaDto"
+            }
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -6511,6 +7248,7 @@
           "text",
           "author",
           "game",
+          "media",
           "createdAt"
         ]
       },

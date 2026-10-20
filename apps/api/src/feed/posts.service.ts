@@ -6,20 +6,29 @@ import { decodeCursor, page, type PageQuery } from '../common/cursor.js';
 import { checkRate } from '../common/rate-limit.js';
 import type { Db } from '../db/db.js';
 import { DB } from '../db/db.module.js';
-import { games, postGg, posts, savedPosts, users } from '../db/schema/index.js';
+import {
+  games,
+  pollOptions,
+  polls,
+  postGg,
+  posts,
+  recruitments,
+  savedPosts,
+  users,
+} from '../db/schema/index.js';
 import { ProfileService } from '../me/profile.service.js';
 import { isLive, visibleTo } from '../users/visibility.js';
 import type { CreatePostBody, FeedQuery } from './feed.body.js';
 import type { GgDto, PostDto, PostPageDto, PostType, PublicPostDto } from './feed.dto.js';
 import { FeedNotifier } from './feed-notifier.js';
 import { FeedReader } from './feed-reader.js';
+import { MediaService } from './media.service.js';
+import { pollEndsAt, postShapeErrors } from './post-rules.js';
 import { connectedTo } from './visibility.js';
 
 const HOUR_MS = 3600_000;
 export const POSTS_PER_HOUR = 10;
 
-/** Types that carry media, a poll or slots; they come with the later phases of the feed. */
-const NOT_YET: PostType[] = ['gameplay', 'poll', 'recruitment'];
 const LFG: PostType[] = ['recruitment', 'looking_for_players'];
 
 const invalid = (fields: Record<string, string>) =>
@@ -48,12 +57,13 @@ export class PostsService {
     private readonly reader: FeedReader,
     private readonly notifier: FeedNotifier,
     private readonly profiles: ProfileService,
+    private readonly media: MediaService,
   ) {}
 
+  /** Photos must be your own unused uploads; polls and slots go with their types only. */
   async create(author: User, body: CreatePostBody): Promise<PostDto> {
-    if (NOT_YET.includes(body.type)) {
-      throw invalid({ type: 'Photos, polls and recruitment posts are coming soon' });
-    }
+    const shape = postShapeErrors(body);
+    if (shape) throw invalid(shape);
     if (body.gameId) {
       const game = await this.db.query.games.findFirst({ where: eq(games.id, body.gameId) });
       if (!game) throw invalid({ gameId: 'Unknown game' });
@@ -67,6 +77,8 @@ export class PostsService {
       HOUR_MS,
       'posts',
     );
+    const uploads = await this.media.check(author.id, body.media ?? []);
+    const now = new Date();
     const id = await this.db.transaction(async (tx) => {
       const [post] = await tx
         .insert(posts)
@@ -78,6 +90,24 @@ export class PostsService {
           audience: body.audience ?? 'everyone',
         })
         .returning();
+      await this.media.attach(tx, post!.id, uploads, now);
+      if (body.poll) {
+        await tx
+          .insert(polls)
+          .values({ postId: post!.id, endsAt: pollEndsAt(body.poll.duration, now) });
+        await tx
+          .insert(pollOptions)
+          .values(
+            body.poll.options.map((label, position) => ({ postId: post!.id, position, label })),
+          );
+      }
+      if (body.recruit) {
+        await tx.insert(recruitments).values({
+          postId: post!.id,
+          slots: body.recruit.slots,
+          roles: body.recruit.roles ?? '',
+        });
+      }
       await this.notifier.posted(tx, post!);
       return post!.id;
     });
@@ -242,6 +272,7 @@ export class PostsService {
       )
       .limit(1);
     if (!row) throw notFound('That post');
+    const media = await this.media.forPosts([row.post.id], true);
     return {
       id: row.post.id,
       type: row.post.type,
@@ -252,6 +283,7 @@ export class PostsService {
         avatarUrl: await this.profiles.avatarUrl(row.author.avatarKey),
       },
       game: row.game,
+      media: media.get(row.post.id) ?? [],
       createdAt: row.post.createdAt,
     };
   }

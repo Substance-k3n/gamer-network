@@ -16,6 +16,8 @@ export async function checkRate(
   max: number,
   windowMs: number,
   what: string,
+  /** How the message words it: "You can <verb> 20 applications <per>." */
+  { verb = 'post', per = 'an hour' }: { verb?: string; per?: string } = {},
 ): Promise<void> {
   const since = new Date(Date.now() - windowMs);
   const [row] = await db
@@ -25,7 +27,7 @@ export async function checkRate(
   if (row!.n < max) return;
   const freeAt = (row!.oldest as Date).getTime() + windowMs;
   throw new RateLimited(
-    `You can post ${max} ${what} an hour. Try again a little later.`,
+    `You can ${verb} ${max} ${what} ${per}. Try again a little later.`,
     Math.max(1, Math.ceil((freeAt - Date.now()) / 1000)),
   );
 }

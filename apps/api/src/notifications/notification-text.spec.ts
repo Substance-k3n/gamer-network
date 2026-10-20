@@ -58,4 +58,15 @@ describe('notificationText', () => {
       route: '/posts/p1',
     });
   });
+
+  it('opens the applications for an applicant, and the author for an accept', () => {
+    expect(notificationText(facts({ type: 'recruit_application', postId: 'p1' }))).toMatchObject({
+      text: 'Hana applied to your recruitment post',
+      route: '/posts/p1/applications',
+    });
+    expect(notificationText(facts({ type: 'recruit_accepted', postId: 'p1' }))).toMatchObject({
+      text: 'Hana accepted your application',
+      route: '/players/hana',
+    });
+  });
 });

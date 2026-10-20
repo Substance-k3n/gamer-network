@@ -51,7 +51,7 @@ services:
     volumes:
       - s3-data:/data
 
-  # Creates the media bucket with public reads under avatars/, like the
+  # Creates the media bucket with public reads under avatars/ and media/, like the
   # public R2 bucket in production. Runs once on `docker compose up`.
   s3-createbuckets:
     image: amazon/aws-cli:2.27.0

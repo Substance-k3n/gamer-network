@@ -199,6 +199,7 @@ export class SafetyService {
       await tx
         .delete(connections)
         .where(or(eq(connections.userAId, me.id), eq(connections.userBId, me.id)));
+      // Their photos go with the rest in the 30-day scrub (AccountScrubJob).
       await tx
         .update(posts)
         .set({ status: 'deleted' })
