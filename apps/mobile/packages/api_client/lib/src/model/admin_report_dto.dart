@@ -20,6 +20,9 @@ part 'admin_report_dto.g.dart';
 /// * [reporter]
 /// * [target]
 /// * [listingId]
+/// * [postId]
+/// * [commentId]
+/// * [excerpt] - What was reported: the first 300 characters of the post or comment.
 /// * [details]
 /// * [createdAt]
 /// * [resolvedAt]
@@ -46,6 +49,16 @@ abstract class AdminReportDto
 
   @BuiltValueField(wireName: r'listingId')
   String? get listingId;
+
+  @BuiltValueField(wireName: r'postId')
+  String? get postId;
+
+  @BuiltValueField(wireName: r'commentId')
+  String? get commentId;
+
+  /// What was reported: the first 300 characters of the post or comment.
+  @BuiltValueField(wireName: r'excerpt')
+  String? get excerpt;
 
   @BuiltValueField(wireName: r'details')
   String? get details;
@@ -115,6 +128,27 @@ class _$AdminReportDtoSerializer
         ? null
         : serializers.serialize(
             object.listingId,
+            specifiedType: const FullType.nullable(String),
+          );
+    yield r'postId';
+    yield object.postId == null
+        ? null
+        : serializers.serialize(
+            object.postId,
+            specifiedType: const FullType.nullable(String),
+          );
+    yield r'commentId';
+    yield object.commentId == null
+        ? null
+        : serializers.serialize(
+            object.commentId,
+            specifiedType: const FullType.nullable(String),
+          );
+    yield r'excerpt';
+    yield object.excerpt == null
+        ? null
+        : serializers.serialize(
+            object.excerpt,
             specifiedType: const FullType.nullable(String),
           );
     yield r'details';
@@ -210,6 +244,30 @@ class _$AdminReportDtoSerializer
           ) as String?;
           if (valueDes == null) continue;
           result.listingId = valueDes;
+          break;
+        case r'postId':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.postId = valueDes;
+          break;
+        case r'commentId':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.commentId = valueDes;
+          break;
+        case r'excerpt':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.excerpt = valueDes;
           break;
         case r'details':
           final valueDes = serializers.deserialize(

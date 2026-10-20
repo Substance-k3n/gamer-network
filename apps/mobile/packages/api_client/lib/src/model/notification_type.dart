@@ -24,6 +24,14 @@ class NotificationType extends EnumClass {
   static const NotificationType listingExpiring = _$listingExpiring;
   @BuiltValueEnumConst(wireName: r'report_resolved')
   static const NotificationType reportResolved = _$reportResolved;
+  @BuiltValueEnumConst(wireName: r'post_gg')
+  static const NotificationType postGg = _$postGg;
+  @BuiltValueEnumConst(wireName: r'post_comment')
+  static const NotificationType postComment = _$postComment;
+  @BuiltValueEnumConst(wireName: r'comment_reply')
+  static const NotificationType commentReply = _$commentReply;
+  @BuiltValueEnumConst(wireName: r'mention')
+  static const NotificationType mention = _$mention;
 
   static Serializer<NotificationType> get serializer =>
       _$notificationTypeSerializer;

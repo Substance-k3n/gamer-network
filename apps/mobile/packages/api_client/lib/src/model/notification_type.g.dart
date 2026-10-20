@@ -18,6 +18,11 @@ const NotificationType _$listingExpiring =
     const NotificationType._('listingExpiring');
 const NotificationType _$reportResolved =
     const NotificationType._('reportResolved');
+const NotificationType _$postGg = const NotificationType._('postGg');
+const NotificationType _$postComment = const NotificationType._('postComment');
+const NotificationType _$commentReply =
+    const NotificationType._('commentReply');
+const NotificationType _$mention = const NotificationType._('mention');
 
 NotificationType _$valueOf(String name) {
   switch (name) {
@@ -35,6 +40,14 @@ NotificationType _$valueOf(String name) {
       return _$listingExpiring;
     case 'reportResolved':
       return _$reportResolved;
+    case 'postGg':
+      return _$postGg;
+    case 'postComment':
+      return _$postComment;
+    case 'commentReply':
+      return _$commentReply;
+    case 'mention':
+      return _$mention;
     default:
       throw ArgumentError(name);
   }
@@ -49,6 +62,10 @@ final BuiltSet<NotificationType> _$values =
   _$checkInDue,
   _$listingExpiring,
   _$reportResolved,
+  _$postGg,
+  _$postComment,
+  _$commentReply,
+  _$mention,
 ]);
 
 class _$NotificationTypeMeta {
@@ -60,6 +77,10 @@ class _$NotificationTypeMeta {
   NotificationType get checkInDue => _$checkInDue;
   NotificationType get listingExpiring => _$listingExpiring;
   NotificationType get reportResolved => _$reportResolved;
+  NotificationType get postGg => _$postGg;
+  NotificationType get postComment => _$postComment;
+  NotificationType get commentReply => _$commentReply;
+  NotificationType get mention => _$mention;
   NotificationType valueOf(String name) => _$valueOf(name);
   BuiltSet<NotificationType> get values => _$values;
 }
@@ -82,6 +103,10 @@ class _$NotificationTypeSerializer
     'checkInDue': 'check_in_due',
     'listingExpiring': 'listing_expiring',
     'reportResolved': 'report_resolved',
+    'postGg': 'post_gg',
+    'postComment': 'post_comment',
+    'commentReply': 'comment_reply',
+    'mention': 'mention',
   };
   static const Map<Object, String> _fromWire = const <Object, String>{
     'connection_request': 'connectionRequest',
@@ -91,6 +116,10 @@ class _$NotificationTypeSerializer
     'check_in_due': 'checkInDue',
     'listing_expiring': 'listingExpiring',
     'report_resolved': 'reportResolved',
+    'post_gg': 'postGg',
+    'post_comment': 'postComment',
+    'comment_reply': 'commentReply',
+    'mention': 'mention',
   };
 
   @override
