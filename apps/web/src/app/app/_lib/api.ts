@@ -32,6 +32,13 @@ export type PostAudience = S['PostAudience'];
 export type FeedFilter = S['FeedFilter'];
 export type Comment = S['CommentDto'];
 export type Gg = S['GgDto'];
+export type Media = S['MediaDto'];
+export type Poll = S['PollDto'];
+export type PollDuration = S['PollDuration'];
+export type Recruit = S['RecruitDto'];
+export type RecruitApplication = S['RecruitApplicationDto'];
+export type ApplicationStatus = S['ApplicationStatus'];
+export type MediaUpload = S['MediaUploadDto'];
 export type Page<T> = { items: T[]; nextCursor: string | null };
 
 /** The API's error shape (docs/API.md "Errors"): branch on `code`, show `message`. */

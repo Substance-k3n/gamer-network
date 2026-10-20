@@ -122,10 +122,6 @@ export const postTypes: { id: PostType; label: string; tone: Tone; placeholder: 
   { id: 'meme', label: 'Meme', tone: 'soft', placeholder: 'Caption it…' },
 ];
 
-/** The types the API takes today; photos, polls and recruitment come with its later phases. */
-const notYet: PostType[] = ['gameplay', 'recruitment', 'poll'];
-export const postable = postTypes.filter((t) => !notYet.includes(t.id));
-
 export const postTypeInfo = (t: PostType) => postTypes.find((p) => p.id === t) ?? postTypes[0]!;
 
 /** "Duo", "Trio"… for a party size (including the poster). */
