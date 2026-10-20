@@ -10,6 +10,7 @@ import { mediaUploads, postMedia } from '../db/schema/index.js';
 import { MEDIA_STORAGE, type MediaStorage } from '../storage/storage.js';
 import type { MediaUploadBody } from './feed.body.js';
 import type { MediaDto, MediaUploadDto } from './feed.dto.js';
+import { imageTypeOf, SNIFF_BYTES } from './image-type.js';
 
 const HOUR_MS = 3600_000;
 export const UPLOADS_PER_HOUR = 30;
@@ -76,7 +77,8 @@ export class MediaService {
 
   /**
    * Step 2, before the post is written: every key is the author's, unused,
-   * unexpired, and its object is there with the type and size promised.
+   * unexpired, and its object is there with the type and size promised and
+   * starts like a JPEG, PNG or WebP of that type.
    * 422 otherwise. Returns the uploads in the order given.
    */
   async check(authorId: string, keys: string[]): Promise<Upload[]> {
@@ -91,14 +93,27 @@ export class MediaService {
       if (u.expiresAt <= now) throw invalid({ media: 'That upload expired. Add the photo again' });
       return u;
     });
-    const stored = await Promise.all(uploads.map((u) => this.storage.head(u.key)));
+    const stored = await Promise.all(
+      uploads.map(async (u) => ({
+        head: await this.storage.head(u.key),
+        start: await this.storage.firstBytes(u.key, SNIFF_BYTES),
+      })),
+    );
     for (const [i, u] of uploads.entries()) {
-      const s = stored[i];
-      if (!s) throw invalid({ media: "A photo hasn't finished uploading" });
-      if (s.size !== u.size || s.contentType !== u.contentType) {
+      const { head, start } = stored[i]!;
+      if (!head || !start) throw invalid({ media: "A photo hasn't finished uploading" });
+      const refuse = async (message: string) => {
         await this.storage.delete(u.key).catch(() => undefined);
-        throw invalid({ media: "A photo doesn't match its upload. Add it again" });
+        return invalid({ media: message });
+      };
+      if (head.size !== u.size || head.contentType !== u.contentType) {
+        throw await refuse("A photo doesn't match its upload. Add it again");
       }
+      // The bytes, not just the signed type: only real JPEG, PNG or WebP files.
+      const real = imageTypeOf(start);
+      if (!real) throw await refuse("That file isn't a JPEG, PNG or WebP photo");
+      if (real !== u.contentType)
+        throw await refuse("A photo doesn't match its upload. Add it again");
     }
     return uploads;
   }

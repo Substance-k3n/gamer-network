@@ -92,12 +92,12 @@ async function player() {
       ).body,
     uploadUrl: (body: object) => http().post('/v1/media/upload-url').set(auth).send(body),
     /** Gets an upload URL, uploads `file` to it and returns the key. */
-    photo: async (file = PNG) => {
+    photo: async (file = PNG, contentType = 'image/png') => {
       const target = (
         await http()
           .post('/v1/media/upload-url')
           .set(auth)
-          .send({ contentType: 'image/png', size: file.length })
+          .send({ contentType, size: file.length })
           .expect(200)
       ).body;
       const put = await fetch(target.uploadUrl, {
@@ -259,6 +259,22 @@ describe('posts with photos', () => {
     await me.postIt({ type: 'meme', media: [good] });
   });
 
+  it('refuses uploads whose bytes are not a JPEG, PNG or WebP of the signed type', async () => {
+    const me = await player();
+    const fail = async (media: string[]) =>
+      (await me.post('/v1/posts', { type: 'meme', text: 'x', media }).expect(422)).body.error.fields
+        .media;
+    const html = await me.photo(
+      Buffer.from('<html><script>alert(1)</script></html>'),
+      'image/jpeg',
+    );
+    expect(await fail([html])).toBe("That file isn't a JPEG, PNG or WebP photo");
+    const pngAsJpeg = await me.photo(PNG, 'image/jpeg');
+    expect(await fail([pngAsJpeg])).toBe("A photo doesn't match its upload. Add it again");
+    // Refused files are deleted.
+    expect(await fail([html])).toBe("A photo hasn't finished uploading");
+  });
+
   it('replays a photo post with the same Idempotency-Key', async () => {
     const me = await player();
     const key = randomUUID();
@@ -343,6 +359,9 @@ describe('polls', () => {
     expect(await bad(pollBody(['only one']))).toHaveProperty('poll.options');
     expect(await bad(pollBody(['a', 'b', 'c', 'd', 'e']))).toHaveProperty('poll.options');
     expect(await bad(pollBody(['same', ' same']))).toHaveProperty('poll.options');
+    expect((await bad(pollBody(['Jett', 'jett '])))['poll.options']).toBe(
+      'Each option must be different',
+    );
     expect(await bad(pollBody(['a', 'x'.repeat(61)]))).toHaveProperty('poll.options');
     expect(await bad(pollBody(['a', '  ']))).toHaveProperty('poll.options');
     expect(await bad(pollBody(['a', 'b'], '7d'))).toHaveProperty('poll.duration');
@@ -383,8 +402,10 @@ describe('polls', () => {
     const post = await author.postIt(pollBody());
     const bad = await voter.post(`/v1/posts/${post.id}/vote`, { position: 2 }).expect(422);
     expect(bad.body.error.fields.position).toBe('Pick one of the options');
-    await voter.post(`/v1/posts/${post.id}/vote`, { position: 9 }).expect(422);
-    await voter.post(`/v1/posts/${post.id}/vote`, {}).expect(422);
+    for (const body of [{}, { position: 'a' }, { position: 9 }, { position: -1 }]) {
+      const res = await voter.post(`/v1/posts/${post.id}/vote`, body).expect(422);
+      expect(res.body.error.fields.position).toBe('Pick one of the options');
+    }
 
     await conn.db
       .update(polls)
@@ -531,9 +552,17 @@ describe('recruitment', () => {
     const other = await a.get(`/v1/posts/${post.id}/applications`).expect(403);
     expect(other.body.error.code).toBe('not_owner');
 
+    expect((await author.get(`/v1/posts/${post.id}`)).body.recruit.applications).toBe(3);
     await author.post('/v1/blocks', { userId: b.id }).expect(204);
     const after = await author.get(`/v1/posts/${post.id}/applications`).expect(200);
     expect(after.body.items.map((i: { user: { id: string } }) => i.user.id)).toEqual([a.id, c.id]);
+    // The card counts what the list shows, and a block the other way hides too.
+    expect((await author.get(`/v1/posts/${post.id}`)).body.recruit.applications).toBe(2);
+    await c.post('/v1/blocks', { userId: author.id }).expect(204);
+    expect((await author.get(`/v1/posts/${post.id}`)).body.recruit.applications).toBe(1);
+    expect((await author.get(`/v1/posts/${post.id}/applications`)).body.items).toHaveLength(1);
+    // Others still count everyone they may see.
+    expect((await a.get(`/v1/posts/${post.id}`)).body.recruit.applications).toBe(3);
     const [bApp] = await conn.db
       .select()
       .from(recruitApplications)

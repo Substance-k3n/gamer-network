@@ -172,7 +172,10 @@ export class FeedReader {
     );
   }
 
-  /** Recruitment on `postIds`. Applications from people no longer live don't count. */
+  /**
+   * Recruitment on `postIds`. Applications count only from people `viewerId`
+   * may see (live, no block either way), so the author's count matches the list.
+   */
   async recruits(postIds: string[], viewerId: string): Promise<Map<string, RecruitDto>> {
     if (postIds.length === 0) return new Map();
     const [heads, counts, mine] = await Promise.all([
@@ -181,7 +184,7 @@ export class FeedReader {
         .select({ id: recruitApplications.postId, n: sql<number>`count(*)::int` })
         .from(recruitApplications)
         .innerJoin(users, eq(users.id, recruitApplications.userId))
-        .where(and(inArray(recruitApplications.postId, postIds), isLive()))
+        .where(and(inArray(recruitApplications.postId, postIds), visibleTo(this.db, viewerId)))
         .groupBy(recruitApplications.postId),
       this.db
         .select({ id: recruitApplications.postId, status: recruitApplications.status })

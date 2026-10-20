@@ -6651,7 +6651,7 @@
           },
           "applications": {
             "type": "number",
-            "description": "How many applied; the author sees the list."
+            "description": "How many applied, leaving out people hidden from you (blocked either way); the author sees the list."
           }
         },
         "required": [

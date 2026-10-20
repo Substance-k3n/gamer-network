@@ -120,11 +120,13 @@ export class CreatePostBody {
   recruit?: RecruitBody;
 }
 
+const PICK_ONE = { message: 'Pick one of the options' };
+
 export class VoteBody {
   /** The option's position (0–3). */
-  @IsInt()
-  @Min(0)
-  @Max(3)
+  @IsInt(PICK_ONE)
+  @Min(0, PICK_ONE)
+  @Max(3, PICK_ONE)
   position: number;
 }
 

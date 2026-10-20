@@ -17,6 +17,9 @@ describe('postShapeErrors', () => {
   it('needs a poll on poll posts only', () => {
     expect(postShapeErrors({ type: 'poll' })).toEqual({ poll: 'Add 2 to 4 options' });
     expect(postShapeErrors({ type: 'poll', poll })).toBeNull();
+    expect(
+      postShapeErrors({ type: 'poll', poll: { ...poll, options: ['Jett', ' jett '] } }),
+    ).toEqual({ 'poll.options': 'Each option must be different' });
     expect(postShapeErrors({ type: 'question', poll })).toEqual({
       poll: 'Only poll posts have a poll',
     });

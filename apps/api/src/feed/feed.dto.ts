@@ -97,7 +97,7 @@ export class RecruitDto {
   slots: number;
   /** "Sniper, Support"; empty when not given. */
   roles: string;
-  /** How many applied; the author sees the list. */
+  /** How many applied, leaving out people hidden from you (blocked either way); the author sees the list. */
   applications: number;
 
   /** Your application, or null. */

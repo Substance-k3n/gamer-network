@@ -359,7 +359,8 @@ label by `type`. Counts leave out banned and deleted people.
 the phone to a longest side of 1600 px), `PUT` it to `uploadUrl` with
 `headers`, then send the keys in `media` (≤ 4) before `expiresAt` (an
 hour). `gameplay` needs at least one; any type may have them. Each key
-must be your own, unused, and uploaded as promised, else `422` on
+must be your own, unused, uploaded as promised, and really a JPEG, PNG
+or WebP of the signed type (checked from its first bytes), else `422` on
 `media`. Unused uploads are deleted after a day.
 
 **Polls and recruitment.** `poll: { options: 2–4 × 1–60 chars, unique,
