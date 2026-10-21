@@ -8753,6 +8753,18 @@
               }
             ]
           },
+          "createdBy": {
+            "description": "Who created the group. Report the group with `userId = createdBy.id`.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserCardDto"
+              }
+            ]
+          },
+          "shareUrl": {
+            "type": "string",
+            "description": "`https://<web origin>/app/groups/<id>`."
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string",
@@ -8775,6 +8787,8 @@
           "memberCount",
           "membersPreview",
           "nextEvent",
+          "createdBy",
+          "shareUrl",
           "createdAt"
         ]
       },
