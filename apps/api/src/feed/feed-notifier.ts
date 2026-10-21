@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { and, eq, exists, inArray, isNull, ne, not, or, sql } from 'drizzle-orm';
 import type { Db, Tx } from '../db/db.js';
 import { blocks, notifications, posts, users } from '../db/schema/index.js';
+import { memberOf } from '../groups/group-visibility.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { isLive } from '../users/visibility.js';
 import { connectedTo } from './visibility.js';
@@ -22,7 +23,8 @@ export function mentionedUsernames(text: string): string[] {
   return [...names];
 }
 
-const blockedEitherWay = (db: Db | Tx, x: string, y: typeof users.id) =>
+/** A block between `x` and the user in `y`, either way. */
+export const blockedEitherWay = (db: Db | Tx, x: string, y: typeof users.id) =>
   exists(
     db
       .select({ one: sql`1` })
@@ -60,6 +62,8 @@ export class FeedNotifier {
           post.audience === 'everyone'
             ? undefined
             : or(eq(users.id, post.authorId), connectedTo(tx, post.authorId, users.id)),
+          // Group posts: only the group's members can see them.
+          post.groupId ? memberOf(tx, post.groupId, users.id) : undefined,
         ),
       );
     return new Set(rows.map((r) => r.id));

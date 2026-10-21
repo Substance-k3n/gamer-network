@@ -6,6 +6,7 @@ import { ConnectionsModule } from './connections/connections.module.js';
 import { DbModule } from './db/db.module.js';
 import { FeedModule } from './feed/feed.module.js';
 import { GamesModule } from './games/games.module.js';
+import { GroupsModule } from './groups/groups.module.js';
 import { HealthModule } from './health/health.module.js';
 import { MailModule } from './mail/mail.module.js';
 import { JobsModule } from './jobs/jobs.module.js';
@@ -31,6 +32,7 @@ import { UsersModule } from './users/users.module.js';
     UsersModule,
     ListingsModule,
     FeedModule,
+    GroupsModule,
     ConnectionsModule,
     PlayModule,
     SafetyModule,
