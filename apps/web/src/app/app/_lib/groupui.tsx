@@ -120,7 +120,7 @@ export function JoinButton({
           'Keep it',
         )
       )
-        if (await leave()) toast('Request cancelled');
+        if (await leave()) toast(`Request to ${g.name} cancelled`);
     } else if (!big) {
       router.push(`/app/groups/${g.id}`);
     } else if (

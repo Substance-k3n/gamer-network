@@ -78,7 +78,7 @@ export function PhotoGrid({ media, still }: { media: Media[]; still?: boolean })
   );
 }
 
-/** Full screen: one photo at a time, arrows or keys to move, Esc to close. */
+/** Full screen: one photo at a time, arrows or keys to move, Esc to close. Stops at the first and last (D38). */
 function PhotoViewer({
   media,
   start,
@@ -95,14 +95,20 @@ function PhotoViewer({
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
-      else if (e.key === 'ArrowRight') setI((x) => (x + 1) % n);
-      else if (e.key === 'ArrowLeft') setI((x) => (x - 1 + n) % n);
+      else if (e.key === 'ArrowRight') setI((x) => Math.min(x + 1, n - 1));
+      else if (e.key === 'ArrowLeft') setI((x) => Math.max(x - 1, 0));
     };
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
   }, [n, onClose]);
   const nav = (d: number, label: string) => (
-    <CircleBtn size={40} onDark onClick={() => setI((x) => (x + d + n) % n)} label={label}>
+    <CircleBtn
+      size={40}
+      onDark
+      disabled={d > 0 ? i >= n - 1 : i <= 0}
+      onClick={() => setI((x) => Math.min(Math.max(x + d, 0), n - 1))}
+      label={label}
+    >
       <span style={{ display: 'flex', transform: d > 0 ? 'rotate(180deg)' : undefined }}>
         <Icon name="back" size={18} />
       </span>
@@ -121,7 +127,7 @@ function PhotoViewer({
         from.current = null;
         if (Math.abs(dx) > 50 && n > 1) {
           swiped.current = true;
-          setI((x) => (x + (dx < 0 ? 1 : -1) + n) % n);
+          setI((x) => Math.min(Math.max(x + (dx < 0 ? 1 : -1), 0), n - 1));
         }
       }}
       onPointerCancel={() => (from.current = null)}

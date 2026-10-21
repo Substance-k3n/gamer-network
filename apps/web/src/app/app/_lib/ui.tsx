@@ -479,6 +479,7 @@ export function CircleBtn({
   onDark,
   shadow,
   label,
+  disabled,
 }: {
   children: ReactNode;
   onClick?: () => void;
@@ -486,14 +487,21 @@ export function CircleBtn({
   onDark?: boolean;
   shadow?: number;
   label?: string;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       className={`circle ${onDark ? 'on-dark' : ''}`}
-      style={{ width: size, height: size, boxShadow: shadow ? `var(--sh${shadow})` : undefined }}
+      style={{
+        width: size,
+        height: size,
+        boxShadow: shadow ? `var(--sh${shadow})` : undefined,
+        opacity: disabled ? 0.35 : undefined,
+      }}
       onClick={onClick}
       aria-label={label}
+      disabled={disabled}
     >
       {children}
     </button>

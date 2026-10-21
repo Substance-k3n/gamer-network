@@ -117,7 +117,7 @@ export default function GroupPage({
     try {
       await navigator.clipboard.writeText(g.shareUrl);
     } catch {}
-    toast('Invite link copied');
+    toast('Link copied — paste it in Telegram or WhatsApp');
   };
   const setG = (n: Group) => group.setData(n);
   const stat = (n: string, label: string) => (
@@ -281,7 +281,7 @@ function GroupMenu({
           onClose();
         }}
       >
-        Copy invite link
+        Copy link
       </Pill>
       {g.createdBy.id !== me?.id && (
         <Pill h={48} size={15} bold expand look="clear" onClick={() => setReport(true)}>
@@ -463,7 +463,7 @@ function Members({
   onGroup: (g: Group) => void;
   onChanged: () => void;
 }) {
-  const { run, me } = useApp();
+  const { run, toast, me } = useApp();
   const [ask, confirm] = useConfirm();
   const [more, setMore] = useState<string | null>(null);
   const list = useLoad(async () => {
@@ -497,25 +497,27 @@ function Members({
     );
     if (!ok) return;
     requests.setData(pending.filter((x) => x.user.id !== m.user.id));
+    toast(
+      to === 'approve'
+        ? `${m.user.displayName} is in`
+        : `Request from ${m.user.displayName} declined`,
+    );
     if (to === 'approve') {
       onGroup({ ...g, memberCount: g.memberCount + 1 });
       list.reload();
       onChanged();
     }
   };
-  const makeAdmin = async (m: GroupMember) => {
+  const setRole = async (m: GroupMember, role: 'admin' | 'member') => {
     const ok = await run(() =>
       api(`groups/${g.id}/members/${m.user.id}/role`, {
         method: 'PUT',
-        body: { role: 'admin' },
+        body: { role },
       }).then(() => true),
     );
     if (!ok) return;
-    list.setData(
-      (list.data ?? []).map((x) =>
-        x.user.id === m.user.id ? { ...x, role: 'admin' as const } : x,
-      ),
-    );
+    list.setData((list.data ?? []).map((x) => (x.user.id === m.user.id ? { ...x, role } : x)));
+    toast(`${m.user.displayName} is ${role === 'admin' ? 'an admin' : 'a member'} now`);
     onChanged();
   };
   const remove = async (m: GroupMember) => {
@@ -532,6 +534,7 @@ function Members({
     );
     if (!ok) return;
     list.setData((list.data ?? []).filter((x) => x.user.id !== m.user.id));
+    toast(`${m.user.displayName} removed from the group`);
     onGroup({ ...g, memberCount: Math.max(0, g.memberCount - 1) });
     onChanged();
   };
@@ -563,9 +566,13 @@ function Members({
             <MemberRow key={m.user.id} m={m}>
               {admin && m.user.id !== me?.id && (
                 <>
-                  {m.role !== 'admin' && (
-                    <Pill h={32} padH={11} size={12} bold onClick={() => makeAdmin(m)}>
+                  {m.role !== 'admin' ? (
+                    <Pill h={32} padH={11} size={12} bold onClick={() => setRole(m, 'admin')}>
                       Make admin
+                    </Pill>
+                  ) : (
+                    <Pill h={32} padH={11} size={12} bold onClick={() => setRole(m, 'member')}>
+                      Make member
                     </Pill>
                   )}
                   <Pill h={32} padH={11} size={12} look="clear" onClick={() => remove(m)}>
@@ -615,9 +622,12 @@ function Events({
     if (r) onList(list.map((x) => (x.id === e.id ? r : x)));
   };
   const del = async (e: GroupEvent) => {
-    if (!(await ask('Delete this event?', 'Members won’t see it any more.', 'Delete'))) return;
+    if (!(await ask('Delete this event?', 'It’s gone for everyone in the group.', 'Delete')))
+      return;
     const ok = await run(() => api(`group-events/${e.id}`, { method: 'DELETE' }).then(() => true));
-    if (ok) onList(list.filter((x) => x.id !== e.id));
+    if (!ok) return;
+    onList(list.filter((x) => x.id !== e.id));
+    toast('Event deleted');
   };
   return (
     <>
@@ -711,7 +721,8 @@ const isoDay = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2
 
 /** Why an event time won't do: it has passed, or it's past the 60 days. */
 function whenProblem(at: Date, last: Date) {
-  if (Number.isNaN(at.getTime()) || at.getTime() <= Date.now()) return 'Pick a time later than now';
+  if (Number.isNaN(at.getTime()) || at.getTime() <= Date.now())
+    return 'Pick a time that hasn’t passed';
   if (at.getTime() > last.getTime()) return 'Pick a day in the next 60 days';
   return null;
 }
@@ -749,7 +760,7 @@ function NewEvent({
     if (!e) return;
     onClose();
     onAdded(e);
-    toast('Event added — members will see it');
+    toast('Event added — members get a notification');
   };
   const input = {
     border: 0,
