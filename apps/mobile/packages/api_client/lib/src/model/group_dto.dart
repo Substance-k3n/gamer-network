@@ -34,6 +34,8 @@ part 'group_dto.g.dart';
 /// * [memberCount]
 /// * [membersPreview] - Up to 3 members, your connections first.
 /// * [nextEvent] - The soonest upcoming event, or null.
+/// * [createdBy] - Who created the group. Report the group with `userId = createdBy.id`.
+/// * [shareUrl] - `https://<web origin>/app/groups/<id>`.
 /// * [createdAt] - \"since Mar 2025\".
 @BuiltValue()
 abstract class GroupDto implements Built<GroupDto, GroupDtoBuilder> {
@@ -94,6 +96,14 @@ abstract class GroupDto implements Built<GroupDto, GroupDtoBuilder> {
   /// The soonest upcoming event, or null.
   @BuiltValueField(wireName: r'nextEvent')
   GroupEventDto? get nextEvent;
+
+  /// Who created the group. Report the group with `userId = createdBy.id`.
+  @BuiltValueField(wireName: r'createdBy')
+  UserCardDto get createdBy;
+
+  /// `https://<web origin>/app/groups/<id>`.
+  @BuiltValueField(wireName: r'shareUrl')
+  String get shareUrl;
 
   /// \"since Mar 2025\".
   @BuiltValueField(wireName: r'createdAt')
@@ -205,6 +215,16 @@ class _$GroupDtoSerializer implements PrimitiveSerializer<GroupDto> {
             object.nextEvent,
             specifiedType: const FullType.nullable(GroupEventDto),
           );
+    yield r'createdBy';
+    yield serializers.serialize(
+      object.createdBy,
+      specifiedType: const FullType(UserCardDto),
+    );
+    yield r'shareUrl';
+    yield serializers.serialize(
+      object.shareUrl,
+      specifiedType: const FullType(String),
+    );
     yield r'createdAt';
     yield serializers.serialize(
       object.createdAt,
@@ -343,6 +363,20 @@ class _$GroupDtoSerializer implements PrimitiveSerializer<GroupDto> {
           ) as GroupEventDto?;
           if (valueDes == null) continue;
           result.nextEvent.replace(valueDes);
+          break;
+        case r'createdBy':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(UserCardDto),
+          ) as UserCardDto;
+          result.createdBy.replace(valueDes);
+          break;
+        case r'shareUrl':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.shareUrl = valueDes;
           break;
         case r'createdAt':
           final valueDes = serializers.deserialize(

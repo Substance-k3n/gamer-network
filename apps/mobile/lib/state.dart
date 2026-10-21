@@ -554,18 +554,6 @@ class AppState extends ChangeNotifier {
   bool canModerate(PostDto p) =>
       p.group != null && p.group!.id == group?.id && groupAdmin;
 
-  /// The web app's address, from a link the API made (no config field yet).
-  String? get webOrigin {
-    for (final u in [
-      for (final p in [...posts, ...?groupPosts, ...profilePosts]) p.shareUrl,
-      ?myListing?.shareUrl,
-    ]) {
-      final uri = Uri.tryParse(u);
-      if (uri != null && uri.hasScheme) return uri.origin;
-    }
-    return null;
-  }
-
   // ---- calls ----
 
   /// Runs an API call: shows its error as a toast and returns null on failure.
@@ -2548,10 +2536,8 @@ class AppState extends ChangeNotifier {
 
   /// Copies the group's web link (the PWA's `/app/groups/<id>`).
   Future<void> shareGroup(GroupDto g) async {
-    final origin = webOrigin;
-    if (origin == null) return toast('Couldn’t make a link right now');
-    await Clipboard.setData(ClipboardData(text: '$origin/app/groups/${g.id}'));
-    toast('Group link copied — paste it in Telegram or WhatsApp');
+    await Clipboard.setData(ClipboardData(text: g.shareUrl));
+    toast('Link copied — paste it in Telegram or WhatsApp');
   }
 
   void openCreateGroup() => go(Screen.createGroup, () {
