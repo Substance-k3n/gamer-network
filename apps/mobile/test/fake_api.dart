@@ -282,6 +282,7 @@ Map<String, Object?> group(
   String about = 'Ranked pushes every night.',
   List<String> rules = const ['Be decent.'],
   Map<String, Object?>? next,
+  Map<String, Object?>? by,
 }) => {
   'id': id,
   'name': name,
@@ -298,6 +299,8 @@ Map<String, Object?> group(
   'nextEvent': next,
   'myRole': role,
   'myStatus': status,
+  'createdBy': by ?? hana,
+  'shareUrl': 'https://example.com/app/groups/$id',
   'createdAt': '2025-03-04T10:00:00.000Z',
 };
 
@@ -328,6 +331,7 @@ final fcGroup = group(
   short: 'FC',
   tone: 'lav',
   members: 860,
+  by: dave,
 );
 final aauGroup = group(
   'g-aau',

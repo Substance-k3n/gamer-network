@@ -38,6 +38,10 @@ class _$GroupDto extends GroupDto {
   @override
   final GroupEventDto? nextEvent;
   @override
+  final UserCardDto createdBy;
+  @override
+  final String shareUrl;
+  @override
   final DateTime createdAt;
 
   factory _$GroupDto([void Function(GroupDtoBuilder)? updates]) =>
@@ -59,6 +63,8 @@ class _$GroupDto extends GroupDto {
       required this.memberCount,
       required this.membersPreview,
       this.nextEvent,
+      required this.createdBy,
+      required this.shareUrl,
       required this.createdAt})
       : super._();
   @override
@@ -87,6 +93,8 @@ class _$GroupDto extends GroupDto {
         memberCount == other.memberCount &&
         membersPreview == other.membersPreview &&
         nextEvent == other.nextEvent &&
+        createdBy == other.createdBy &&
+        shareUrl == other.shareUrl &&
         createdAt == other.createdAt;
   }
 
@@ -108,6 +116,8 @@ class _$GroupDto extends GroupDto {
     _$hash = $jc(_$hash, memberCount.hashCode);
     _$hash = $jc(_$hash, membersPreview.hashCode);
     _$hash = $jc(_$hash, nextEvent.hashCode);
+    _$hash = $jc(_$hash, createdBy.hashCode);
+    _$hash = $jc(_$hash, shareUrl.hashCode);
     _$hash = $jc(_$hash, createdAt.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
@@ -131,6 +141,8 @@ class _$GroupDto extends GroupDto {
           ..add('memberCount', memberCount)
           ..add('membersPreview', membersPreview)
           ..add('nextEvent', nextEvent)
+          ..add('createdBy', createdBy)
+          ..add('shareUrl', shareUrl)
           ..add('createdAt', createdAt))
         .toString();
   }
@@ -203,6 +215,15 @@ class GroupDtoBuilder implements Builder<GroupDto, GroupDtoBuilder> {
   set nextEvent(GroupEventDtoBuilder? nextEvent) =>
       _$this._nextEvent = nextEvent;
 
+  UserCardDtoBuilder? _createdBy;
+  UserCardDtoBuilder get createdBy =>
+      _$this._createdBy ??= UserCardDtoBuilder();
+  set createdBy(UserCardDtoBuilder? createdBy) => _$this._createdBy = createdBy;
+
+  String? _shareUrl;
+  String? get shareUrl => _$this._shareUrl;
+  set shareUrl(String? shareUrl) => _$this._shareUrl = shareUrl;
+
   DateTime? _createdAt;
   DateTime? get createdAt => _$this._createdAt;
   set createdAt(DateTime? createdAt) => _$this._createdAt = createdAt;
@@ -229,6 +250,8 @@ class GroupDtoBuilder implements Builder<GroupDto, GroupDtoBuilder> {
       _memberCount = $v.memberCount;
       _membersPreview = $v.membersPreview.toBuilder();
       _nextEvent = $v.nextEvent?.toBuilder();
+      _createdBy = $v.createdBy.toBuilder();
+      _shareUrl = $v.shareUrl;
       _createdAt = $v.createdAt;
       _$v = null;
     }
@@ -276,6 +299,9 @@ class GroupDtoBuilder implements Builder<GroupDto, GroupDtoBuilder> {
                 memberCount, r'GroupDto', 'memberCount'),
             membersPreview: membersPreview.build(),
             nextEvent: _nextEvent?.build(),
+            createdBy: createdBy.build(),
+            shareUrl: BuiltValueNullFieldError.checkNotNull(
+                shareUrl, r'GroupDto', 'shareUrl'),
             createdAt: BuiltValueNullFieldError.checkNotNull(
                 createdAt, r'GroupDto', 'createdAt'),
           );
@@ -292,6 +318,8 @@ class GroupDtoBuilder implements Builder<GroupDto, GroupDtoBuilder> {
         membersPreview.build();
         _$failedField = 'nextEvent';
         _nextEvent?.build();
+        _$failedField = 'createdBy';
+        createdBy.build();
       } catch (e) {
         throw BuiltValueNestedFieldError(
             r'GroupDto', _$failedField, e.toString());

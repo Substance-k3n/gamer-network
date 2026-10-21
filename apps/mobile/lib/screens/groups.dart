@@ -671,29 +671,13 @@ Future<void> _groupMenu(BuildContext context, AppState s, GroupDto g) {
 }
 
 /// Reports go against the group's creator (ReportBody.groupId + userId).
-/// The group has no creator field yet, so its longest-standing admin
-/// stands in (see handoffs/mobile-3.md).
-Future<void> _reportGroup(BuildContext context, AppState s, GroupDto g) {
-  final admins = [
-    for (final m in s.members ?? const <GroupMemberDto>[])
-      if (m.role == GroupRole.admin) m,
-  ];
-  admins.sort(
-    (a, b) =>
-        (a.joinedAt ?? DateTime(2100)).compareTo(b.joinedAt ?? DateTime(2100)),
-  );
-  final owner = admins.firstOrNull?.user;
-  if (owner == null) {
-    s.toast('Couldn’t report this group right now. Try again.');
-    return Future.value();
-  }
-  return showReportDialog(
-    context,
-    userId: owner.id,
-    name: g.name,
-    groupId: g.id,
-  );
-}
+Future<void> _reportGroup(BuildContext context, AppState s, GroupDto g) =>
+    showReportDialog(
+      context,
+      userId: g.createdBy.id,
+      name: g.name,
+      groupId: g.id,
+    );
 
 class _Feed extends StatelessWidget {
   const _Feed(this.g, {required this.member});

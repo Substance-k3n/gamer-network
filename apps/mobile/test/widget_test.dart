@@ -892,6 +892,10 @@ void main() {
     await t.tap(labelled('Share group'));
     await settle(t);
     expect(copied.last, 'https://example.com/app/groups/g-codm');
+    expect(
+      find.text('Link copied — paste it in Telegram or WhatsApp'),
+      findsOneWidget,
+    );
     await tapText(t, 'About');
     expect(find.text('Mar 2025'), findsOneWidget);
     expect(find.text('You'), findsOneWidget); // admins
@@ -918,7 +922,7 @@ void main() {
     await tapText(t, 'Spam');
     await tapText(t, 'Send report');
     expect(api.bodiesOf('POST /v1/reports').single, {
-      'userId': 'u-hana',
+      'userId': 'u-dave', // the group's createdBy
       'reason': 'spam',
       'groupId': 'g-fc',
     });
