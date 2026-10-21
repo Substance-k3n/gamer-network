@@ -108,6 +108,7 @@ export function FeedPost({
   onGone,
   openComments = false,
   openApplications = false,
+  moderator = false,
 }: {
   p: Post;
   onChange: (p: Post) => void;
@@ -115,6 +116,8 @@ export function FeedPost({
   openComments?: boolean;
   /** Mine with recruitment: the applications sheet starts open (an alert). */
   openApplications?: boolean;
+  /** A group admin looking at a post in their group: may delete it and its comments. */
+  moderator?: boolean;
 }) {
   const { run, toast } = useApp();
   const router = useRouter();
@@ -158,7 +161,9 @@ export function FeedPost({
         borderBottom: '1.5px solid var(--divider)',
       }}
     >
-      {menu && <PostMenu p={p} onClose={() => setMenu(false)} onGone={onGone} />}
+      {menu && (
+        <PostMenu p={p} moderator={moderator} onClose={() => setMenu(false)} onGone={onGone} />
+      )}
       <Avatar
         name={a.displayName}
         tone={toneFor(a.id)}
@@ -277,6 +282,7 @@ export function FeedPost({
         {open && (
           <Comments
             p={p}
+            moderator={moderator}
             onCount={(n) => onChange({ ...p, commentCount: Math.max(0, p.commentCount + n) })}
           />
         )}
@@ -286,7 +292,17 @@ export function FeedPost({
 }
 
 /** The ⋯ menu on a post: delete your own, report or block anyone else's. */
-function PostMenu({ p, onClose, onGone }: { p: Post; onClose: () => void; onGone: () => void }) {
+function PostMenu({
+  p,
+  moderator,
+  onClose,
+  onGone,
+}: {
+  p: Post;
+  moderator: boolean;
+  onClose: () => void;
+  onGone: () => void;
+}) {
   const { run, toast, bump } = useApp();
   const [mode, setMode] = useState<'menu' | 'report'>('menu');
   const [ask, confirm] = useConfirm();
@@ -338,6 +354,7 @@ function PostMenu({ p, onClose, onGone }: { p: Post; onClose: () => void; onGone
         <>
           {item('Report post', () => setMode('report'))}
           {item(`Block ${a.displayName}`, block, true)}
+          {moderator && item('Delete post', del, true)}
         </>
       )}
       <Pill h={44} size={14} expand look="clear" onClick={onClose} style={{ border: 0 }}>
@@ -348,7 +365,15 @@ function PostMenu({ p, onClose, onGone }: { p: Post; onClose: () => void; onGone
 }
 
 /** Comments under a post: top-level first, replies on "View n replies", and the write field. */
-function Comments({ p, onCount }: { p: Post; onCount: (n: number) => void }) {
+function Comments({
+  p,
+  moderator,
+  onCount,
+}: {
+  p: Post;
+  moderator: boolean;
+  onCount: (n: number) => void;
+}) {
   const { run, me } = useApp();
   const [more, setMore] = useState<string | null>(null);
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
@@ -443,6 +468,7 @@ function Comments({ p, onCount }: { p: Post; onCount: (n: number) => void }) {
             <CommentRow
               c={c}
               post={p}
+              moderator={moderator}
               onChange={update}
               onGone={() => gone(c)}
               onReply={() => reply(c)}
@@ -464,6 +490,7 @@ function Comments({ p, onCount }: { p: Post; onCount: (n: number) => void }) {
                 <CommentRow
                   c={r}
                   post={p}
+                  moderator={moderator}
                   onChange={update}
                   onGone={() => gone(r)}
                   onReply={() => reply(r)}
@@ -543,12 +570,14 @@ function Comments({ p, onCount }: { p: Post; onCount: (n: number) => void }) {
 function CommentRow({
   c,
   post,
+  moderator,
   onChange,
   onGone,
   onReply,
 }: {
   c: Comment;
   post: Post;
+  moderator: boolean;
   onChange: (c: Comment) => void;
   onGone: () => void;
   onReply: () => void;
@@ -646,7 +675,7 @@ function CommentRow({
         <div className="row" style={{ gap: 12, paddingLeft: 6 }}>
           {link(`GG ${c.ggCount}`, gg, c.myGG ? 'var(--acc)' : undefined)}
           {link('Reply', onReply)}
-          {c.mine || post.mine
+          {c.mine || post.mine || moderator
             ? link('Delete', del, 'var(--muted)')
             : link('Report', () => setReport(true), 'var(--muted)')}
         </div>

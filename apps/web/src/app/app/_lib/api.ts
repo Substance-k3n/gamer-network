@@ -39,6 +39,11 @@ export type Recruit = S['RecruitDto'];
 export type RecruitApplication = S['RecruitApplicationDto'];
 export type ApplicationStatus = S['ApplicationStatus'];
 export type MediaUpload = S['MediaUploadDto'];
+export type Group = S['GroupDto'];
+export type GroupKind = S['GroupKind'];
+export type GroupTone = S['GroupTone'];
+export type GroupEvent = S['GroupEventDto'];
+export type GroupMember = S['GroupMemberDto'];
 export type Page<T> = { items: T[]; nextCursor: string | null };
 
 /** The API's error shape (docs/API.md "Errors"): branch on `code`, show `message`. */

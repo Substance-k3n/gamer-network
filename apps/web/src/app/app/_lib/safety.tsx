@@ -113,6 +113,7 @@ export function ReportDialog({
   listingId,
   postId,
   commentId,
+  groupId,
   onClose,
 }: {
   userId: string;
@@ -121,6 +122,8 @@ export function ReportDialog({
   /** Reporting a post or a comment of theirs, not the person. */
   postId?: string;
   commentId?: string;
+  /** Reporting a group: `userId` is its creator. */
+  groupId?: string;
   onClose: () => void;
 }) {
   const { run, toast, busy } = useApp();
@@ -139,6 +142,7 @@ export function ReportDialog({
           ...(listingId ? { listingId } : {}),
           ...(postId ? { postId } : {}),
           ...(commentId ? { commentId } : {}),
+          ...(groupId ? { groupId } : {}),
           ...(details.trim() ? { details: details.trim() } : {}),
         },
       }).then(() => true),
@@ -150,7 +154,13 @@ export function ReportDialog({
   return (
     <Dialog onClose={onClose}>
       <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.6 }}>
-        {commentId ? 'Report comment' : postId ? 'Report post' : `Report ${name}`}
+        {commentId
+          ? 'Report comment'
+          : postId
+            ? 'Report post'
+            : groupId
+              ? 'Report group'
+              : `Report ${name}`}
       </div>
       <div className="muted" style={{ fontSize: 14 }}>
         Only our team sees reports. What’s wrong?

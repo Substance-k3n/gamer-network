@@ -55,6 +55,11 @@ export default function Alerts() {
     else if (kind === 'posts' && id && sub === 'applications')
       router.push(`/app/posts/${id}?applications=1`);
     else if (kind === 'posts' && id) router.push(`/app/posts/${id}`);
+    else if (kind === 'groups' && id)
+      // Join requests open the Members tab, where an admin sees Requests.
+      router.push(
+        `/app/groups/${id.split('?')[0]}${sub?.startsWith('members') ? '?tab=Members' : ''}`,
+      );
     else if (kind === 'check-ins') router.push('/app');
   };
 
