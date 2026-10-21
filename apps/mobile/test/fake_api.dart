@@ -325,6 +325,13 @@ final codmGroup = group(
   status: 'member',
   next: groupEvent('ev-1', 'g-codm', 'Scrims vs Hawassa'),
 );
+final mineGroup = group(
+  'g-mine',
+  'My Squad',
+  role: 'admin',
+  status: 'member',
+  by: meCard,
+);
 final fcGroup = group(
   'g-fc',
   'Ethiopian FC Players',
@@ -678,6 +685,7 @@ class FakeApi implements HttpClientAdapter {
       },
       'GET /v1/groups/g-codm': codmGroup,
       'GET /v1/groups/g-fc': fcGroup,
+      'GET /v1/groups/g-mine': mineGroup,
       'GET /v1/groups/g-aau': aauGroup,
       'POST /v1/groups/g-fc/join': {
         ...fcGroup,

@@ -625,6 +625,12 @@ void main() {
     expect(find.text('Requested…'), findsOneWidget);
     // Taking the request back: DELETE /membership.
     await tapText(t, 'Requested…');
+    expect(
+      find.text(
+        'AAU Gamers’s admins won’t see it any more. You can ask again later.',
+      ),
+      findsOneWidget,
+    );
     await tapText(t, 'Cancel request');
     expect(
       api.sent.any(
@@ -793,9 +799,18 @@ void main() {
     expect(api.bodiesOf('PUT /v1/groups/g-codm/members/u-dave/role').single, {
       'role': 'admin',
     });
+    expect(find.text('Dave is an admin now'), findsOneWidget);
+    final dave = s.members!.firstWhere((m) => m.user.id == 'u-dave');
+    s.setMemberRole(dave, GroupRole.member);
+    await settle(t);
+    expect(find.text('Dave is a member now'), findsOneWidget);
     await t.tap(labelled('Manage Dave'));
     await settle(t);
     await tapText(t, 'Remove from group');
+    expect(
+      find.text('They leave CODM Addis. They can ask to join again.'),
+      findsOneWidget,
+    );
     await tapText(t, 'Remove');
     expect(
       api.sent.any(
@@ -926,6 +941,33 @@ void main() {
       'reason': 'spam',
       'groupId': 'g-fc',
     });
+    await done(t);
+  });
+
+  testWidgets('the creator is not offered Report group', (t) async {
+    final api = FakeApi();
+    await openGroup(t, api, 'g-mine');
+    await t.tap(labelled('Group options'));
+    await settle(t);
+    expect(find.text('Copy link'), findsOneWidget);
+    expect(find.text('Report group'), findsNothing);
+    await done(t);
+  });
+
+  testWidgets('a short group name shows inline, not as a toast', (t) async {
+    final api = FakeApi();
+    final s = await pumpApp(t, api, token: 't-1');
+    s.go(Screen.communities);
+    await settle(t);
+    await tapText(t, 'Create group');
+    await t.enterText(
+      find.widgetWithText(TextField, 'e.g. Valorant Addis Duo Queue'),
+      'ab',
+    );
+    await t.pump();
+    await tapText(t, 'Create');
+    expect(find.text('Give your group a name (3+ characters)'), findsOneWidget);
+    expect(api.bodiesOf('POST /v1/groups'), isEmpty);
     await done(t);
   });
 
