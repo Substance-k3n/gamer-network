@@ -68,9 +68,11 @@ Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
 [*AdminApi*](doc/AdminApi.md) | [**adminBan**](doc/AdminApi.md#adminban) | **POST** /v1/admin/users/{id}/ban | Signs them out everywhere and removes their live listing.
 [*AdminApi*](doc/AdminApi.md) | [**adminMetrics**](doc/AdminApi.md#adminmetrics) | **GET** /v1/admin/metrics | The MVP&#39;s numbers. Defaults to the last 30 days.
+[*AdminApi*](doc/AdminApi.md) | [**adminRemoveComment**](doc/AdminApi.md#adminremovecomment) | **POST** /v1/admin/comments/{id}/remove | Take a comment down, with its replies.
 [*AdminApi*](doc/AdminApi.md) | [**adminRemoveListing**](doc/AdminApi.md#adminremovelisting) | **POST** /v1/admin/listings/{id}/remove | Take a listing down.
+[*AdminApi*](doc/AdminApi.md) | [**adminRemovePost**](doc/AdminApi.md#adminremovepost) | **POST** /v1/admin/posts/{id}/remove | Take a post down.
 [*AdminApi*](doc/AdminApi.md) | [**adminReports**](doc/AdminApi.md#adminreports) | **GET** /v1/admin/reports | The queue. Open ones oldest first.
-[*AdminApi*](doc/AdminApi.md) | [**adminResolveReport**](doc/AdminApi.md#adminresolvereport) | **POST** /v1/admin/reports/{id}/resolve | dismiss, warn, remove_listing or ban. 409 report_closed if already handled.
+[*AdminApi*](doc/AdminApi.md) | [**adminResolveReport**](doc/AdminApi.md#adminresolvereport) | **POST** /v1/admin/reports/{id}/resolve | dismiss, warn, remove_listing, remove_post, remove_comment or ban. 409 report_closed if already handled.
 [*AdminApi*](doc/AdminApi.md) | [**adminSetLaunch**](doc/AdminApi.md#adminsetlaunch) | **PATCH** /v1/admin/games/{id} | Puts a game on Find Players, or takes it off.
 [*AdminApi*](doc/AdminApi.md) | [**adminUnban**](doc/AdminApi.md#adminunban) | **POST** /v1/admin/users/{id}/unban | Lift a ban.
 [*AdminApi*](doc/AdminApi.md) | [**adminUser**](doc/AdminApi.md#adminuser) | **GET** /v1/admin/users/{id} | The player drawer.
@@ -92,6 +94,24 @@ Class | Method | HTTP request | Description
 [*ConnectionsApi*](doc/ConnectionsApi.md) | [**connectionRequestsSend**](doc/ConnectionsApi.md#connectionrequestssend) | **POST** /v1/connection-requests | \&quot;Connect\&quot; on a listing card (pass listingId) or a profile. 409 already_connected, request_pending, request_waiting_for_you (fields.requestId: accept that instead), listing_not_open; 429 request_cooldown, daily_limit.
 [*ConnectionsApi*](doc/ConnectionsApi.md) | [**connectionsList**](doc/ConnectionsApi.md#connectionslist) | **GET** /v1/me/connections | Your connections, newest first.
 [*ConnectionsApi*](doc/ConnectionsApi.md) | [**connectionsRemove**](doc/ConnectionsApi.md#connectionsremove) | **DELETE** /v1/connections/{userId} | Remove a connection, for both players.
+[*FeedApi*](doc/FeedApi.md) | [**commentsCreate**](doc/FeedApi.md#commentscreate) | **POST** /v1/posts/{id}/comments | Comment, or reply with parentId. Tells the post&#39;s author, the one you answered and anyone you @mention. 60 an hour.
+[*FeedApi*](doc/FeedApi.md) | [**commentsDelete**](doc/FeedApi.md#commentsdelete) | **DELETE** /v1/comments/{id} | Its author or the post&#39;s author (403 not_owner).
+[*FeedApi*](doc/FeedApi.md) | [**commentsGg**](doc/FeedApi.md#commentsgg) | **PUT** /v1/comments/{id}/gg | GG a comment.
+[*FeedApi*](doc/FeedApi.md) | [**commentsList**](doc/FeedApi.md#commentslist) | **GET** /v1/posts/{id}/comments | Top-level comments, oldest first; sort&#x3D;top for discussions.
+[*FeedApi*](doc/FeedApi.md) | [**commentsReplies**](doc/FeedApi.md#commentsreplies) | **GET** /v1/comments/{id}/replies | Replies under a top-level comment, oldest first.
+[*FeedApi*](doc/FeedApi.md) | [**commentsUnGg**](doc/FeedApi.md#commentsungg) | **DELETE** /v1/comments/{id}/gg | Take your GG back.
+[*FeedApi*](doc/FeedApi.md) | [**feedGet**](doc/FeedApi.md#feedget) | **GET** /v1/feed | Home, newest first. Blocked people&#39;s posts and connections-only posts of strangers are left out.
+[*FeedApi*](doc/FeedApi.md) | [**myPostsList**](doc/FeedApi.md#mypostslist) | **GET** /v1/me/posts | Your posts, newest first, connections-only ones included.
+[*FeedApi*](doc/FeedApi.md) | [**myPostsSaved**](doc/FeedApi.md#mypostssaved) | **GET** /v1/me/saved | Saved posts, most recently saved first.
+[*FeedApi*](doc/FeedApi.md) | [**postsCreate**](doc/FeedApi.md#postscreate) | **POST** /v1/posts | Post to Home. Photos, polls and recruitment come later (422 on those types). 10 an hour: 429 rate_limited.
+[*FeedApi*](doc/FeedApi.md) | [**postsDelete**](doc/FeedApi.md#postsdelete) | **DELETE** /v1/posts/{id} | Author only (403 not_owner).
+[*FeedApi*](doc/FeedApi.md) | [**postsGet**](doc/FeedApi.md#postsget) | **GET** /v1/posts/{id} | One post.
+[*FeedApi*](doc/FeedApi.md) | [**postsGg**](doc/FeedApi.md#postsgg) | **PUT** /v1/posts/{id}/gg | GG it. Repeating it is fine.
+[*FeedApi*](doc/FeedApi.md) | [**postsSave**](doc/FeedApi.md#postssave) | **PUT** /v1/posts/{id}/save | Bookmark it.
+[*FeedApi*](doc/FeedApi.md) | [**postsUnGg**](doc/FeedApi.md#postsungg) | **DELETE** /v1/posts/{id}/gg | Take your GG back.
+[*FeedApi*](doc/FeedApi.md) | [**postsUnsave**](doc/FeedApi.md#postsunsave) | **DELETE** /v1/posts/{id}/save | Remove the bookmark.
+[*FeedApi*](doc/FeedApi.md) | [**publicPostsGet**](doc/FeedApi.md#publicpostsget) | **GET** /v1/public/posts/{id} | For the share page /p/&lt;id&gt;: no sign-in. Only live posts for everyone.
+[*FeedApi*](doc/FeedApi.md) | [**userPostsList**](doc/FeedApi.md#userpostslist) | **GET** /v1/users/{username}/posts | Moments: their posts you may see, newest first.
 [*GamesApi*](doc/GamesApi.md) | [**gamesList**](doc/GamesApi.md#gameslist) | **GET** /v1/games | The full game catalog with ranks, roles and modes. Cache it; it rarely changes.
 [*HealthApi*](doc/HealthApi.md) | [**healthCheck**](doc/HealthApi.md#healthcheck) | **GET** /health | Liveness and database check for uptime monitors and the deploy.
 [*ListingsApi*](doc/ListingsApi.md) | [**listingsClose**](doc/ListingsApi.md#listingsclose) | **POST** /v1/listings/{id}/close | Owner only. 409 listing_not_live once it has ended.
@@ -157,22 +177,29 @@ Class | Method | HTTP request | Description
  - [CheckInDto](doc/CheckInDto.md)
  - [CheckInListDto](doc/CheckInListDto.md)
  - [CodeBody](doc/CodeBody.md)
+ - [CommentDto](doc/CommentDto.md)
+ - [CommentPageDto](doc/CommentPageDto.md)
+ - [CommentSort](doc/CommentSort.md)
  - [ConnectionDto](doc/ConnectionDto.md)
  - [ConnectionPageDto](doc/ConnectionPageDto.md)
  - [ConnectionRequestDto](doc/ConnectionRequestDto.md)
  - [ConnectionRequestListDto](doc/ConnectionRequestListDto.md)
+ - [CreateCommentBody](doc/CreateCommentBody.md)
  - [CreateListingBody](doc/CreateListingBody.md)
+ - [CreatePostBody](doc/CreatePostBody.md)
  - [Day](doc/Day.md)
  - [DeleteAccountBody](doc/DeleteAccountBody.md)
  - [DevicePlatform](doc/DevicePlatform.md)
  - [ErrorBody](doc/ErrorBody.md)
  - [ErrorResponse](doc/ErrorResponse.md)
+ - [FeedFilter](doc/FeedFilter.md)
  - [ForgotPasswordBody](doc/ForgotPasswordBody.md)
  - [GameDto](doc/GameDto.md)
  - [GameRefDto](doc/GameRefDto.md)
  - [GamingIdDto](doc/GamingIdDto.md)
  - [GamingIdInput](doc/GamingIdInput.md)
  - [GamingIdKind](doc/GamingIdKind.md)
+ - [GgDto](doc/GgDto.md)
  - [GoogleBody](doc/GoogleBody.md)
  - [HealthResponse](doc/HealthResponse.md)
  - [IdVisibility](doc/IdVisibility.md)
@@ -201,9 +228,16 @@ Class | Method | HTTP request | Description
  - [PlayTag](doc/PlayTag.md)
  - [PlayWhen](doc/PlayWhen.md)
  - [PlayerStatus](doc/PlayerStatus.md)
+ - [PostAudience](doc/PostAudience.md)
+ - [PostDto](doc/PostDto.md)
+ - [PostKind](doc/PostKind.md)
+ - [PostPageDto](doc/PostPageDto.md)
+ - [PostType](doc/PostType.md)
  - [ProfileDto](doc/ProfileDto.md)
  - [ProfileStatsDto](doc/ProfileStatsDto.md)
  - [PublicListingDto](doc/PublicListingDto.md)
+ - [PublicPostAuthorDto](doc/PublicPostAuthorDto.md)
+ - [PublicPostDto](doc/PublicPostDto.md)
  - [RankDto](doc/RankDto.md)
  - [RankRefDto](doc/RankRefDto.md)
  - [RegisterDeviceBody](doc/RegisterDeviceBody.md)

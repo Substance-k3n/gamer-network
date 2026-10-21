@@ -24,7 +24,7 @@ void main() {
     await see(t, 'Who are you as a gamer?');
     await tapText(t, 'Log in');
     await login(t, 'hana@rally.test');
-    await see(t, 'YOUR STATUS');
+    await see(t, 'For you'); // the Home feed's filter pill
     await shot('01-home');
     await nav(t, 'PLAYERS');
     await see(t, 'PLAYERS LOOKING');
@@ -50,6 +50,7 @@ void main() {
     await shot('07-edit-profile');
     await tapText(t, '×');
     await nav(t, 'GROUPS');
+    await see(t, 'START A GROUP');
     await shot('08-groups');
     await nav(t, 'HOME');
     await tapOn(t, icon(Ic.bell));

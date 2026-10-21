@@ -20,6 +20,12 @@ class _$AdminReportDto extends AdminReportDto {
   @override
   final String? listingId;
   @override
+  final String? postId;
+  @override
+  final String? commentId;
+  @override
+  final String? excerpt;
+  @override
   final String? details;
   @override
   final DateTime createdAt;
@@ -38,6 +44,9 @@ class _$AdminReportDto extends AdminReportDto {
       required this.reporter,
       required this.target,
       this.listingId,
+      this.postId,
+      this.commentId,
+      this.excerpt,
       this.details,
       required this.createdAt,
       this.resolvedAt,
@@ -60,6 +69,9 @@ class _$AdminReportDto extends AdminReportDto {
         reporter == other.reporter &&
         target == other.target &&
         listingId == other.listingId &&
+        postId == other.postId &&
+        commentId == other.commentId &&
+        excerpt == other.excerpt &&
         details == other.details &&
         createdAt == other.createdAt &&
         resolvedAt == other.resolvedAt &&
@@ -75,6 +87,9 @@ class _$AdminReportDto extends AdminReportDto {
     _$hash = $jc(_$hash, reporter.hashCode);
     _$hash = $jc(_$hash, target.hashCode);
     _$hash = $jc(_$hash, listingId.hashCode);
+    _$hash = $jc(_$hash, postId.hashCode);
+    _$hash = $jc(_$hash, commentId.hashCode);
+    _$hash = $jc(_$hash, excerpt.hashCode);
     _$hash = $jc(_$hash, details.hashCode);
     _$hash = $jc(_$hash, createdAt.hashCode);
     _$hash = $jc(_$hash, resolvedAt.hashCode);
@@ -92,6 +107,9 @@ class _$AdminReportDto extends AdminReportDto {
           ..add('reporter', reporter)
           ..add('target', target)
           ..add('listingId', listingId)
+          ..add('postId', postId)
+          ..add('commentId', commentId)
+          ..add('excerpt', excerpt)
           ..add('details', details)
           ..add('createdAt', createdAt)
           ..add('resolvedAt', resolvedAt)
@@ -129,6 +147,18 @@ class AdminReportDtoBuilder
   String? get listingId => _$this._listingId;
   set listingId(String? listingId) => _$this._listingId = listingId;
 
+  String? _postId;
+  String? get postId => _$this._postId;
+  set postId(String? postId) => _$this._postId = postId;
+
+  String? _commentId;
+  String? get commentId => _$this._commentId;
+  set commentId(String? commentId) => _$this._commentId = commentId;
+
+  String? _excerpt;
+  String? get excerpt => _$this._excerpt;
+  set excerpt(String? excerpt) => _$this._excerpt = excerpt;
+
   String? _details;
   String? get details => _$this._details;
   set details(String? details) => _$this._details = details;
@@ -159,6 +189,9 @@ class AdminReportDtoBuilder
       _reporter = $v.reporter.toBuilder();
       _target = $v.target.toBuilder();
       _listingId = $v.listingId;
+      _postId = $v.postId;
+      _commentId = $v.commentId;
+      _excerpt = $v.excerpt;
       _details = $v.details;
       _createdAt = $v.createdAt;
       _resolvedAt = $v.resolvedAt;
@@ -195,6 +228,9 @@ class AdminReportDtoBuilder
             reporter: reporter.build(),
             target: target.build(),
             listingId: listingId,
+            postId: postId,
+            commentId: commentId,
+            excerpt: excerpt,
             details: details,
             createdAt: BuiltValueNullFieldError.checkNotNull(
                 createdAt, r'AdminReportDto', 'createdAt'),

@@ -9,6 +9,8 @@ part of 'resolve_action.dart';
 const ResolveAction _$dismiss = const ResolveAction._('dismiss');
 const ResolveAction _$warn = const ResolveAction._('warn');
 const ResolveAction _$removeListing = const ResolveAction._('removeListing');
+const ResolveAction _$removePost = const ResolveAction._('removePost');
+const ResolveAction _$removeComment = const ResolveAction._('removeComment');
 const ResolveAction _$ban = const ResolveAction._('ban');
 
 ResolveAction _$valueOf(String name) {
@@ -19,6 +21,10 @@ ResolveAction _$valueOf(String name) {
       return _$warn;
     case 'removeListing':
       return _$removeListing;
+    case 'removePost':
+      return _$removePost;
+    case 'removeComment':
+      return _$removeComment;
     case 'ban':
       return _$ban;
     default:
@@ -31,6 +37,8 @@ final BuiltSet<ResolveAction> _$values =
   _$dismiss,
   _$warn,
   _$removeListing,
+  _$removePost,
+  _$removeComment,
   _$ban,
 ]);
 
@@ -39,6 +47,8 @@ class _$ResolveActionMeta {
   ResolveAction get dismiss => _$dismiss;
   ResolveAction get warn => _$warn;
   ResolveAction get removeListing => _$removeListing;
+  ResolveAction get removePost => _$removePost;
+  ResolveAction get removeComment => _$removeComment;
   ResolveAction get ban => _$ban;
   ResolveAction valueOf(String name) => _$valueOf(name);
   BuiltSet<ResolveAction> get values => _$values;
@@ -57,12 +67,16 @@ class _$ResolveActionSerializer implements PrimitiveSerializer<ResolveAction> {
     'dismiss': 'dismiss',
     'warn': 'warn',
     'removeListing': 'remove_listing',
+    'removePost': 'remove_post',
+    'removeComment': 'remove_comment',
     'ban': 'ban',
   };
   static const Map<Object, String> _fromWire = const <Object, String>{
     'dismiss': 'dismiss',
     'warn': 'warn',
     'remove_listing': 'removeListing',
+    'remove_post': 'removePost',
+    'remove_comment': 'removeComment',
     'ban': 'ban',
   };
 

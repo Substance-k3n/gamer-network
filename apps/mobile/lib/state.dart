@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 
 import 'api.dart';
 import 'data.dart';
+import 'groups_data.dart';
 import 'theme.dart';
 
 enum Screen {
@@ -24,8 +25,11 @@ enum Screen {
   ranks,
   platforms,
   home,
+  compose,
   find,
   communities,
+  group,
+  createGroup,
   notifs,
   profile,
   editProfile,
@@ -76,6 +80,23 @@ class SessionDraft {
   String gameId = '';
   InviteWhen when = InviteWhen.tonight;
   String key = uuid4();
+}
+
+/// The post being written in the composer.
+class ComposeDraft {
+  ComposeDraft({this.gameId});
+  PostType type = PostType.discussion;
+
+  /// Null is "Any game".
+  String? gameId;
+
+  /// The player picked the game (Any game included); reopening keeps it.
+  bool gameSet = false;
+  String text = '';
+  PostAudience audience = PostAudience.everyone;
+  String key = uuid4();
+
+  bool get ready => text.trim().isNotEmpty;
 }
 
 /// Gamer-profile fields shared by onboarding and Edit profile: games with
@@ -319,6 +340,21 @@ class AppState extends ChangeNotifier {
   List<PlayInviteDto> sentInvites = [];
   bool homeLoaded = false;
 
+  // Home feed: [feedTab] is a FeedFilter name or a game id.
+  List<PostDto> posts = [];
+  String? postsCursor;
+  bool postsLoaded = false, filterOpen = false;
+  String feedTab = 'for_you';
+
+  /// Comments under each open post, newest replies loaded on demand.
+  Map<String, List<CommentDto>> comments = {}, replies = {};
+  Set<String> openC = {};
+  Map<String, String> cDraft = {};
+
+  /// The comment a draft answers, per post (Reply).
+  Map<String, CommentDto> replyTo = {};
+  ComposeDraft cp = ComposeDraft();
+
   // Find Players
   List<ListingDto> listings = [];
   String? feedCursor;
@@ -348,6 +384,10 @@ class AppState extends ChangeNotifier {
   String? connCursor;
   String ptab = 'Overview';
 
+  /// The viewed profile's posts (Posts and Moments tabs).
+  List<PostDto> profilePosts = [];
+  String? profilePostsCursor;
+
   // Search
   String q = '';
   List<UserCardDto> found = [];
@@ -355,8 +395,16 @@ class AppState extends ChangeNotifier {
   // Settings
   List<UserCardDto> blocked = [];
 
-  // Groups (coming soon): joined the waitlist, remembered by the API.
-  bool get notify => me?.waitlist.contains('groups') ?? false;
+  // Groups, on sample data until the API has them (groups_data.dart).
+  List<Group> groups = seedGroups();
+  String groupsTab = 'Discover', groupKind = 'All', groupQuery = '';
+  String? groupId;
+  Screen groupPrev = Screen.communities;
+  String groupTab = 'Feed';
+  String groupDraftPost = '';
+  Set<String> groupRequests = {}, groupGG = {};
+  GroupDraft? newGroup;
+  final _timers = <Timer>[];
 
   // Drafts
   ListingDraft draft = ListingDraft();
@@ -377,6 +425,9 @@ class AppState extends ChangeNotifier {
     _poll?.cancel();
     _searchDebounce?.cancel();
     _handleDebounce?.cancel();
+    for (final t in _timers) {
+      t.cancel();
+    }
     now.dispose();
     theme.dispose();
     super.dispose();
@@ -413,6 +464,34 @@ class AppState extends ChangeNotifier {
     final rank = g.rank?.name ?? g.rankText;
     return rank == null || rank.isEmpty ? game : '$rank · $game';
   }
+
+  /// (id, label) options in the feed filter menu.
+  List<(String, String)> get feedOptions => [
+    ('for_you', 'For you'),
+    ('connections', 'Connections'),
+    ('lfg', 'LFG & recruiting'),
+    for (final g in me?.games ?? BuiltList<UserGameDto>())
+      if (g.game != null) (g.game!.id, g.game!.name),
+  ];
+
+  Group? get group => groups.where((g) => g.id == groupId).firstOrNull;
+
+  /// Groups a sample member is in; "me" is the player. Real players other
+  /// than me aren't in sample groups.
+  List<Group> groupsOf(String who) =>
+      groups.where((g) => g.members.contains(who)).toList();
+
+  List<Group> get myGroups => groupsOf('me');
+
+  /// A sample group member as the screens show them; "me" is the player.
+  Member member(String who) => who == 'me'
+      ? Member(
+          myName,
+          me?.username ?? handle,
+          Tone.accent,
+          rankLine(me?.games.firstOrNull),
+        )
+      : members[who]!;
 
   // ---- calls ----
 
@@ -506,8 +585,11 @@ class AppState extends ChangeNotifier {
     _poll?.cancel();
     update(() {
       me = null;
-      homeLoaded = feedLoaded = false;
+      homeLoaded = feedLoaded = postsLoaded = false;
       listings = [];
+      posts = [];
+      comments = {};
+      openC = {};
       requests = [];
       notifications = [];
       invites = [];
@@ -562,11 +644,13 @@ class AppState extends ChangeNotifier {
     update(() {
       screen = s;
       sheet = null;
+      filterOpen = false;
       extra?.call();
     });
     switch (s) {
       case Screen.home:
         refreshHome();
+        if (!postsLoaded) loadPosts();
       case Screen.find:
         loadFeed();
       case Screen.notifs:
@@ -593,6 +677,8 @@ class AppState extends ChangeNotifier {
       viewing = username;
       viewed = null;
       ptab = 'Overview';
+      profilePosts = [];
+      profilePostsCursor = null;
       sheet = null;
     });
     final p = await call(
@@ -601,6 +687,7 @@ class AppState extends ChangeNotifier {
     if (viewing != username) return;
     if (p == null) return back();
     update(() => viewed = Profile.of(p));
+    loadProfilePosts();
   }
 
   void back() => go(prev != Screen.profile ? prev : Screen.home, () {
@@ -763,7 +850,10 @@ class AppState extends ChangeNotifier {
       me = null;
       viewing = null;
       viewed = null;
-      homeLoaded = feedLoaded = false;
+      homeLoaded = feedLoaded = postsLoaded = false;
+      posts = [];
+      comments = {};
+      openC = {};
       screen = Screen.landing;
       introIdx = 2;
     });
@@ -1234,6 +1324,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> loadMyProfile() async {
     await Future.wait([
+      loadProfilePosts(),
       call(
         () async => (await api.me.meGet()).data!,
         quiet: true,
@@ -1312,6 +1403,8 @@ class AppState extends ChangeNotifier {
     String userId,
     ReportReason reason, {
     String? listingId,
+    String? postId,
+    String? commentId,
     String? details,
   }) async {
     final ok = await _busy(
@@ -1321,6 +1414,8 @@ class AppState extends ChangeNotifier {
           (b) => b
             ..userId = userId
             ..listingId = listingId
+            ..postId = postId
+            ..commentId = commentId
             ..reason = reason
             ..details = (details?.trim().isEmpty ?? true)
                 ? null
@@ -1401,12 +1496,16 @@ class AppState extends ChangeNotifier {
 
   /// Follows a notification's `route` (docs/API.md "Push").
   void openRoute(String route) {
-    final parts = route.split('/').where((p) => p.isNotEmpty).toList();
+    // Routes can carry a query ("/posts/<id>?comments=1").
+    final uri = Uri.parse(route);
+    final parts = uri.pathSegments.where((p) => p.isNotEmpty).toList();
     switch (parts) {
       case ['players', final username]:
         openPlayer(username);
       case ['listings', final id]:
         openListing(id);
+      case ['posts', final id]:
+        openPost(id, comments: uri.queryParameters['comments'] == '1');
       case ['check-ins', _]:
         go(Screen.home);
       default:
@@ -1453,19 +1552,448 @@ class AppState extends ChangeNotifier {
     });
   }
 
-  // ---- groups (coming soon) ----
+  // ---- home feed ----
 
-  Future<void> joinWaitlist() async {
-    final ok = await _busy(
-      () async => api.safety.safetyJoinWaitlist(
-        waitlistBody: WaitlistBody((b) => b..topic = 'groups'),
-      ),
+  Future<void> loadPosts({bool more = false}) async {
+    if (me?.onboardedAt == null) return;
+    final tab = feedTab;
+    final filter = switch (tab) {
+      'for_you' => FeedFilter.forYou,
+      'connections' => FeedFilter.connections,
+      'lfg' => FeedFilter.lfg,
+      _ => FeedFilter.game,
+    };
+    final p = await call(
+      () async => (await api.feed.feedGet(
+        filter: filter,
+        game: filter == FeedFilter.game ? tab : null,
+        cursor: more ? postsCursor : null,
+      )).data!,
+      quiet: more,
     );
-    if (ok == null) return;
-    update(() => me = me?.rebuild((b) => b.waitlist.add('groups')));
-    toast('We’ll let you know when Groups open');
+    if (p == null || tab != feedTab) return;
+    update(() {
+      posts = more ? [...posts, ...p.items] : p.items.toList();
+      postsCursor = p.nextCursor;
+      postsLoaded = true;
+    });
   }
 
+  void setFeedTab(String id) {
+    update(() {
+      feedTab = id;
+      filterOpen = false;
+      posts = [];
+      postsCursor = null;
+    });
+    loadPosts();
+  }
+
+  /// Replaces a post wherever it shows (feed and profile).
+  void _putPost(PostDto p) => update(() {
+    posts = [for (final x in posts) x.id == p.id ? p : x];
+    profilePosts = [for (final x in profilePosts) x.id == p.id ? p : x];
+  });
+
+  PostDto? _post(String id) =>
+      posts.where((p) => p.id == id).firstOrNull ??
+      profilePosts.where((p) => p.id == id).firstOrNull;
+
+  Future<void> toggleGG(PostDto p) async {
+    final on = !p.myGG;
+    // Show it at once; the API's count replaces the guess.
+    _putPost(
+      p.rebuild(
+        (b) => b
+          ..myGG = on
+          ..ggCount = p.ggCount + (on ? 1 : -1),
+      ),
+    );
+    final r = await call(
+      () async =>
+          (on
+                  ? await api.feed.postsGg(id: p.id)
+                  : await api.feed.postsUnGg(id: p.id))
+              .data!,
+    );
+    final now = _post(p.id);
+    if (now == null) return;
+    _putPost(
+      r == null
+          ? now.rebuild(
+              (b) => b
+                ..myGG = p.myGG
+                ..ggCount = p.ggCount,
+            )
+          : now.rebuild(
+              (b) => b
+                ..myGG = r.myGG
+                ..ggCount = r.ggCount,
+            ),
+    );
+  }
+
+  Future<void> toggleSave(PostDto p) async {
+    final on = !p.saved;
+    _putPost(p.rebuild((b) => b..saved = on));
+    final ok = await call(
+      () async =>
+          on ? api.feed.postsSave(id: p.id) : api.feed.postsUnsave(id: p.id),
+    );
+    final now = _post(p.id);
+    if (ok == null) {
+      if (now != null) _putPost(now.rebuild((b) => b..saved = p.saved));
+      return;
+    }
+    if (on) toast('Saved to your bookmarks');
+  }
+
+  Future<void> sharePost(PostDto p) async {
+    await Clipboard.setData(ClipboardData(text: p.shareUrl));
+    toast('Link copied — paste it in Telegram or WhatsApp');
+  }
+
+  Future<void> deletePost(PostDto p) async {
+    final ok = await _busy(() async => api.feed.postsDelete(id: p.id));
+    if (ok == null) return;
+    update(() {
+      posts = posts.where((x) => x.id != p.id).toList();
+      profilePosts = profilePosts.where((x) => x.id != p.id).toList();
+    });
+    toast('Post deleted');
+  }
+
+  /// "Play" on a post: Find Players for its game, else the poster.
+  void playFrom(PostDto p) {
+    final g = p.game;
+    if (g != null && catalog.byId(g.id).isLaunch) {
+      go(Screen.find);
+      return setGameFilter(g.id);
+    }
+    openPlayer(p.author.username);
+  }
+
+  /// A post from a link or an alert: put it on top of Home, comments open.
+  Future<void> openPost(String id, {bool comments = false}) async {
+    final p = await call(() async => (await api.feed.postsGet(id: id)).data!);
+    if (p == null) return go(Screen.home);
+    go(Screen.home, () {
+      posts = [p, ...posts.where((x) => x.id != p.id)];
+    });
+    if (comments && !openC.contains(id)) toggleComments(id);
+  }
+
+  void toggleComments(String postId) {
+    final open = !openC.contains(postId);
+    update(() => open ? openC.add(postId) : openC.remove(postId));
+    if (open) loadComments(postId);
+  }
+
+  Future<void> loadComments(String postId) async {
+    final p = _post(postId);
+    final r = await call(
+      () async => (await api.feed.commentsList(
+        id: postId,
+        sort: p?.kind == PostKind.discussion ? CommentSort.top : null,
+        limit: 50,
+      )).data!,
+      quiet: true,
+    );
+    if (r != null) update(() => comments[postId] = r.items.toList());
+  }
+
+  Future<void> loadReplies(CommentDto c) async {
+    final r = await call(
+      () async => (await api.feed.commentsReplies(id: c.id, limit: 50)).data!,
+    );
+    if (r != null) update(() => replies[c.id] = r.items.toList());
+  }
+
+  void replyToComment(String postId, CommentDto c) => update(() {
+    replyTo[postId] = c;
+    cDraft[postId] = '@${c.author.username} ';
+  });
+
+  Future<void> sendComment(String postId) async {
+    final text = (cDraft[postId] ?? '').trim();
+    if (text.isEmpty) return;
+    final parent = replyTo[postId];
+    final c = await _busy(
+      () async => (await api.feed.commentsCreate(
+        id: postId,
+        idempotencyKey: uuid4(),
+        createCommentBody: CreateCommentBody(
+          (b) => b
+            ..text = text
+            ..parentId = parent?.parentId ?? parent?.id,
+        ),
+      )).data!,
+    );
+    if (c == null) return;
+    final top = c.parentId;
+    update(() {
+      cDraft[postId] = '';
+      replyTo.remove(postId);
+      if (top == null) {
+        comments[postId] = [...?comments[postId], c];
+      } else {
+        replies[top] = [...?replies[top], c];
+        comments[postId] = [
+          for (final x in comments[postId] ?? const <CommentDto>[])
+            x.id == top ? x.rebuild((b) => b..replies = x.replies + 1) : x,
+        ];
+      }
+    });
+    final p = _post(postId);
+    if (p != null) {
+      _putPost(p.rebuild((b) => b..commentCount = p.commentCount + 1));
+    }
+  }
+
+  void _putComment(CommentDto c) => update(() {
+    for (final m in [comments, replies]) {
+      for (final k in m.keys) {
+        m[k] = [for (final x in m[k]!) x.id == c.id ? c : x];
+      }
+    }
+  });
+
+  Future<void> toggleCommentGG(CommentDto c) async {
+    final on = !c.myGG;
+    _putComment(
+      c.rebuild(
+        (b) => b
+          ..myGG = on
+          ..ggCount = c.ggCount + (on ? 1 : -1),
+      ),
+    );
+    final r = await call(
+      () async =>
+          (on
+                  ? await api.feed.commentsGg(id: c.id)
+                  : await api.feed.commentsUnGg(id: c.id))
+              .data!,
+    );
+    _putComment(
+      r == null
+          ? c
+          : c.rebuild(
+              (b) => b
+                ..myGG = r.myGG
+                ..ggCount = r.ggCount,
+            ),
+    );
+  }
+
+  Future<void> deleteComment(CommentDto c) async {
+    final ok = await _busy(() async => api.feed.commentsDelete(id: c.id));
+    if (ok == null) return;
+    update(() {
+      for (final m in [comments, replies]) {
+        for (final k in m.keys) {
+          m[k] = m[k]!.where((x) => x.id != c.id).toList();
+        }
+      }
+    });
+    toast('Comment deleted');
+    loadComments(c.postId);
+    final p = _post(c.postId);
+    if (p != null) {
+      final n = p.commentCount - 1 - (c.parentId == null ? c.replies : 0);
+      _putPost(p.rebuild((b) => b..commentCount = n < 0 ? 0 : n));
+    }
+  }
+
+  /// The profile's posts: mine (connections-only too) or theirs.
+  Future<void> loadProfilePosts({bool more = false}) async {
+    final who = viewing;
+    final p = await call(
+      () async =>
+          (who == null
+                  ? await api.feed.myPostsList(
+                      cursor: more ? profilePostsCursor : null,
+                    )
+                  : await api.feed.userPostsList(
+                      username: who,
+                      cursor: more ? profilePostsCursor : null,
+                    ))
+              .data!,
+      quiet: true,
+    );
+    if (p == null || viewing != who) return;
+    update(() {
+      profilePosts = more ? [...profilePosts, ...p.items] : p.items.toList();
+      profilePostsCursor = p.nextCursor;
+    });
+  }
+
+  // ---- compose ----
+
+  void openCompose() => update(() {
+    screen = Screen.compose;
+    sheet = null;
+    filterOpen = false;
+    if (!cp.gameSet) cp.gameId = me?.games.firstOrNull?.game?.id;
+  });
+
+  Future<void> submitPost() async {
+    final c = cp;
+    if (!c.ready) return toast('Write something first');
+    final p = await _busy(
+      () async => (await api.feed.postsCreate(
+        idempotencyKey: c.key,
+        createPostBody: CreatePostBody(
+          (b) => b
+            ..type = c.type
+            ..text = c.text.trim()
+            ..gameId = c.gameId
+            ..audience = c.audience,
+        ),
+      )).data!,
+    );
+    if (p == null) return;
+    final label = postTypeInfo(c.type).label;
+    update(() {
+      posts = [p, ...posts];
+      cp = ComposeDraft(gameId: me?.games.firstOrNull?.game?.id);
+    });
+    go(Screen.home);
+    toast('$label posted');
+  }
+
+  // ---- groups (sample data) ----
+
+  void openGroup(String id) => update(() {
+    if (screen != Screen.group) groupPrev = screen;
+    screen = Screen.group;
+    groupId = id;
+    groupTab = 'Feed';
+    groupDraftPost = '';
+    sheet = null;
+  });
+
+  void closeGroup() =>
+      go(groupPrev == Screen.group ? Screen.communities : groupPrev);
+
+  /// Joins right away, or asks when the group needs approval (approved
+  /// after a moment, standing in for an admin).
+  void joinGroup(Group g) {
+    if (g.members.contains('me') || groupRequests.contains(g.id)) return;
+    if (!g.approval) {
+      update(() => g.members.add('me'));
+      return toast('You joined ${g.name}');
+    }
+    update(() => groupRequests.add(g.id));
+    toast('Request sent to ${g.name} admins');
+    _timers.add(
+      Timer(const Duration(milliseconds: 3500), () {
+        if (!groupRequests.remove(g.id)) return;
+        update(() => g.members.add('me'));
+        toast('You’re in — ${g.name} approved your request');
+      }),
+    );
+  }
+
+  void leaveGroup(Group g) {
+    if (g.admins.contains('me') && g.admins.length == 1) {
+      return toast('Make someone else admin before leaving');
+    }
+    update(() {
+      g.members.remove('me');
+      g.admins.remove('me');
+    });
+    toast('You left ${g.name}');
+  }
+
+  void postInGroup(Group g) {
+    final text = groupDraftPost.trim();
+    if (text.isEmpty) return;
+    update(() {
+      g.posts.insert(0, GroupPost('me', text, 'now'));
+      groupDraftPost = '';
+    });
+  }
+
+  void toggleGroupGG(String key) => update(
+    () => groupGG.contains(key) ? groupGG.remove(key) : groupGG.add(key),
+  );
+
+  void toggleGoing(GroupEvent e) => update(
+    () => e.going.contains('me') ? e.going.remove('me') : e.going.add('me'),
+  );
+
+  void addGroupEvent(Group g, String title, String when, String? gameId) {
+    update(
+      () => g.events.insert(
+        0,
+        GroupEvent(
+          id: 'e${DateTime.now().millisecondsSinceEpoch}',
+          title: title,
+          when: when,
+          gameId: gameId,
+          going: {'me'},
+        ),
+      ),
+    );
+    toast('Event added — members will see it');
+  }
+
+  void openCreateGroup() => go(Screen.createGroup, () {
+    newGroup = GroupDraft()
+      ..gameId = me?.games.firstOrNull?.game?.id
+      ..place = me?.city ?? 'Addis Ababa';
+  });
+
+  void createGroup() {
+    final d = newGroup;
+    if (d == null) return;
+    final name = d.name.trim();
+    if (name.length < 3) {
+      return toast('Give your group a name (3+ characters)');
+    }
+    if (d.kind == GroupKind.game && d.gameId == null) {
+      return toast('Pick the game this group is for');
+    }
+    if (d.place.trim().isEmpty) return toast('Add a city, campus or country');
+    final g = Group(
+      id: 'g-${DateTime.now().millisecondsSinceEpoch}',
+      name: name,
+      short: groupShort(d),
+      kind: d.kind,
+      gameId: d.kind == GroupKind.game ? d.gameId : null,
+      place: d.place.trim(),
+      about: d.about.trim().isEmpty ? 'A new group on rally.' : d.about.trim(),
+      tone: d.tone,
+      members: {'me'},
+      admins: {'me'},
+      approval: d.approval,
+      since: 'Today',
+    );
+    update(() {
+      groups = [g, ...groups];
+      newGroup = null;
+      groupsTab = 'Yours';
+      groupPrev = Screen.communities;
+      groupId = g.id;
+      groupTab = 'About';
+      screen = Screen.group;
+    });
+    toast('${g.name} is live — invite your squad');
+  }
+
+  /// A group's badge text: the game's short code, or the name's initials.
+  String groupShort(GroupDraft d) {
+    final name = d.name.trim();
+    if (d.kind == GroupKind.game && d.gameId != null) {
+      return catalog.byId(d.gameId!).short;
+    }
+    if (name.isEmpty) return '?';
+    final words = name.split(RegExp(r'\s+')).where((w) => w.isNotEmpty);
+    return (words.length > 1
+            ? words.take(3).map((w) => w[0]).join()
+            : name.substring(0, name.length < 3 ? name.length : 3))
+        .toUpperCase();
+  }
   // ---- edit profile ----
 
   void openEditProfile() {
@@ -1625,6 +2153,12 @@ class AppState extends ChangeNotifier {
         }
       case Screen.blocked:
         goProfileTab();
+      case Screen.compose:
+        go(Screen.home);
+      case Screen.group:
+        closeGroup();
+      case Screen.createGroup:
+        go(Screen.communities, () => newGroup = null);
       case Screen.listing:
         go(prev == Screen.listing ? Screen.home : prev);
       case Screen.search:

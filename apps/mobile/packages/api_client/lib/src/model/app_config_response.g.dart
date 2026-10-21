@@ -15,6 +15,10 @@ class _$AppConfigResponse extends AppConfigResponse {
   final String launchCity;
   @override
   final bool groupsComingSoon;
+  @override
+  final bool feedEnabled;
+  @override
+  final bool groupsEnabled;
 
   factory _$AppConfigResponse(
           [void Function(AppConfigResponseBuilder)? updates]) =>
@@ -24,7 +28,9 @@ class _$AppConfigResponse extends AppConfigResponse {
       {required this.minSupportedVersion,
       required this.latestVersion,
       required this.launchCity,
-      required this.groupsComingSoon})
+      required this.groupsComingSoon,
+      required this.feedEnabled,
+      required this.groupsEnabled})
       : super._();
   @override
   AppConfigResponse rebuild(void Function(AppConfigResponseBuilder) updates) =>
@@ -41,7 +47,9 @@ class _$AppConfigResponse extends AppConfigResponse {
         minSupportedVersion == other.minSupportedVersion &&
         latestVersion == other.latestVersion &&
         launchCity == other.launchCity &&
-        groupsComingSoon == other.groupsComingSoon;
+        groupsComingSoon == other.groupsComingSoon &&
+        feedEnabled == other.feedEnabled &&
+        groupsEnabled == other.groupsEnabled;
   }
 
   @override
@@ -51,6 +59,8 @@ class _$AppConfigResponse extends AppConfigResponse {
     _$hash = $jc(_$hash, latestVersion.hashCode);
     _$hash = $jc(_$hash, launchCity.hashCode);
     _$hash = $jc(_$hash, groupsComingSoon.hashCode);
+    _$hash = $jc(_$hash, feedEnabled.hashCode);
+    _$hash = $jc(_$hash, groupsEnabled.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -61,7 +71,9 @@ class _$AppConfigResponse extends AppConfigResponse {
           ..add('minSupportedVersion', minSupportedVersion)
           ..add('latestVersion', latestVersion)
           ..add('launchCity', launchCity)
-          ..add('groupsComingSoon', groupsComingSoon))
+          ..add('groupsComingSoon', groupsComingSoon)
+          ..add('feedEnabled', feedEnabled)
+          ..add('groupsEnabled', groupsEnabled))
         .toString();
   }
 }
@@ -89,6 +101,15 @@ class AppConfigResponseBuilder
   set groupsComingSoon(bool? groupsComingSoon) =>
       _$this._groupsComingSoon = groupsComingSoon;
 
+  bool? _feedEnabled;
+  bool? get feedEnabled => _$this._feedEnabled;
+  set feedEnabled(bool? feedEnabled) => _$this._feedEnabled = feedEnabled;
+
+  bool? _groupsEnabled;
+  bool? get groupsEnabled => _$this._groupsEnabled;
+  set groupsEnabled(bool? groupsEnabled) =>
+      _$this._groupsEnabled = groupsEnabled;
+
   AppConfigResponseBuilder() {
     AppConfigResponse._defaults(this);
   }
@@ -100,6 +121,8 @@ class AppConfigResponseBuilder
       _latestVersion = $v.latestVersion;
       _launchCity = $v.launchCity;
       _groupsComingSoon = $v.groupsComingSoon;
+      _feedEnabled = $v.feedEnabled;
+      _groupsEnabled = $v.groupsEnabled;
       _$v = null;
     }
     return this;
@@ -129,6 +152,10 @@ class AppConfigResponseBuilder
               launchCity, r'AppConfigResponse', 'launchCity'),
           groupsComingSoon: BuiltValueNullFieldError.checkNotNull(
               groupsComingSoon, r'AppConfigResponse', 'groupsComingSoon'),
+          feedEnabled: BuiltValueNullFieldError.checkNotNull(
+              feedEnabled, r'AppConfigResponse', 'feedEnabled'),
+          groupsEnabled: BuiltValueNullFieldError.checkNotNull(
+              groupsEnabled, r'AppConfigResponse', 'groupsEnabled'),
         );
     replace(_$result);
     return _$result;

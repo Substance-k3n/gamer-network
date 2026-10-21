@@ -109,6 +109,9 @@ Finder icon(Ic i) => find.byWidgetPredicate((w) => w is SvgIcon && w.icon == i);
 
 Future<void> nav(WidgetTester t, String tab) => tapText(t, tab);
 
+/// Home is up: its feed filter pill shows.
+Future<void> seeHome(WidgetTester t) => see(t, 'For you');
+
 Future<void> logout(WidgetTester t) async {
   await nav(t, 'YOU');
   await tapText(t, 'Log out');
@@ -184,9 +187,30 @@ void main() {
       ); // Discord
       await tapText(t, 'Go live');
       await see(t, 'Profile live — welcome, $name');
-      await see(t, 'YOUR STATUS');
+      await seeHome(t);
 
-      // ---- post a listing ----
+      // ---- write a post from Home ----
+      await tapOn(t, icon(Ic.plus));
+      await see(t, 'New post');
+      await tapText(t, 'Question');
+      await fill(
+        t,
+        'What do you want to know?',
+        'Best CODM loadout this season?',
+      );
+      await hideKeyboard(t);
+      await tapText(t, 'Post');
+      await see(t, 'Question posted');
+      await see(t, 'Best CODM loadout this season?');
+
+      // ---- my status lives on my profile now ----
+      await nav(t, 'YOU');
+      await see(t, 'YOUR STATUS');
+      await tapText(t, 'Posts');
+      await see(t, 'Best CODM loadout this season?');
+
+      // ---- post a listing (Find Players) ----
+      await nav(t, 'PLAYERS');
       await tapText(t, 'Post a listing');
       await see(t, 'Looking for players');
       await tapText(t, 'Squad');
@@ -253,11 +277,11 @@ void main() {
       await tapText(t, 'Send report');
       await see(t, 'Thanks. Our team will look at it.');
 
-      // ---- groups waitlist ----
+      // ---- groups (sample data on the phone) ----
       await nav(t, 'GROUPS');
-      await tapText(t, 'Notify me');
-      await see(t, 'You’re on the list ✓');
-      expect((await app.api.me.meGet()).data!.waitlist, contains('groups'));
+      await see(t, 'START A GROUP');
+      await tapText(t, 'Join'); // the first open group I'm not in
+      await see(t, 'You joined');
 
       // ---- edit profile ----
       await nav(t, 'YOU');
@@ -274,7 +298,7 @@ void main() {
       // ---- Dave accepts and invites them to play ----
       await logout(t);
       await login(t, 'dave.exe'); // a username works as well as an email
-      await see(t, 'YOUR STATUS');
+      await seeHome(t);
       await tapOn(t, icon(Ic.bell));
       await see(t, 'CONNECTION REQUESTS');
       await see(t, name);
@@ -296,11 +320,6 @@ void main() {
       // ---- the invite on Home, then the check-in ----
       await logout(t);
       await login(t, email);
-      await see(t, 'PLAY INVITE');
-      // Groups still remembers the waitlist after signing back in.
-      await nav(t, 'GROUPS');
-      await see(t, 'You’re on the list ✓');
-      await nav(t, 'HOME');
       await see(t, 'PLAY INVITE');
       await tapText(t, 'I’m in');
       await see(t, 'You’re on');
@@ -351,7 +370,7 @@ void main() {
         await fill(t, 'New password, 8+ characters', 'password456');
         await tapText(t, 'Set password and log in');
         await see(t, 'Password changed');
-        await see(t, 'YOUR STATUS');
+        await seeHome(t);
         password = 'password456';
       }
 

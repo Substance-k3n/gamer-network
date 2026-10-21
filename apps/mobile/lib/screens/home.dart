@@ -6,6 +6,7 @@ import '../state.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'onboarding.dart' show Wordmark;
+import 'safety.dart';
 
 const _barH = 58.0;
 
@@ -22,46 +23,271 @@ String clock(DateTime t) {
   return '${pad2(l.hour)}:${pad2(l.minute)}';
 }
 
-/// Home in the MVP (docs/API.md screen map): no feed. What needs you now
-/// (invites, "did you play?"), your status, your listing, who's looking.
-class HomeScreen extends StatelessWidget {
+/// Timeline-style Home feed. What needs you now (invites, "did you play?",
+/// your listing) is pinned above the posts. The top bar slides away while
+/// scrolling down and returns on scroll up; past a few posts a pill offers
+/// a jump back to the top.
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final _scroll = ScrollController();
+  double _lastY = 0;
+  bool _hideBar = false, _showPill = false, _loadingMore = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    final y = _scroll.offset;
+    final d = y - _lastY;
+    _lastY = y;
+    final hide = y < 60
+        ? false
+        : d > 4
+        ? true
+        : d < -4
+        ? false
+        : _hideBar;
+    final pill = y > 520;
+    if (hide != _hideBar || pill != _showPill) {
+      setState(() {
+        _hideBar = hide;
+        _showPill = pill;
+      });
+    }
+    final s = context.app;
+    if (!_loadingMore &&
+        s.postsCursor != null &&
+        _scroll.position.extentAfter < 600) {
+      _loadingMore = true;
+      s.loadPosts(more: true).whenComplete(() => _loadingMore = false);
+    }
+  }
+
+  void _toTop() {
+    _scroll.animateTo(
+      0,
+      duration: const Duration(milliseconds: 450),
+      curve: Curves.easeOutCubic,
+    );
+    setState(() {
+      _hideBar = false;
+      _showPill = false;
+    });
+  }
+
+  void _pickFeed(AppState s, String id) {
+    s.setFeedTab(id);
+    if (_scroll.hasClients) _scroll.jumpTo(0);
+    setState(() => _hideBar = false);
+  }
 
   @override
   Widget build(BuildContext context) {
     final s = context.app;
+    final t = context.rt;
     final me = s.me;
-    return Column(
-      children: [
-        const _TopBar(),
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: s.refreshHome,
+    final mq = MediaQuery.of(context);
+    final bottom = mq.padding.bottom;
+    final keyboard = mq.viewInsets.bottom > 0;
+    final options = s.feedOptions;
+    final current = options.firstWhere(
+      (o) => o.$1 == s.feedTab,
+      orElse: () => options.first,
+    );
+    final pinned = [
+      if (me != null && !me.emailVerified) const _VerifyNudge(),
+      for (final i in s.invites) _InviteCard(i, key: ValueKey(i.id)),
+      for (final i in s.sentInvites) _SentInvite(i, key: ValueKey(i.id)),
+      for (final c in s.checkIns) _CheckInCard(c, key: ValueKey(c.id)),
+      if (s.myListing != null) _MyListing(s.myListing!),
+    ];
+
+    return ClipRect(
+      child: Stack(
+        children: [
+          RefreshIndicator(
+            edgeOffset: _barH,
+            onRefresh: () => Future.wait([s.refreshHome(), s.loadPosts()]),
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 120),
+              controller: _scroll,
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.only(top: _barH, bottom: 120),
               children: [
-                Gap(
-                  14,
-                  children: [
-                    if (me != null && !me.emailVerified) const _VerifyNudge(),
-                    for (final i in s.invites)
-                      _InviteCard(i, key: ValueKey(i.id)),
-                    for (final i in s.sentInvites)
-                      _SentInvite(i, key: ValueKey(i.id)),
-                    for (final c in s.checkIns)
-                      _CheckInCard(c, key: ValueKey(c.id)),
-                    if (me != null) const _StatusCard(),
-                    s.myListing != null
-                        ? _MyListing(s.myListing!)
-                        : const _PostPrompt(),
-                    const _LookingNow(),
-                  ],
-                ),
+                if (pinned.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                    decoration: BoxDecoration(
+                      border: Border(bottom: t.dividerSide),
+                    ),
+                    child: Gap(14, children: pinned),
+                  ),
+                for (final p in s.posts) FeedPost(p, key: ValueKey(p.id)),
+                if (!s.postsLoaded)
+                  const Padding(
+                    padding: EdgeInsets.all(40),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (s.posts.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 28,
+                      vertical: 40,
+                    ),
+                    child: Text(
+                      s.feedTab == 'connections'
+                          ? 'Nothing here yet. Connect with players from Find Players and their posts show up here.'
+                          : 'No posts yet. Tap + and start the conversation.',
+                      textAlign: TextAlign.center,
+                      style: t.body(15, c: t.muted, h: 1.45),
+                    ),
+                  ),
               ],
             ),
           ),
-        ),
-      ],
+          AnimatedSlide(
+            offset: Offset(0, _hideBar ? -1 : 0),
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.ease,
+            child: const Frost(radius: BorderRadius.zero, child: _TopBar()),
+          ),
+          Positioned(
+            top: 10,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 220),
+                transitionBuilder: (c, a) => FadeTransition(
+                  opacity: a,
+                  child: ScaleTransition(scale: a, child: c),
+                ),
+                child: _showPill
+                    ? _NewPostsPill(onTap: _toTop, key: const ValueKey('pill'))
+                    : const SizedBox.shrink(),
+              ),
+            ),
+          ),
+          if (s.filterOpen) ...[
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () => s.update(() => s.filterOpen = false),
+              ),
+            ),
+            Positioned(
+              left: 18,
+              bottom: 162 + bottom,
+              width: 220,
+              child: Frost(
+                radius: BorderRadius.circular(22),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: t.popover,
+                    border: t.border(),
+                    borderRadius: BorderRadius.circular(22),
+                    boxShadow: t.shadow(),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(10, 6, 10, 4),
+                        child: Label('SHOW IN FEED'),
+                      ),
+                      for (final (id, label) in options)
+                        Tap(
+                          onTap: () => _pickFeed(s, id),
+                          child: Container(
+                            height: 40,
+                            margin: const EdgeInsets.only(top: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: s.feedTab == id
+                                  ? t.accent
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    label,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: t.body(
+                                      14,
+                                      w: w600,
+                                      c: s.feedTab == id ? t.onAccent : t.text,
+                                    ),
+                                  ),
+                                ),
+                                if (s.feedTab == id)
+                                  Text(
+                                    '✓',
+                                    style: t.body(14, w: w800, c: t.onAccent),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+          if (!keyboard) ...[
+            Positioned(
+              left: 18,
+              bottom: 102 + bottom,
+              child: Frost(
+                radius: BorderRadius.circular(99),
+                child: Pill(
+                  current.$2,
+                  onTap: () => s.update(() => s.filterOpen = !s.filterOpen),
+                  height: 50,
+                  padH: 16,
+                  size: 14,
+                  weight: w700,
+                  bg: t.popover,
+                  shadow: 4,
+                  leading: const SvgIcon(Ic.filter, size: 18),
+                ),
+              ),
+            ),
+            Positioned(
+              right: 18,
+              bottom: 98 + bottom,
+              child: Semantics(
+                button: true,
+                label: 'New post',
+                child: CircleBtn(
+                  size: 58,
+                  bg: t.accent,
+                  shadow: 4,
+                  onTap: s.openCompose,
+                  child: SvgIcon(Ic.plus, size: 26, color: t.onAccent),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -137,6 +363,684 @@ class _TopBar extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _NewPostsPill extends StatelessWidget {
+  const _NewPostsPill({super.key, required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.app;
+    final t = context.rt;
+    final seen = <String>{};
+    final faces = [
+      for (final p in s.posts)
+        if (!p.mine && seen.add(p.author.id)) p.author,
+    ].take(3).toList();
+    return Tap(
+      onTap: onTap,
+      child: Container(
+        height: 42,
+        padding: const EdgeInsets.fromLTRB(14, 0, 8, 0),
+        decoration: BoxDecoration(
+          color: t.accent,
+          border: t.border(),
+          borderRadius: BorderRadius.circular(99),
+          boxShadow: t.shadow(3),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SvgIcon(Ic.up, size: 16, color: t.onAccent),
+            const SizedBox(width: 8),
+            // Faces overlap by 6px.
+            SizedBox(
+              width: faces.isEmpty ? 0 : 26 + 20.0 * (faces.length - 1),
+              height: 26,
+              child: Stack(
+                children: [
+                  for (var i = 0; i < faces.length; i++)
+                    Positioned(
+                      left: 20.0 * i,
+                      child: Avatar(
+                        initialOf(faces[i].displayName),
+                        toneFor(faces[i].id),
+                        url: faces[i].avatarUrl,
+                        size: 26,
+                        fontSize: 11,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One timeline entry: avatar gutter, header, body, actions, comments.
+class FeedPost extends StatelessWidget {
+  const FeedPost(this.p, {super.key});
+  final PostDto p;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.app;
+    final t = context.rt;
+    final a = p.author;
+    final info = postTypeInfo(p.type);
+    final big =
+        p.kind == PostKind.discussion ||
+        p.kind == PostKind.poll ||
+        p.type == PostType.question;
+    final cOpen = s.openC.contains(p.id);
+    final top = p.topComment;
+
+    Widget action(
+      Widget Function(Color) icon,
+      String label,
+      VoidCallback onTap, {
+      bool on = false,
+      required String semantics,
+    }) {
+      final c = on ? t.acc : t.muted;
+      return Semantics(
+        button: true,
+        label: semantics,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: SizedBox(
+            height: 34,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  icon(c),
+                  if (label.isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      label,
+                      style: t.body(13, w: w500, c: c),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    Widget Function(Color) svg(Ic i) =>
+        (c) => SvgIcon(i, size: 18, color: c);
+    Widget ggBox(Color c) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+      decoration: BoxDecoration(
+        border: Border.all(color: c, width: 1.8),
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Text(
+        'GG',
+        style: t.body(10, w: w700, h: 1.2, c: c),
+      ),
+    );
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 2),
+      decoration: BoxDecoration(border: Border(bottom: t.dividerSide)),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Avatar(
+            initialOf(a.displayName),
+            toneFor(a.id),
+            url: a.avatarUrl,
+            size: 42,
+            fontSize: 16,
+            onTap: () => s.openPlayer(a.username),
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Gap(
+              8,
+              children: [
+                Gap(
+                  2,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: GestureDetector(
+                            onTap: () => s.openPlayer(a.username),
+                            child: Text(
+                              a.displayName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: t.body(15, w: w700),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Expanded(
+                          child: ValueListenableBuilder(
+                            valueListenable: s.now,
+                            builder: (context, now, _) => Text(
+                              '@${a.username} · ${ago(p.createdAt, now)}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: t.body(14, c: t.muted),
+                            ),
+                          ),
+                        ),
+                        Semantics(
+                          button: true,
+                          label: 'Post options',
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => showPostMenu(context, p),
+                            child: Padding(
+                              padding: const EdgeInsets.only(left: 8),
+                              child: Text(
+                                '···',
+                                style: t.body(14, w: w700, ls: 1, c: t.muted),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        if (s.rankLine(a.topGame).isNotEmpty)
+                          Text(
+                            s.rankLine(a.topGame),
+                            style: t.body(12, c: t.muted),
+                          ),
+                        TypeTag(
+                          p.type == PostType.discussion
+                              ? 'GAME DISCUSSION'
+                              : info.label.toUpperCase(),
+                          t.tone(info.bg),
+                          size: 8,
+                          pad: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 2,
+                          ),
+                        ),
+                        if (p.game != null)
+                          GameBadge(
+                            p.game!.shortCode,
+                            pad: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2,
+                            ),
+                          ),
+                        if (p.audience == PostAudience.connections)
+                          Text(
+                            t.up('CONNECTIONS'),
+                            style: t.label(8, c: t.muted),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+                Text(
+                  p.text,
+                  style: t.body(big ? 19 : 15, w: big ? w700 : w400, h: 1.4),
+                ),
+                if (p.kind == PostKind.moment) const _Clip(),
+                if (top != null)
+                  Dashed(
+                    radius: 16,
+                    onTap: () => s.toggleComments(p.id),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          top.author.displayName,
+                          style: t.body(14, w: w700),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            top.text,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                            style: t.body(14, c: t.muted),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                // Actions bleed 8px each side so icons line up with the text.
+                SizedBox(
+                  height: 34,
+                  child: LayoutBuilder(
+                    builder: (context, c) => OverflowBox(
+                      minWidth: c.maxWidth + 16,
+                      maxWidth: c.maxWidth + 16,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          action(
+                            svg(Ic.comment),
+                            '${p.commentCount}',
+                            () => s.toggleComments(p.id),
+                            on: cOpen,
+                            semantics: p.kind == PostKind.discussion
+                                ? 'Answers'
+                                : 'Comments',
+                          ),
+                          action(
+                            ggBox,
+                            '${p.ggCount}',
+                            () => s.toggleGG(p),
+                            on: p.myGG,
+                            semantics: 'GG',
+                          ),
+                          action(
+                            svg(Ic.play),
+                            p.mine ? '' : 'Play',
+                            () => s.playFrom(p),
+                            semantics: 'Play',
+                          ),
+                          action(
+                            svg(Ic.bookmark),
+                            '',
+                            () => s.toggleSave(p),
+                            on: p.saved,
+                            semantics: p.saved ? 'Saved' : 'Save',
+                          ),
+                          action(
+                            svg(Ic.share),
+                            '',
+                            () => s.sharePost(p),
+                            semantics: 'Share',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                if (cOpen) _Comments(p),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The ⋯ menu on a post: delete your own, report or block anyone else's.
+Future<void> showPostMenu(BuildContext context, PostDto p) {
+  final s = context.app;
+  final a = p.author;
+  return showDialog<void>(
+    context: context,
+    barrierColor: Colors.black.withValues(alpha: .45),
+    builder: (context) {
+      final t = context.rt;
+      Widget item(String label, VoidCallback onTap, {bool strong = false}) =>
+          Pill(
+            label,
+            onTap: () {
+              Navigator.pop(context);
+              onTap();
+            },
+            expand: true,
+            height: 48,
+            size: 15,
+            weight: w700,
+            bg: strong ? t.strong : Colors.transparent,
+            fg: strong ? t.onStrong : null,
+          );
+      return ThemedDialog(
+        children: [
+          Text(
+            p.mine ? 'Your post' : 'Post by ${a.displayName}',
+            style: t.body(22, w: w800, ls: -.6),
+          ),
+          item('Copy link', () => s.sharePost(p)),
+          if (p.mine)
+            item('Delete post', () async {
+              if (await confirm(
+                context,
+                title: 'Delete this post?',
+                body: 'It’s gone for everyone, with its comments.',
+                yes: 'Delete',
+              )) {
+                await s.deletePost(p);
+              }
+            }, strong: true)
+          else ...[
+            item(
+              'Report post',
+              () => showReportDialog(
+                context,
+                userId: a.id,
+                name: a.displayName,
+                postId: p.id,
+              ),
+            ),
+            item(
+              'Block ${a.displayName}',
+              () => confirmBlock(context, userId: a.id, name: a.displayName),
+              strong: true,
+            ),
+          ],
+          Pill(
+            'Cancel',
+            onTap: () => Navigator.pop(context),
+            expand: true,
+            height: 44,
+            size: 14,
+            bg: Colors.transparent,
+            border: 0,
+          ),
+        ],
+      );
+    },
+  );
+}
+
+class _Clip extends StatelessWidget {
+  const _Clip();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.rt;
+    return StripeBox(
+      height: 190,
+      child: Stack(
+        children: [
+          Positioned(
+            top: 10,
+            left: 12,
+            child: Text(
+              t.up('GAME MOMENT · CLIP'),
+              style: t.label(9, c: t.accentText),
+            ),
+          ),
+          Center(
+            child: Container(
+              width: 58,
+              height: 58,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: t.accent,
+                border: Border.all(color: t.onDark, width: 2),
+              ),
+              child: const PlayIcon(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Comments extends StatelessWidget {
+  const _Comments(this.p);
+  final PostDto p;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.app;
+    final t = context.rt;
+    final list = s.comments[p.id];
+    final disc = p.kind == PostKind.discussion;
+    final replying = s.replyTo[p.id];
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const DashedLine(),
+          const SizedBox(height: 10),
+          Gap(
+            10,
+            children: [
+              if (list == null)
+                const Center(
+                  child: SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              for (final c in list ?? const <CommentDto>[]) ...[
+                _CommentRow(p, c, key: ValueKey(c.id)),
+                if (c.replies > 0 && s.replies[c.id] == null)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 39),
+                    child: GestureDetector(
+                      onTap: () => s.loadReplies(c),
+                      child: Text(
+                        'View ${c.replies} ${c.replies == 1 ? 'reply' : 'replies'}',
+                        style: t.body(12, w: w700, c: t.muted),
+                      ),
+                    ),
+                  ),
+                for (final r in s.replies[c.id] ?? const <CommentDto>[])
+                  Padding(
+                    padding: const EdgeInsets.only(left: 39),
+                    child: _CommentRow(p, r, key: ValueKey(r.id)),
+                  ),
+              ],
+              if (replying != null)
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Replying to ${replying.author.displayName}',
+                        style: t.body(12, c: t.muted),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => s.update(() {
+                        s.replyTo.remove(p.id);
+                        s.cDraft[p.id] = '';
+                      }),
+                      child: Text(
+                        'Cancel',
+                        style: t.body(
+                          12,
+                          w: w700,
+                          deco: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              Container(
+                padding: const EdgeInsets.fromLTRB(5, 4, 4, 4),
+                decoration: BoxDecoration(
+                  color: t.surface,
+                  border: t.border(),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: Row(
+                  children: [
+                    Avatar(
+                      s.init,
+                      Tone.accent,
+                      url: s.me?.avatarUrl,
+                      size: 28,
+                      fontSize: 12,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Field(
+                        // Rebuilt with Reply's "@name " prefill.
+                        key: ValueKey('c-${p.id}-${replying?.id}'),
+                        value: s.cDraft[p.id] ?? '',
+                        hint: disc ? 'Add your answer…' : 'Write a comment…',
+                        size: 14,
+                        onChanged: (v) => s.cDraft[p.id] = v,
+                        onSubmitted: (_) => s.sendComment(p.id),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Pill(
+                      'Send',
+                      onTap: s.busy ? null : () => s.sendComment(p.id),
+                      height: 30,
+                      border: 0,
+                      bg: t.dark,
+                      fg: t.onDark,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CommentRow extends StatelessWidget {
+  const _CommentRow(this.p, this.c, {super.key});
+  final PostDto p;
+  final CommentDto c;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.app;
+    final t = context.rt;
+    final a = c.author;
+    final name = c.mine ? '${a.displayName} (you)' : a.displayName;
+    final canDelete = c.mine || p.mine;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Avatar(
+          initialOf(a.displayName),
+          toneFor(a.id),
+          url: a.avatarUrl,
+          size: 30,
+          fontSize: 12,
+          onTap: () => s.openPlayer(a.username),
+        ),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Gap(
+            4,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 11,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: t.sunken,
+                  border: t.border(1.5),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(4),
+                    topRight: Radius.circular(16),
+                    bottomLeft: Radius.circular(16),
+                    bottomRight: Radius.circular(16),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(
+                          child: GestureDetector(
+                            onTap: () => s.openPlayer(a.username),
+                            child: Text(name, style: t.body(13, w: w700)),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ValueListenableBuilder(
+                          valueListenable: s.now,
+                          builder: (context, now, _) => Text(
+                            ago(c.createdAt, now),
+                            style: t.digits(8, c: t.muted),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(c.text, style: t.body(14, h: 1.35)),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(left: 6),
+                child: Wrap(
+                  spacing: 12,
+                  children: [
+                    GestureDetector(
+                      onTap: () => s.toggleCommentGG(c),
+                      child: Text(
+                        'GG ${c.ggCount}',
+                        style: t.body(12, w: w700, c: c.myGG ? t.acc : t.text),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => s.replyToComment(p.id, c),
+                      child: Text('Reply', style: t.body(12, w: w700)),
+                    ),
+                    if (canDelete)
+                      GestureDetector(
+                        onTap: () async {
+                          if (await confirm(
+                            context,
+                            title: 'Delete this comment?',
+                            body: c.parentId == null && c.replies > 0
+                                ? 'Its replies go with it.'
+                                : 'It’s gone for everyone.',
+                            yes: 'Delete',
+                          )) {
+                            await s.deleteComment(c);
+                          }
+                        },
+                        child: Text(
+                          'Delete',
+                          style: t.body(12, w: w700, c: t.muted),
+                        ),
+                      )
+                    else
+                      GestureDetector(
+                        onTap: () => showReportDialog(
+                          context,
+                          userId: a.id,
+                          name: a.displayName,
+                          commentId: c.id,
+                        ),
+                        child: Text(
+                          'Report',
+                          style: t.body(12, w: w700, c: t.muted),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -266,7 +1170,6 @@ class _InviteCard extends StatelessWidget {
   }
 }
 
-/// "Did you play with Dave?" — the product's main number, one tap.
 /// An invite I sent, waiting for an answer until it expires.
 class _SentInvite extends StatelessWidget {
   const _SentInvite(this.i, {super.key});
@@ -315,6 +1218,7 @@ class _SentInvite extends StatelessWidget {
   }
 }
 
+/// "Did you play with Dave?" — the product's main number, one tap.
 class _CheckInCard extends StatelessWidget {
   const _CheckInCard(this.c, {super.key});
   final CheckInDto c;
@@ -395,8 +1299,9 @@ class _CheckInCard extends StatelessWidget {
   }
 }
 
-class _StatusCard extends StatelessWidget {
-  const _StatusCard();
+/// Your status and play days (on your profile).
+class StatusCard extends StatelessWidget {
+  const StatusCard({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -574,78 +1479,6 @@ class _MyListing extends StatelessWidget {
                 ),
               ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PostPrompt extends StatelessWidget {
-  const _PostPrompt();
-
-  @override
-  Widget build(BuildContext context) {
-    final s = context.app;
-    final t = context.rt;
-    return InkBox.dark(
-      radius: 26,
-      padding: const EdgeInsets.all(18),
-      child: Gap(
-        12,
-        children: [
-          Text(
-            t.up('LOOKING FOR PLAYERS?'),
-            style: t.label(9, c: t.accentText),
-          ),
-          Text(
-            'Post what you want to play. It’s gone when you’re done.',
-            style: t.body(22, w: w800, ls: -.6, h: 1.1, c: t.onDark),
-          ),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Pill(
-              'Post a listing',
-              onTap: s.openListingSheet,
-              height: 42,
-              padH: 16,
-              size: 14,
-              weight: w700,
-              bg: t.accent,
-              fg: t.onAccent,
-              leading: SvgIcon(Ic.plus, size: 16, color: t.onAccent),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LookingNow extends StatelessWidget {
-  const _LookingNow();
-
-  @override
-  Widget build(BuildContext context) {
-    final s = context.app;
-    final t = context.rt;
-    return InkBox(
-      radius: 24,
-      onTap: () => s.go(Screen.find),
-      padding: const EdgeInsets.all(14),
-      child: Row(
-        children: [
-          Text(pad2(s.lookingNow), style: t.digits(28)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'players looking right now in ${s.me?.city ?? 'your city'}',
-              style: t.body(15, w: w600, h: 1.25),
-            ),
-          ),
-          Text(
-            'Find →',
-            style: t.body(14, w: w700, deco: TextDecoration.underline),
           ),
         ],
       ),

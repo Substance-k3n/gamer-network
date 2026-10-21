@@ -15,6 +15,8 @@ part 'report_body.g.dart';
 /// * [reason]
 /// * [userId]
 /// * [listingId] - When reporting from a listing card: one of their listings.
+/// * [postId] - When reporting a post: one of their posts.
+/// * [commentId] - When reporting a comment: one of their comments.
 /// * [details]
 @BuiltValue()
 abstract class ReportBody implements Built<ReportBody, ReportBodyBuilder> {
@@ -28,6 +30,14 @@ abstract class ReportBody implements Built<ReportBody, ReportBodyBuilder> {
   /// When reporting from a listing card: one of their listings.
   @BuiltValueField(wireName: r'listingId')
   String? get listingId;
+
+  /// When reporting a post: one of their posts.
+  @BuiltValueField(wireName: r'postId')
+  String? get postId;
+
+  /// When reporting a comment: one of their comments.
+  @BuiltValueField(wireName: r'commentId')
+  String? get commentId;
 
   @BuiltValueField(wireName: r'details')
   String? get details;
@@ -69,6 +79,20 @@ class _$ReportBodySerializer implements PrimitiveSerializer<ReportBody> {
       yield r'listingId';
       yield serializers.serialize(
         object.listingId,
+        specifiedType: const FullType(String),
+      );
+    }
+    if (object.postId != null) {
+      yield r'postId';
+      yield serializers.serialize(
+        object.postId,
+        specifiedType: const FullType(String),
+      );
+    }
+    if (object.commentId != null) {
+      yield r'commentId';
+      yield serializers.serialize(
+        object.commentId,
         specifiedType: const FullType(String),
       );
     }
@@ -125,6 +149,22 @@ class _$ReportBodySerializer implements PrimitiveSerializer<ReportBody> {
           ) as String?;
           if (valueDes == null) continue;
           result.listingId = valueDes;
+          break;
+        case r'postId':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.postId = valueDes;
+          break;
+        case r'commentId':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.commentId = valueDes;
           break;
         case r'details':
           final valueDes = serializers.deserialize(

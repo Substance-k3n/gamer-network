@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:api_client/api_client.dart';
 
 import 'data.dart';
+import 'screens/compose.dart';
 import 'screens/edit_profile.dart';
 import 'screens/find.dart';
 import 'screens/groups.dart';
@@ -37,8 +38,11 @@ class RallyShell extends StatelessWidget {
     Screen.platforms => const PlatformsScreen(),
     Screen.editProfile => const EditProfileScreen(),
     Screen.home => const HomeScreen(),
+    Screen.compose => const ComposeScreen(),
     Screen.find => const FindScreen(),
     Screen.communities => const CommunitiesScreen(),
+    Screen.group => const GroupScreen(),
+    Screen.createGroup => const CreateGroupScreen(),
     Screen.notifs => const NotifsScreen(),
     Screen.profile => const ProfileScreen(),
     Screen.search => const SearchScreen(),

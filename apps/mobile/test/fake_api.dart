@@ -138,6 +138,58 @@ Map<String, Object?> listing(
   'shareUrl': 'https://example.com/l/$id',
 };
 
+Map<String, Object?> post(
+  String id,
+  Map<String, Object?> author, {
+  String type = 'discussion',
+  String kind = 'discussion',
+  String text = 'Best co-op game you played this month?',
+  Map<String, Object?>? game,
+  String audience = 'everyone',
+  int gg = 4,
+  int comments = 1,
+  bool mine = false,
+}) => {
+  'id': id,
+  'type': type,
+  'kind': kind,
+  'audience': audience,
+  'author': author,
+  'game': game,
+  'text': text,
+  'topComment': null,
+  'ggCount': gg,
+  'commentCount': comments,
+  'myGG': false,
+  'saved': false,
+  'mine': mine,
+  'shareUrl': 'https://example.com/p/$id',
+  'createdAt': _at(const Duration(hours: -2)),
+};
+
+Map<String, Object?> comment(
+  String id,
+  String postId,
+  Map<String, Object?> author,
+  String text, {
+  String? parentId,
+  bool mine = false,
+}) => {
+  'id': id,
+  'postId': postId,
+  'parentId': parentId,
+  'author': author,
+  'text': text,
+  'ggCount': 0,
+  'myGG': false,
+  'mine': mine,
+  'replies': 0,
+  'createdAt': _at(const Duration(minutes: -30)),
+};
+
+Object? _bodyOf(RequestOptions o) =>
+    o.data is String ? jsonDecode(o.data as String) : o.data;
+
 final dave = card('u-dave', 'dave.exe', 'Dave');
 final hana = card('u-hana', 'hanaplays', 'Hana', status: 'available_tonight');
 
@@ -151,6 +203,8 @@ class FakeApi implements HttpClientAdapter {
         'latestVersion': '1.0.0',
         'launchCity': 'Addis Ababa',
         'groupsComingSoon': true,
+        'feedEnabled': false,
+        'groupsEnabled': false,
       },
       'GET /v1/games': [
         game(
@@ -332,6 +386,69 @@ class FakeApi implements HttpClientAdapter {
       'DELETE /v1/connections/u-dave': null,
       'DELETE /v1/connection-requests/cr-mine': null,
       'GET /v1/listings/l-1': listing('l-1', dave),
+      'GET /v1/feed': {
+        'items': [post('p-1', dave)],
+        'nextCursor': null,
+      },
+      'GET /v1/posts/p-1': post('p-1', dave),
+      'POST /v1/posts': (RequestOptions o) {
+        final b = _bodyOf(o)! as Map;
+        return post(
+          'p-new',
+          card('me-1', 'kaleb.gg', 'Kaleb'),
+          type: b['type'] as String,
+          kind: 'text',
+          text: b['text'] as String,
+          game: b['gameId'] == null
+              ? null
+              : gameRef(b['gameId'] as String, 'CoD Mobile', 'CODM'),
+          audience: b['audience'] as String,
+          gg: 0,
+          comments: 0,
+          mine: true,
+        );
+      },
+      'PUT /v1/posts/p-1/gg': {'ggCount': 5, 'myGG': true},
+      'DELETE /v1/posts/p-1/gg': {'ggCount': 4, 'myGG': false},
+      'PUT /v1/posts/p-1/save': null,
+      'DELETE /v1/posts/p-1/save': null,
+      'GET /v1/posts/p-1/comments': {
+        'items': [comment('c-1', 'p-1', hana, 'It Takes Two, easily.')],
+        'nextCursor': null,
+      },
+      'POST /v1/posts/p-1/comments': (RequestOptions o) {
+        final b = _bodyOf(o)! as Map;
+        return comment(
+          'c-new',
+          'p-1',
+          card('me-1', 'kaleb.gg', 'Kaleb'),
+          b['text'] as String,
+          parentId: b['parentId'] as String?,
+          mine: true,
+        );
+      },
+      'DELETE /v1/comments/c-1': null,
+      'GET /v1/me/posts': {
+        'items': [
+          post(
+            'p-mine',
+            card('me-1', 'kaleb.gg', 'Kaleb'),
+            type: 'milestone',
+            kind: 'text',
+            text: 'Finally hit Legendary in ranked.',
+            game: gameRef('codm', 'CoD Mobile', 'CODM'),
+            gg: 12,
+            comments: 3,
+            mine: true,
+          ),
+        ],
+        'nextCursor': null,
+      },
+      'GET /v1/users/dave.exe/posts': {'items': <Object>[], 'nextCursor': null},
+      'GET /v1/users/hanaplays/posts': {
+        'items': <Object>[],
+        'nextCursor': null,
+      },
     });
   }
 
@@ -340,6 +457,9 @@ class FakeApi implements HttpClientAdapter {
   /// Every request as "METHOD /path?query", for checking filters.
   final queries = <String>[];
   final sent = <({String method, String path, Object? body})>[];
+
+  /// Each request's headers, as ("METHOD /path", headers).
+  final headers = <(String, Map<String, dynamic>)>[];
 
   /// Answer [route] with an API error instead.
   void fail(String route, int status, String code, String message) =>
@@ -368,6 +488,7 @@ class FakeApi implements HttpClientAdapter {
     Object? body = o.data;
     if (body is String && body.isNotEmpty) body = jsonDecode(body);
     sent.add((method: o.method, path: o.uri.path, body: body));
+    headers.add(('${o.method} ${o.uri.path}', o.headers));
     queries.add('${o.method} ${o.uri.path}?${o.uri.query}');
     if (!routes.containsKey(key)) {
       return _json(404, {
