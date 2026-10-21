@@ -69,6 +69,11 @@ export class GroupDto {
   @ApiProperty({ enum: MEMBERSHIP_STATUSES, enumName: 'MembershipStatus', nullable: true })
   myStatus: MembershipStatus | null;
 
+  /** Who created the group. Report the group with `userId = createdBy.id`. */
+  createdBy: UserCardDto;
+  /** `https://<web origin>/app/groups/<id>`. */
+  shareUrl: string;
+
   /** "since Mar 2025". */
   createdAt: Date;
 }

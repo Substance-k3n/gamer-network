@@ -7,6 +7,7 @@ import { uniqueViolation } from '../common/db-errors.js';
 import { checkRate } from '../common/rate-limit.js';
 import type { Db, Tx } from '../db/db.js';
 import { DB } from '../db/db.module.js';
+import { env } from '../env.js';
 import { games, groupMembers, groups, posts, users } from '../db/schema/index.js';
 import { connectedTo } from '../feed/visibility.js';
 import { ProfileService } from '../me/profile.service.js';
@@ -552,7 +553,8 @@ export class GroupsService {
         ),
       )
       .as('ranked');
-    const [mine, preview, next] = await Promise.all([
+    const creatorIds = [...new Set(rows.map((r) => r.group.createdBy))];
+    const [mine, preview, next, creators] = await Promise.all([
       this.db
         .select()
         .from(groupMembers)
@@ -564,7 +566,10 @@ export class GroupsService {
         .where(lte(ranked.rank, 3))
         .orderBy(ranked.groupId, ranked.rank),
       this.events.next(ids, viewerId),
+      this.db.select().from(users).where(inArray(users.id, creatorIds)),
     ]);
+    const creatorCards = await this.profiles.cards(creators);
+    const creatorOf = new Map(creators.map((u, i) => [u.id, creatorCards[i]!]));
     const cards = await this.profiles.cards(preview.map((p) => p.user));
     const previewOf = new Map<string, typeof cards>();
     preview.forEach((p, i) =>
@@ -589,6 +594,8 @@ export class GroupsService {
         nextEvent: next.get(g.id) ?? null,
         myRole: m?.status === 'member' ? m.role : null,
         myStatus: m?.status ?? null,
+        createdBy: creatorOf.get(g.createdBy)!,
+        shareUrl: `${env.publicWebUrl}/app/groups/${g.id}`,
         createdAt: g.createdAt,
       };
     });

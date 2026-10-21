@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { App } from 'supertest/types.js';
 import { createDb } from '../src/db/db.js';
+import { env } from '../src/env.js';
 import {
   adminActions,
   groupMembers,
@@ -672,6 +673,43 @@ describe('group moderation', () => {
       .from(adminActions)
       .where(and(eq(adminActions.groupId, group.id), eq(adminActions.kind, 'remove_group')));
     expect(actions).toMatchObject([{ reportId: report!.id, targetUserId: creator.id }]);
+  });
+
+  it('shows createdBy and shareUrl on every group, and takes a report after the creator steps down', async () => {
+    const creator = await player();
+    const a = await player();
+    const reporter = await player();
+    const group = await creator.group();
+    const shareUrl = `${env.publicWebUrl}/app/groups/${group.id}`;
+    const check = (g: { createdBy: { id: string; username: string }; shareUrl: string }) => {
+      expect(g.createdBy).toMatchObject({ id: creator.id, username: creator.username });
+      expect(g.shareUrl).toBe(shareUrl);
+    };
+    check(group);
+    await joined(group.id, a);
+    check((await reporter.get(`/v1/groups/${group.id}`).expect(200)).body);
+    check((await a.get(`/v1/groups/${group.id}`).expect(200)).body);
+    const newbie = await player();
+    check((await newbie.post(`/v1/groups/${group.id}/join`).expect(200)).body);
+    check((await creator.patch(`/v1/groups/${group.id}`, { about: 'new' }).expect(200)).body);
+    const found = await reporter.get('/v1/groups').query({ query: group.name }).expect(200);
+    check(found.body.items.find((g: { id: string }) => g.id === group.id));
+
+    // The creator hands over and leaves; the report still names them.
+    await creator.put(`/v1/groups/${group.id}/members/${a.id}/role`, { role: 'admin' }).expect(204);
+    await creator.del(`/v1/groups/${group.id}/membership`).expect(204);
+    const after = (await reporter.get(`/v1/groups/${group.id}`).expect(200)).body;
+    check(after);
+    await reporter
+      .post('/v1/reports', { userId: after.createdBy.id, groupId: group.id, reason: 'spam' })
+      .expect(204);
+    const rows = await conn.db.select().from(reports).where(eq(reports.groupId, group.id));
+    expect(rows).toMatchObject([{ targetUserId: creator.id, reporterId: reporter.id }]);
+    // Leave the queue as it was.
+    const admin = await player({ admin: true });
+    await admin
+      .post(`/v1/admin/reports/${rows[0]!.id}/resolve`, { action: 'dismiss', note: '' })
+      .expect(200);
   });
 
   it('shows a reported post with its first image, and refuses remove_group on it', async () => {
