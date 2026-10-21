@@ -1,25 +1,56 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { api, query, type Group, type Page } from '../_lib/api';
 import { GroupCard } from '../_lib/groupui';
-import { groupKinds, setGroupsView, useGroups } from '../_lib/groups';
+import { groupKinds, kindLabel, setGroupsView, useGroupsView } from '../_lib/groups';
 import { Header } from '../_lib/shell';
-import { useApp } from '../_lib/store';
-import { Card, Chip, EmptyNote, Field, Icon, Label, Pill, Segmented } from '../_lib/ui';
+import { useApp, useLoad } from '../_lib/store';
+import { Card, Chip, EmptyNote, Field, Icon, Label, Pill, Segmented, Spinner } from '../_lib/ui';
 
-/** Groups: discover and your groups, on sample data until the API has groups. */
+/** Groups: Discover and Yours, kinds and search (GET /groups), paged by cursor. */
 export default function Groups() {
-  const { game } = useApp();
+  const { run, version } = useApp();
   const router = useRouter();
-  const s = useGroups();
-  const mine = s.groups.filter((g) => g.members.includes('me'));
-  const pool = s.tab === 'Yours' ? mine : s.groups;
-  const q = s.query.trim().toLowerCase();
-  const shown = pool.filter((g) => {
-    const kindOk = s.kind === 'All' || g.kind === s.kind;
-    const text = `${g.name} ${g.place} ${g.gameId ? game(g.gameId).name : ''}`.toLowerCase();
-    return kindOk && (!q || text.includes(q));
-  });
+  const v = useGroupsView();
+  // The search waits for a pause in typing and needs 2+ characters.
+  const [q, setQ] = useState(v.query.trim().length >= 2 ? v.query.trim() : '');
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const s = v.query.trim();
+      setQ(s.length >= 2 ? s : '');
+    }, 300);
+    return () => clearTimeout(t);
+  }, [v.query]);
+  const [more, setMore] = useState<string | null>(null);
+  const params = (cursor?: string | null) =>
+    query({
+      tab: v.tab,
+      kind: v.kind === 'all' ? null : v.kind,
+      query: q || null,
+      cursor,
+    });
+  const list = useLoad(async () => {
+    const pg = await api<Page<Group>>(`groups${params()}`);
+    setMore(pg.nextCursor);
+    return pg.items;
+  }, [v.tab, v.kind, q, version]);
+  // "Yours (n)": my groups and requests.
+  const mine = useLoad(() => api<Page<Group>>('groups?tab=mine&limit=50'), [version]);
+  const mineCount = mine.data ? `${mine.data.items.length}${mine.data.nextCursor ? '+' : ''}` : '…';
+  const shown = list.data ?? [];
+  const loadMore = async () => {
+    const pg = await run(() => api<Page<Group>>(`groups${params(more)}`), { busy: false });
+    if (!pg) return;
+    list.setData([...shown, ...pg.items.filter((x) => !shown.some((y) => y.id === x.id))]);
+    setMore(pg.nextCursor);
+  };
+  const changed = (g: Group) => {
+    list.setData(shown.map((x) => (x.id === g.id ? g : x)));
+    mine.reload();
+  };
+
   return (
     <>
       <Header title="Groups" />
@@ -49,46 +80,63 @@ export default function Groups() {
         </Card>
         <Segmented
           options={[
-            { id: 'Discover', label: 'Discover' },
-            { id: 'Yours', label: `Yours (${mine.length})` },
+            { id: 'discover', label: 'Discover' },
+            { id: 'mine', label: `Yours (${mineCount})` },
           ]}
-          value={s.tab}
+          value={v.tab}
           onChange={(tab) => setGroupsView({ tab })}
         />
         <Field
-          value={s.query}
-          onChange={(query) => setGroupsView({ query })}
+          value={v.query}
+          onChange={(text) => setGroupsView({ query: text.slice(0, 40) })}
           placeholder="Search groups, games, cities"
           h={46}
           leading={<Icon name="search" size={18} color="var(--muted)" />}
           aria-label="Search groups"
         />
         <div className="scroller">
-          {(['All', ...groupKinds] as const).map((k) => (
+          <Chip
+            on={v.kind === 'all'}
+            onClick={() => setGroupsView({ kind: 'all' })}
+            h={32}
+            padH={12}
+          >
+            All
+          </Chip>
+          {groupKinds.map((k) => (
             <Chip
               key={k}
-              on={s.kind === k}
+              on={v.kind === k}
               onClick={() => setGroupsView({ kind: k })}
               h={32}
               padH={12}
             >
-              {k}
+              {kindLabel[k]}
             </Chip>
           ))}
         </div>
         <Label style={{ paddingLeft: 6 }}>
-          {shown.length} {s.tab === 'Yours' ? 'JOINED' : 'GROUPS'}
+          {shown.length}
+          {more ? '+' : ''} {v.tab === 'mine' ? 'JOINED' : 'GROUPS'}
         </Label>
-        {shown.length === 0 && (
+        {!list.loaded && <Spinner />}
+        {list.loaded && shown.length === 0 && (
           <EmptyNote>
-            {s.tab === 'Yours' && mine.length === 0
+            {v.tab === 'mine' && v.kind === 'all' && !q
               ? 'You haven’t joined any groups yet. Discover one, or start your own.'
               : 'No groups match. Try another search, or create it.'}
           </EmptyNote>
         )}
         {shown.map((g) => (
-          <GroupCard key={g.id} g={g} />
+          <GroupCard key={g.id} g={g} onChange={changed} />
         ))}
+        {more && (
+          <div style={{ textAlign: 'center' }}>
+            <Pill h={42} padH={18} size={14} bold onClick={loadMore}>
+              Load more
+            </Pill>
+          </div>
+        )}
       </div>
     </>
   );

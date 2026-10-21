@@ -14,12 +14,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!post) return { title: 'Post not found', robots: { index: false } };
   const title = titleOf(post);
   const description = post.text.length > 200 ? `${post.text.slice(0, 197)}…` : post.text;
+  // The post's first photo is the preview image (D29).
+  const photo = post.media[0]?.url;
   return {
     title,
     description,
     robots: { index: false },
-    openGraph: { title, description, siteName: BRAND, type: 'article', url: `/p/${post.id}` },
-    twitter: { card: 'summary', title, description },
+    openGraph: {
+      title,
+      description,
+      siteName: BRAND,
+      type: 'article',
+      url: `/p/${post.id}`,
+      ...(photo ? { images: [{ url: photo }] } : {}),
+    },
+    twitter: {
+      card: photo ? 'summary_large_image' : 'summary',
+      title,
+      description,
+      ...(photo ? { images: [photo] } : {}),
+    },
   };
 }
 
@@ -49,6 +63,21 @@ export default async function PostPage({ params }: Props) {
             </div>
           </div>
         </div>
+        {post.media[0] && (
+          // eslint-disable-next-line @next/next/no-img-element -- storage URL, not optimised
+          <img
+            src={post.media[0].url}
+            alt=""
+            style={{
+              display: 'block',
+              width: '100%',
+              height: 220,
+              objectFit: 'cover',
+              borderRadius: 16,
+              marginTop: 12,
+            }}
+          />
+        )}
         <p className="note" style={{ whiteSpace: 'pre-wrap' }}>
           {post.text}
           {post.text.length >= 300 ? '…' : ''}

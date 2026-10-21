@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useRef, useState, type ReactNode } from 'react';
 import { api, query, uuid, type Comment, type Gg, type Page, type Post } from './api';
 import { ago, postTypeInfo, rankLine, toneFor } from './data';
+import { PhotoGrid, PollView, RecruitBox } from './postparts';
 import { ReportDialog } from './safety';
 import { useApp, useLoad } from './store';
 import {
@@ -13,9 +14,7 @@ import {
   Icon,
   Label,
   Pill,
-  PlayIcon,
   Spinner,
-  StripeBox,
   TypeTag,
   keepFocus,
   toneColor,
@@ -108,11 +107,17 @@ export function FeedPost({
   onChange,
   onGone,
   openComments = false,
+  openApplications = false,
+  moderator = false,
 }: {
   p: Post;
   onChange: (p: Post) => void;
   onGone: () => void;
   openComments?: boolean;
+  /** Mine with recruitment: the applications sheet starts open (an alert). */
+  openApplications?: boolean;
+  /** A group admin looking at a post in their group: may delete it and its comments. */
+  moderator?: boolean;
 }) {
   const { run, toast } = useApp();
   const router = useRouter();
@@ -156,7 +161,9 @@ export function FeedPost({
         borderBottom: '1.5px solid var(--divider)',
       }}
     >
-      {menu && <PostMenu p={p} onClose={() => setMenu(false)} onGone={onGone} />}
+      {menu && (
+        <PostMenu p={p} moderator={moderator} onClose={() => setMenu(false)} onGone={onGone} />
+      )}
       <Avatar
         name={a.displayName}
         tone={toneFor(a.id)}
@@ -218,7 +225,9 @@ export function FeedPost({
         >
           {p.text}
         </div>
-        {p.kind === 'moment' && <Clip />}
+        <PhotoGrid media={p.media} />
+        {p.poll && <PollView p={p} onChange={onChange} />}
+        {p.recruit && <RecruitBox p={p} onChange={onChange} openApplications={openApplications} />}
         {top && (
           <button
             type="button"
@@ -273,6 +282,7 @@ export function FeedPost({
         {open && (
           <Comments
             p={p}
+            moderator={moderator}
             onCount={(n) => onChange({ ...p, commentCount: Math.max(0, p.commentCount + n) })}
           />
         )}
@@ -281,34 +291,18 @@ export function FeedPost({
   );
 }
 
-function Clip() {
-  return (
-    <StripeBox height={190}>
-      <span style={{ position: 'absolute', top: 10, left: 12 }}>
-        <Label color="var(--accent-text)">GAME MOMENT · CLIP</Label>
-      </span>
-      <span
-        className="row"
-        style={{
-          position: 'absolute',
-          inset: 0,
-          margin: 'auto',
-          width: 58,
-          height: 58,
-          justifyContent: 'center',
-          borderRadius: '50%',
-          background: 'var(--accent)',
-          border: '2px solid var(--on-dark)',
-        }}
-      >
-        <PlayIcon />
-      </span>
-    </StripeBox>
-  );
-}
-
 /** The ⋯ menu on a post: delete your own, report or block anyone else's. */
-function PostMenu({ p, onClose, onGone }: { p: Post; onClose: () => void; onGone: () => void }) {
+function PostMenu({
+  p,
+  moderator,
+  onClose,
+  onGone,
+}: {
+  p: Post;
+  moderator: boolean;
+  onClose: () => void;
+  onGone: () => void;
+}) {
   const { run, toast, bump } = useApp();
   const [mode, setMode] = useState<'menu' | 'report'>('menu');
   const [ask, confirm] = useConfirm();
@@ -360,6 +354,7 @@ function PostMenu({ p, onClose, onGone }: { p: Post; onClose: () => void; onGone
         <>
           {item('Report post', () => setMode('report'))}
           {item(`Block ${a.displayName}`, block, true)}
+          {moderator && item('Delete post', del, true)}
         </>
       )}
       <Pill h={44} size={14} expand look="clear" onClick={onClose} style={{ border: 0 }}>
@@ -370,7 +365,15 @@ function PostMenu({ p, onClose, onGone }: { p: Post; onClose: () => void; onGone
 }
 
 /** Comments under a post: top-level first, replies on "View n replies", and the write field. */
-function Comments({ p, onCount }: { p: Post; onCount: (n: number) => void }) {
+function Comments({
+  p,
+  moderator,
+  onCount,
+}: {
+  p: Post;
+  moderator: boolean;
+  onCount: (n: number) => void;
+}) {
   const { run, me } = useApp();
   const [more, setMore] = useState<string | null>(null);
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
@@ -465,6 +468,7 @@ function Comments({ p, onCount }: { p: Post; onCount: (n: number) => void }) {
             <CommentRow
               c={c}
               post={p}
+              moderator={moderator}
               onChange={update}
               onGone={() => gone(c)}
               onReply={() => reply(c)}
@@ -486,6 +490,7 @@ function Comments({ p, onCount }: { p: Post; onCount: (n: number) => void }) {
                 <CommentRow
                   c={r}
                   post={p}
+                  moderator={moderator}
                   onChange={update}
                   onGone={() => gone(r)}
                   onReply={() => reply(r)}
@@ -565,12 +570,14 @@ function Comments({ p, onCount }: { p: Post; onCount: (n: number) => void }) {
 function CommentRow({
   c,
   post,
+  moderator,
   onChange,
   onGone,
   onReply,
 }: {
   c: Comment;
   post: Post;
+  moderator: boolean;
   onChange: (c: Comment) => void;
   onGone: () => void;
   onReply: () => void;
@@ -668,7 +675,7 @@ function CommentRow({
         <div className="row" style={{ gap: 12, paddingLeft: 6 }}>
           {link(`GG ${c.ggCount}`, gg, c.myGG ? 'var(--acc)' : undefined)}
           {link('Reply', onReply)}
-          {c.mine || post.mine
+          {c.mine || post.mine || moderator
             ? link('Delete', del, 'var(--muted)')
             : link('Report', () => setReport(true), 'var(--muted)')}
         </div>

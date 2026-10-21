@@ -8,7 +8,8 @@ import { useApp, useLoad } from '../../_lib/store';
 import { BackBtn, EmptyNote, Spinner } from '../../_lib/ui';
 
 /**
- * One post: from an alert (`?comments=1` opens its comments) or a share link.
+ * One post: from an alert (`?comments=1` opens its comments, `?applications=1`
+ * the applications of my recruitment post) or a share link.
  * A post that's gone or hidden (404) goes Home; its message is the toast (D14).
  */
 export default function PostPage({
@@ -16,10 +17,10 @@ export default function PostPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ comments?: string }>;
+  searchParams: Promise<{ comments?: string; applications?: string }>;
 }) {
   const { id } = use(params);
-  const { comments } = use(searchParams);
+  const { comments, applications } = use(searchParams);
   const router = useRouter();
   const { putPost, dropPost } = useApp();
   const [gone, setGone] = useState(false);
@@ -65,6 +66,7 @@ export default function PostPage({
             router.push('/app');
           }}
           openComments={comments === '1' || p.kind === 'discussion'}
+          openApplications={applications === '1'}
         />
       )}
     </div>
