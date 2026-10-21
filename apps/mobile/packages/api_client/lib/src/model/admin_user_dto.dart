@@ -26,6 +26,8 @@ part 'admin_user_dto.g.dart';
 /// * [connections]
 /// * [playedWith]
 /// * [openReports] - Reports against them still open.
+/// * [postsCount] - Their live posts, on Home and in groups.
+/// * [groupsCount] - Live groups they're a member of.
 @BuiltValue()
 abstract class AdminUserDto
     implements Built<AdminUserDto, AdminUserDtoBuilder> {
@@ -74,6 +76,14 @@ abstract class AdminUserDto
   /// Reports against them still open.
   @BuiltValueField(wireName: r'openReports')
   num get openReports;
+
+  /// Their live posts, on Home and in groups.
+  @BuiltValueField(wireName: r'postsCount')
+  num get postsCount;
+
+  /// Live groups they're a member of.
+  @BuiltValueField(wireName: r'groupsCount')
+  num get groupsCount;
 
   AdminUserDto._();
 
@@ -172,6 +182,16 @@ class _$AdminUserDtoSerializer implements PrimitiveSerializer<AdminUserDto> {
     yield r'openReports';
     yield serializers.serialize(
       object.openReports,
+      specifiedType: const FullType(num),
+    );
+    yield r'postsCount';
+    yield serializers.serialize(
+      object.postsCount,
+      specifiedType: const FullType(num),
+    );
+    yield r'groupsCount';
+    yield serializers.serialize(
+      object.groupsCount,
       specifiedType: const FullType(num),
     );
   }
@@ -299,6 +319,20 @@ class _$AdminUserDtoSerializer implements PrimitiveSerializer<AdminUserDto> {
             specifiedType: const FullType(num),
           ) as num;
           result.openReports = valueDes;
+          break;
+        case r'postsCount':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(num),
+          ) as num;
+          result.postsCount = valueDes;
+          break;
+        case r'groupsCount':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(num),
+          ) as num;
+          result.groupsCount = valueDes;
           break;
         default:
           unhandled.add(key);

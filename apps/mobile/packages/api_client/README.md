@@ -69,10 +69,11 @@ Class | Method | HTTP request | Description
 [*AdminApi*](doc/AdminApi.md) | [**adminBan**](doc/AdminApi.md#adminban) | **POST** /v1/admin/users/{id}/ban | Signs them out everywhere and removes their live listing.
 [*AdminApi*](doc/AdminApi.md) | [**adminMetrics**](doc/AdminApi.md#adminmetrics) | **GET** /v1/admin/metrics | The MVP&#39;s numbers. Defaults to the last 30 days.
 [*AdminApi*](doc/AdminApi.md) | [**adminRemoveComment**](doc/AdminApi.md#adminremovecomment) | **POST** /v1/admin/comments/{id}/remove | Take a comment down, with its replies.
+[*AdminApi*](doc/AdminApi.md) | [**adminRemoveGroup**](doc/AdminApi.md#adminremovegroup) | **POST** /v1/admin/groups/{id}/remove | Take a group down: it, its posts and events vanish for everyone.
 [*AdminApi*](doc/AdminApi.md) | [**adminRemoveListing**](doc/AdminApi.md#adminremovelisting) | **POST** /v1/admin/listings/{id}/remove | Take a listing down.
 [*AdminApi*](doc/AdminApi.md) | [**adminRemovePost**](doc/AdminApi.md#adminremovepost) | **POST** /v1/admin/posts/{id}/remove | Take a post down.
 [*AdminApi*](doc/AdminApi.md) | [**adminReports**](doc/AdminApi.md#adminreports) | **GET** /v1/admin/reports | The queue. Open ones oldest first.
-[*AdminApi*](doc/AdminApi.md) | [**adminResolveReport**](doc/AdminApi.md#adminresolvereport) | **POST** /v1/admin/reports/{id}/resolve | dismiss, warn, remove_listing, remove_post, remove_comment or ban. 409 report_closed if already handled.
+[*AdminApi*](doc/AdminApi.md) | [**adminResolveReport**](doc/AdminApi.md#adminresolvereport) | **POST** /v1/admin/reports/{id}/resolve | dismiss, warn, remove_listing, remove_post, remove_comment, remove_group or ban. 409 report_closed if already handled.
 [*AdminApi*](doc/AdminApi.md) | [**adminSetLaunch**](doc/AdminApi.md#adminsetlaunch) | **PATCH** /v1/admin/games/{id} | Puts a game on Find Players, or takes it off.
 [*AdminApi*](doc/AdminApi.md) | [**adminUnban**](doc/AdminApi.md#adminunban) | **POST** /v1/admin/users/{id}/unban | Lift a ban.
 [*AdminApi*](doc/AdminApi.md) | [**adminUser**](doc/AdminApi.md#adminuser) | **GET** /v1/admin/users/{id} | The player drawer.
@@ -95,20 +96,20 @@ Class | Method | HTTP request | Description
 [*ConnectionsApi*](doc/ConnectionsApi.md) | [**connectionsList**](doc/ConnectionsApi.md#connectionslist) | **GET** /v1/me/connections | Your connections, newest first.
 [*ConnectionsApi*](doc/ConnectionsApi.md) | [**connectionsRemove**](doc/ConnectionsApi.md#connectionsremove) | **DELETE** /v1/connections/{userId} | Remove a connection, for both players.
 [*FeedApi*](doc/FeedApi.md) | [**commentsCreate**](doc/FeedApi.md#commentscreate) | **POST** /v1/posts/{id}/comments | Comment, or reply with parentId. Tells the post&#39;s author, the one you answered and anyone you @mention. 60 an hour.
-[*FeedApi*](doc/FeedApi.md) | [**commentsDelete**](doc/FeedApi.md#commentsdelete) | **DELETE** /v1/comments/{id} | Its author or the post&#39;s author (403 not_owner).
+[*FeedApi*](doc/FeedApi.md) | [**commentsDelete**](doc/FeedApi.md#commentsdelete) | **DELETE** /v1/comments/{id} | Its author, the post&#39;s author or, in a group, a group admin (403 not_owner).
 [*FeedApi*](doc/FeedApi.md) | [**commentsGg**](doc/FeedApi.md#commentsgg) | **PUT** /v1/comments/{id}/gg | GG a comment.
 [*FeedApi*](doc/FeedApi.md) | [**commentsList**](doc/FeedApi.md#commentslist) | **GET** /v1/posts/{id}/comments | Top-level comments, oldest first; sort&#x3D;top for discussions.
 [*FeedApi*](doc/FeedApi.md) | [**commentsReplies**](doc/FeedApi.md#commentsreplies) | **GET** /v1/comments/{id}/replies | Replies under a top-level comment, oldest first.
 [*FeedApi*](doc/FeedApi.md) | [**commentsUnGg**](doc/FeedApi.md#commentsungg) | **DELETE** /v1/comments/{id}/gg | Take your GG back.
 [*FeedApi*](doc/FeedApi.md) | [**feedGet**](doc/FeedApi.md#feedget) | **GET** /v1/feed | Home, newest first. Blocked people&#39;s posts and connections-only posts of strangers are left out.
 [*FeedApi*](doc/FeedApi.md) | [**mediaUploadUrl**](doc/FeedApi.md#mediauploadurl) | **POST** /v1/media/upload-url | Where to upload one photo for a post (JPEG, PNG or WebP, ≤ 10 MB). Then send its key in POST /v1/posts. 30 an hour.
-[*FeedApi*](doc/FeedApi.md) | [**myPostsList**](doc/FeedApi.md#mypostslist) | **GET** /v1/me/posts | Your posts, newest first, connections-only ones included.
+[*FeedApi*](doc/FeedApi.md) | [**myPostsList**](doc/FeedApi.md#mypostslist) | **GET** /v1/me/posts | Your Home posts, newest first, connections-only ones included.
 [*FeedApi*](doc/FeedApi.md) | [**myPostsSaved**](doc/FeedApi.md#mypostssaved) | **GET** /v1/me/saved | Saved posts, most recently saved first.
 [*FeedApi*](doc/FeedApi.md) | [**postsApplications**](doc/FeedApi.md#postsapplications) | **GET** /v1/posts/{id}/applications | Who applied, first come first. The post&#39;s author only (403 not_owner).
 [*FeedApi*](doc/FeedApi.md) | [**postsApply**](doc/FeedApi.md#postsapply) | **POST** /v1/posts/{id}/apply | Apply to a recruitment post; tells its author. 409 already_applied or recruitment_full, 403 own_post. 20 a day.
-[*FeedApi*](doc/FeedApi.md) | [**postsCreate**](doc/FeedApi.md#postscreate) | **POST** /v1/posts | Post to Home, with up to 4 photo keys (gameplay needs one), a poll or recruitment slots. 10 an hour: 429 rate_limited.
-[*FeedApi*](doc/FeedApi.md) | [**postsDelete**](doc/FeedApi.md#postsdelete) | **DELETE** /v1/posts/{id} | Author only (403 not_owner).
-[*FeedApi*](doc/FeedApi.md) | [**postsGet**](doc/FeedApi.md#postsget) | **GET** /v1/posts/{id} | One post.
+[*FeedApi*](doc/FeedApi.md) | [**postsCreate**](doc/FeedApi.md#postscreate) | **POST** /v1/posts | Post to Home, or to a group with groupId (members only: 403 not_member), with up to 4 photo keys (gameplay needs one), a poll or recruitment slots. 10 an hour: 429 rate_limited.
+[*FeedApi*](doc/FeedApi.md) | [**postsDelete**](doc/FeedApi.md#postsdelete) | **DELETE** /v1/posts/{id} | Its author, or a group admin for a group post (403 not_owner).
+[*FeedApi*](doc/FeedApi.md) | [**postsGet**](doc/FeedApi.md#postsget) | **GET** /v1/posts/{id} | One post. Group posts: members only (404 for others).
 [*FeedApi*](doc/FeedApi.md) | [**postsGg**](doc/FeedApi.md#postsgg) | **PUT** /v1/posts/{id}/gg | GG it. Repeating it is fine.
 [*FeedApi*](doc/FeedApi.md) | [**postsSave**](doc/FeedApi.md#postssave) | **PUT** /v1/posts/{id}/save | Bookmark it.
 [*FeedApi*](doc/FeedApi.md) | [**postsUnGg**](doc/FeedApi.md#postsungg) | **DELETE** /v1/posts/{id}/gg | Take your GG back.
@@ -117,8 +118,27 @@ Class | Method | HTTP request | Description
 [*FeedApi*](doc/FeedApi.md) | [**publicPostsGet**](doc/FeedApi.md#publicpostsget) | **GET** /v1/public/posts/{id} | For the share page /p/&lt;id&gt;: no sign-in. Only live posts for everyone.
 [*FeedApi*](doc/FeedApi.md) | [**recruitApplicationsAccept**](doc/FeedApi.md#recruitapplicationsaccept) | **POST** /v1/recruit-applications/{id}/accept | The post&#39;s author takes them (403 not_owner): tells them and sends a connection request if you aren&#39;t connected. 409 recruitment_full.
 [*FeedApi*](doc/FeedApi.md) | [**recruitApplicationsDecline**](doc/FeedApi.md#recruitapplicationsdecline) | **POST** /v1/recruit-applications/{id}/decline | The post&#39;s author says no (403 not_owner). Tells no one.
-[*FeedApi*](doc/FeedApi.md) | [**userPostsList**](doc/FeedApi.md#userpostslist) | **GET** /v1/users/{username}/posts | Moments: their posts you may see, newest first.
+[*FeedApi*](doc/FeedApi.md) | [**userPostsList**](doc/FeedApi.md#userpostslist) | **GET** /v1/users/{username}/posts | Moments: their Home posts you may see, newest first.
 [*GamesApi*](doc/GamesApi.md) | [**gamesList**](doc/GamesApi.md#gameslist) | **GET** /v1/games | The full game catalog with ranks, roles and modes. Cache it; it rarely changes.
+[*GroupsApi*](doc/GroupsApi.md) | [**groupEventsDelete**](doc/GroupsApi.md#groupeventsdelete) | **DELETE** /v1/group-events/{id} | Its creator or a group admin (403 not_owner).
+[*GroupsApi*](doc/GroupsApi.md) | [**groupEventsGoing**](doc/GroupsApi.md#groupeventsgoing) | **PUT** /v1/group-events/{id}/going | I&#39;m in. Members only (403 not_member). Repeating it is fine.
+[*GroupsApi*](doc/GroupsApi.md) | [**groupEventsNotGoing**](doc/GroupsApi.md#groupeventsnotgoing) | **DELETE** /v1/group-events/{id}/going | Not going any more.
+[*GroupsApi*](doc/GroupsApi.md) | [**groupsApprove**](doc/GroupsApi.md#groupsapprove) | **POST** /v1/groups/{id}/members/{userId}/approve | Admins let a request in; tells them.
+[*GroupsApi*](doc/GroupsApi.md) | [**groupsCreate**](doc/GroupsApi.md#groupscreate) | **POST** /v1/groups | Start a group; you&#39;re its admin. 409 group_name_taken. 3 a day: 429 rate_limited.
+[*GroupsApi*](doc/GroupsApi.md) | [**groupsCreateEvent**](doc/GroupsApi.md#groupscreateevent) | **POST** /v1/groups/{id}/events | Members add one (403 not_member), starting within the next 60 days. Tells the other members.
+[*GroupsApi*](doc/GroupsApi.md) | [**groupsDecline**](doc/GroupsApi.md#groupsdecline) | **POST** /v1/groups/{id}/members/{userId}/decline | Admins turn a request down, without telling them.
+[*GroupsApi*](doc/GroupsApi.md) | [**groupsEvents**](doc/GroupsApi.md#groupsevents) | **GET** /v1/groups/{id}/events | Upcoming events (until an hour after they start), soonest first. Anyone may see them.
+[*GroupsApi*](doc/GroupsApi.md) | [**groupsGet**](doc/GroupsApi.md#groupsget) | **GET** /v1/groups/{id} | One group.
+[*GroupsApi*](doc/GroupsApi.md) | [**groupsJoin**](doc/GroupsApi.md#groupsjoin) | **POST** /v1/groups/{id}/join | Join, or ask to on approval groups (myStatus pending; its admins are told). 409 already_member. 30 a day.
+[*GroupsApi*](doc/GroupsApi.md) | [**groupsLeave**](doc/GroupsApi.md#groupsleave) | **DELETE** /v1/groups/{id}/membership | Leave, or cancel your request. 409 last_admin when you&#39;re its only admin and others remain.
+[*GroupsApi*](doc/GroupsApi.md) | [**groupsList**](doc/GroupsApi.md#groupslist) | **GET** /v1/groups | Discover (most members first) or Yours (yours and your requests, latest activity first); kind and a 2+ character search.
+[*GroupsApi*](doc/GroupsApi.md) | [**groupsMembers**](doc/GroupsApi.md#groupsmembers) | **GET** /v1/groups/{id}/members | Members, admins first; status&#x3D;pending lists the requests, for admins only (403 not_group_admin).
+[*GroupsApi*](doc/GroupsApi.md) | [**groupsPosts**](doc/GroupsApi.md#groupsposts) | **GET** /v1/groups/{id}/posts | The group&#39;s posts, newest first. Members only (403 not_member). Post here with POST /v1/posts and groupId.
+[*GroupsApi*](doc/GroupsApi.md) | [**groupsRemoveMember**](doc/GroupsApi.md#groupsremovemember) | **DELETE** /v1/groups/{id}/members/{userId} | Admins remove a member (or drop a request).
+[*GroupsApi*](doc/GroupsApi.md) | [**groupsSetRole**](doc/GroupsApi.md#groupssetrole) | **PUT** /v1/groups/{id}/members/{userId}/role | Admins make a member admin, or back. 409 last_admin for the only admin.
+[*GroupsApi*](doc/GroupsApi.md) | [**groupsUpdate**](doc/GroupsApi.md#groupsupdate) | **PATCH** /v1/groups/{id} | Admins (403 not_group_admin): change any of the create fields but kind. 409 group_name_taken.
+[*GroupsApi*](doc/GroupsApi.md) | [**myGroupsList**](doc/GroupsApi.md#mygroupslist) | **GET** /v1/me/groups | Your groups and your pending requests (myStatus pending), latest activity first: the profile&#39;s Groups.
+[*GroupsApi*](doc/GroupsApi.md) | [**userGroupsList**](doc/GroupsApi.md#usergroupslist) | **GET** /v1/users/{username}/groups | The groups they&#39;re a member of, latest joined first (profile).
 [*HealthApi*](doc/HealthApi.md) | [**healthCheck**](doc/HealthApi.md#healthcheck) | **GET** /health | Liveness and database check for uptime monitors and the deploy.
 [*ListingsApi*](doc/ListingsApi.md) | [**listingsClose**](doc/ListingsApi.md#listingsclose) | **POST** /v1/listings/{id}/close | Owner only. 409 listing_not_live once it has ended.
 [*ListingsApi*](doc/ListingsApi.md) | [**listingsCreate**](doc/ListingsApi.md#listingscreate) | **POST** /v1/listings | Post a listing. One live listing each: 409 listing_already_open.
@@ -192,6 +212,8 @@ Class | Method | HTTP request | Description
  - [ConnectionRequestDto](doc/ConnectionRequestDto.md)
  - [ConnectionRequestListDto](doc/ConnectionRequestListDto.md)
  - [CreateCommentBody](doc/CreateCommentBody.md)
+ - [CreateGroupBody](doc/CreateGroupBody.md)
+ - [CreateGroupEventBody](doc/CreateGroupEventBody.md)
  - [CreateListingBody](doc/CreateListingBody.md)
  - [CreatePostBody](doc/CreatePostBody.md)
  - [Day](doc/Day.md)
@@ -208,6 +230,16 @@ Class | Method | HTTP request | Description
  - [GamingIdKind](doc/GamingIdKind.md)
  - [GgDto](doc/GgDto.md)
  - [GoogleBody](doc/GoogleBody.md)
+ - [GroupDto](doc/GroupDto.md)
+ - [GroupEventDto](doc/GroupEventDto.md)
+ - [GroupEventPageDto](doc/GroupEventPageDto.md)
+ - [GroupKind](doc/GroupKind.md)
+ - [GroupMemberDto](doc/GroupMemberDto.md)
+ - [GroupMemberPageDto](doc/GroupMemberPageDto.md)
+ - [GroupPageDto](doc/GroupPageDto.md)
+ - [GroupRole](doc/GroupRole.md)
+ - [GroupTab](doc/GroupTab.md)
+ - [GroupTone](doc/GroupTone.md)
  - [HealthResponse](doc/HealthResponse.md)
  - [IdVisibility](doc/IdVisibility.md)
  - [InviteStatus](doc/InviteStatus.md)
@@ -224,6 +256,7 @@ Class | Method | HTTP request | Description
  - [MediaKind](doc/MediaKind.md)
  - [MediaUploadBody](doc/MediaUploadBody.md)
  - [MediaUploadDto](doc/MediaUploadDto.md)
+ - [MembershipStatus](doc/MembershipStatus.md)
  - [MetricsDto](doc/MetricsDto.md)
  - [ModeDto](doc/ModeDto.md)
  - [ModeRefDto](doc/ModeRefDto.md)
@@ -246,6 +279,7 @@ Class | Method | HTTP request | Description
  - [PollOptionDto](doc/PollOptionDto.md)
  - [PostAudience](doc/PostAudience.md)
  - [PostDto](doc/PostDto.md)
+ - [PostGroupDto](doc/PostGroupDto.md)
  - [PostKind](doc/PostKind.md)
  - [PostPageDto](doc/PostPageDto.md)
  - [PostType](doc/PostType.md)
@@ -278,12 +312,14 @@ Class | Method | HTTP request | Description
  - [SetAvatarBody](doc/SetAvatarBody.md)
  - [SetGamesBody](doc/SetGamesBody.md)
  - [SetGamingIdsBody](doc/SetGamingIdsBody.md)
+ - [SetGroupRoleBody](doc/SetGroupRoleBody.md)
  - [SetLaunchBody](doc/SetLaunchBody.md)
  - [SetPlatformsBody](doc/SetPlatformsBody.md)
  - [SetStatusBody](doc/SetStatusBody.md)
  - [SetTagsBody](doc/SetTagsBody.md)
  - [SignupBody](doc/SignupBody.md)
  - [UnreadCountDto](doc/UnreadCountDto.md)
+ - [UpdateGroupBody](doc/UpdateGroupBody.md)
  - [UpdateListingBody](doc/UpdateListingBody.md)
  - [UpdateMeBody](doc/UpdateMeBody.md)
  - [UserCardDto](doc/UserCardDto.md)

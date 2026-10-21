@@ -18,6 +18,8 @@ class _$PostDto extends PostDto {
   @override
   final UserCardDto author;
   @override
+  final PostGroupDto? group;
+  @override
   final GameRefDto? game;
   @override
   final String text;
@@ -53,6 +55,7 @@ class _$PostDto extends PostDto {
       required this.audience,
       required this.id,
       required this.author,
+      this.group,
       this.game,
       required this.text,
       required this.media,
@@ -83,6 +86,7 @@ class _$PostDto extends PostDto {
         audience == other.audience &&
         id == other.id &&
         author == other.author &&
+        group == other.group &&
         game == other.game &&
         text == other.text &&
         media == other.media &&
@@ -106,6 +110,7 @@ class _$PostDto extends PostDto {
     _$hash = $jc(_$hash, audience.hashCode);
     _$hash = $jc(_$hash, id.hashCode);
     _$hash = $jc(_$hash, author.hashCode);
+    _$hash = $jc(_$hash, group.hashCode);
     _$hash = $jc(_$hash, game.hashCode);
     _$hash = $jc(_$hash, text.hashCode);
     _$hash = $jc(_$hash, media.hashCode);
@@ -131,6 +136,7 @@ class _$PostDto extends PostDto {
           ..add('audience', audience)
           ..add('id', id)
           ..add('author', author)
+          ..add('group', group)
           ..add('game', game)
           ..add('text', text)
           ..add('media', media)
@@ -170,6 +176,10 @@ class PostDtoBuilder implements Builder<PostDto, PostDtoBuilder> {
   UserCardDtoBuilder? _author;
   UserCardDtoBuilder get author => _$this._author ??= UserCardDtoBuilder();
   set author(UserCardDtoBuilder? author) => _$this._author = author;
+
+  PostGroupDtoBuilder? _group;
+  PostGroupDtoBuilder get group => _$this._group ??= PostGroupDtoBuilder();
+  set group(PostGroupDtoBuilder? group) => _$this._group = group;
 
   GameRefDtoBuilder? _game;
   GameRefDtoBuilder get game => _$this._game ??= GameRefDtoBuilder();
@@ -237,6 +247,7 @@ class PostDtoBuilder implements Builder<PostDto, PostDtoBuilder> {
       _audience = $v.audience;
       _id = $v.id;
       _author = $v.author.toBuilder();
+      _group = $v.group?.toBuilder();
       _game = $v.game?.toBuilder();
       _text = $v.text;
       _media = $v.media.toBuilder();
@@ -281,6 +292,7 @@ class PostDtoBuilder implements Builder<PostDto, PostDtoBuilder> {
                 audience, r'PostDto', 'audience'),
             id: BuiltValueNullFieldError.checkNotNull(id, r'PostDto', 'id'),
             author: author.build(),
+            group: _group?.build(),
             game: _game?.build(),
             text:
                 BuiltValueNullFieldError.checkNotNull(text, r'PostDto', 'text'),
@@ -308,6 +320,8 @@ class PostDtoBuilder implements Builder<PostDto, PostDtoBuilder> {
       try {
         _$failedField = 'author';
         author.build();
+        _$failedField = 'group';
+        _group?.build();
         _$failedField = 'game';
         _game?.build();
 

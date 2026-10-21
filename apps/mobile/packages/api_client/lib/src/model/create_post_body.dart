@@ -20,6 +20,7 @@ part 'create_post_body.g.dart';
 /// * [audience]
 /// * [text] - 1–2000 characters, trimmed.
 /// * [gameId] - One of GET /v1/games. Null or left out: \"Any game\".
+/// * [groupId] - Post in this group instead of Home: members only (403 not_member). Group posts are for everyone in the group, so audience=connections is refused.
 /// * [media] - Up to 4 keys from POST /v1/media/upload-url, uploaded by you and not used yet. Required on gameplay.
 /// * [poll] - Required on poll posts, refused on others.
 /// * [recruit] - Required on recruitment posts, refused on others.
@@ -41,6 +42,10 @@ abstract class CreatePostBody
   /// One of GET /v1/games. Null or left out: \"Any game\".
   @BuiltValueField(wireName: r'gameId')
   String? get gameId;
+
+  /// Post in this group instead of Home: members only (403 not_member). Group posts are for everyone in the group, so audience=connections is refused.
+  @BuiltValueField(wireName: r'groupId')
+  String? get groupId;
 
   /// Up to 4 keys from POST /v1/media/upload-url, uploaded by you and not used yet. Required on gameplay.
   @BuiltValueField(wireName: r'media')
@@ -103,6 +108,13 @@ class _$CreatePostBodySerializer
       yield serializers.serialize(
         object.gameId,
         specifiedType: const FullType.nullable(String),
+      );
+    }
+    if (object.groupId != null) {
+      yield r'groupId';
+      yield serializers.serialize(
+        object.groupId,
+        specifiedType: const FullType(String),
       );
     }
     if (object.media != null) {
@@ -180,6 +192,14 @@ class _$CreatePostBodySerializer
           ) as String?;
           if (valueDes == null) continue;
           result.gameId = valueDes;
+          break;
+        case r'groupId':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.groupId = valueDes;
           break;
         case r'media':
           final valueDes = serializers.deserialize(

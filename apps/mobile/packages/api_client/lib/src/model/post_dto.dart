@@ -4,6 +4,7 @@
 
 // ignore_for_file: unused_element
 import 'package:api_client/src/model/user_card_dto.dart';
+import 'package:api_client/src/model/post_group_dto.dart';
 import 'package:built_collection/built_collection.dart';
 import 'package:api_client/src/model/post_type.dart';
 import 'package:api_client/src/model/game_ref_dto.dart';
@@ -26,6 +27,7 @@ part 'post_dto.g.dart';
 /// * [audience]
 /// * [id]
 /// * [author] - topGame gives \"Diamond Valorant\" for the header.
+/// * [group] - Null on Home posts.
 /// * [game] - Null: \"Any game\".
 /// * [text]
 /// * [media] - In position order, 0–4.
@@ -60,6 +62,10 @@ abstract class PostDto implements Built<PostDto, PostDtoBuilder> {
   /// topGame gives \"Diamond Valorant\" for the header.
   @BuiltValueField(wireName: r'author')
   UserCardDto get author;
+
+  /// Null on Home posts.
+  @BuiltValueField(wireName: r'group')
+  PostGroupDto? get group;
 
   /// Null: \"Any game\".
   @BuiltValueField(wireName: r'game')
@@ -155,6 +161,13 @@ class _$PostDtoSerializer implements PrimitiveSerializer<PostDto> {
       object.author,
       specifiedType: const FullType(UserCardDto),
     );
+    yield r'group';
+    yield object.group == null
+        ? null
+        : serializers.serialize(
+            object.group,
+            specifiedType: const FullType.nullable(PostGroupDto),
+          );
     yield r'game';
     yield object.game == null
         ? null
@@ -287,6 +300,14 @@ class _$PostDtoSerializer implements PrimitiveSerializer<PostDto> {
             specifiedType: const FullType(UserCardDto),
           ) as UserCardDto;
           result.author.replace(valueDes);
+          break;
+        case r'group':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(PostGroupDto),
+          ) as PostGroupDto?;
+          if (valueDes == null) continue;
+          result.group.replace(valueDes);
           break;
         case r'game':
           final valueDes = serializers.deserialize(

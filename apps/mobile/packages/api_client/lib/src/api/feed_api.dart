@@ -145,7 +145,7 @@ class FeedApi {
     );
   }
 
-  /// Its author or the post&#39;s author (403 not_owner).
+  /// Its author, the post&#39;s author or, in a group, a group admin (403 not_owner).
   ///
   ///
   /// Parameters:
@@ -784,7 +784,7 @@ class FeedApi {
     );
   }
 
-  /// Your posts, newest first, connections-only ones included.
+  /// Your Home posts, newest first, connections-only ones included.
   ///
   ///
   /// Parameters:
@@ -1159,7 +1159,7 @@ class FeedApi {
     );
   }
 
-  /// Post to Home, with up to 4 photo keys (gameplay needs one), a poll or recruitment slots. 10 an hour: 429 rate_limited.
+  /// Post to Home, or to a group with groupId (members only: 403 not_member), with up to 4 photo keys (gameplay needs one), a poll or recruitment slots. 10 an hour: 429 rate_limited.
   ///
   ///
   /// Parameters:
@@ -1263,7 +1263,7 @@ class FeedApi {
     );
   }
 
-  /// Author only (403 not_owner).
+  /// Its author, or a group admin for a group post (403 not_owner).
   ///
   ///
   /// Parameters:
@@ -1319,7 +1319,7 @@ class FeedApi {
     return _response;
   }
 
-  /// One post.
+  /// One post. Group posts: members only (404 for others).
   ///
   ///
   /// Parameters:
@@ -2041,7 +2041,7 @@ class FeedApi {
     );
   }
 
-  /// Moments: their posts you may see, newest first.
+  /// Moments: their Home posts you may see, newest first.
   ///
   ///
   /// Parameters:

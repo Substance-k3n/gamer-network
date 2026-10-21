@@ -201,7 +201,7 @@ class ProfileScreen extends StatelessWidget {
 
   /// Sample groups: mine, or none for real players other than me (D5).
   List<Widget> _groups(AppState s, Profile v) {
-    final groups = v.isMe ? s.myGroups : const <Group>[];
+    final groups = v.isMe ? s.myGroups : s.theirGroups;
     if (groups.isNotEmpty) {
       return [for (final g in groups) GroupCard(g, key: ValueKey(g.id))];
     }
@@ -1162,7 +1162,7 @@ class _MomentTile extends StatelessWidget {
   }
 }
 
-/// Horizontal row of my sample groups.
+/// Horizontal row of my groups (requests included).
 class _GroupStrip extends StatelessWidget {
   const _GroupStrip();
 
@@ -1211,7 +1211,7 @@ class _GroupStrip extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        GroupTile(g.short, g.tone, size: 30),
+                        GroupTile(g.short, toneOfGroup(g.tone), size: 30),
                         const SizedBox(width: 8),
                         Text(g.name, style: t.body(13, w: w700)),
                       ],

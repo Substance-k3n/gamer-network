@@ -1,14 +1,17 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 
+import '../data.dart';
 import '../groups_data.dart';
 import '../state.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'games.dart' show showGamePickerSheet;
+import 'home.dart' show FeedPost, clock;
+import 'safety.dart';
 
-// Groups run on local sample data (groups_data.dart) until the API has them.
-// Sample members aren't real players, so only "me" opens a profile.
+// Groups on the API (docs/FEED_AND_GROUPS_API.md §5 "Groups"), in the
+// prototype's look.
 
 // ---- shared pieces ----
 
@@ -47,33 +50,29 @@ class GroupTile extends StatelessWidget {
   }
 }
 
-/// A sample member's face; mine shows my photo.
+/// A player's face (photo or initial).
 class _Face extends StatelessWidget {
-  const _Face(this.who, {required this.size, this.fontSize, this.border = 2});
-  final String who;
+  const _Face(this.u, {required this.size, this.fontSize, this.border = 2});
+  final UserCardDto u;
   final double size;
   final double? fontSize;
   final double border;
 
   @override
-  Widget build(BuildContext context) {
-    final s = context.app;
-    final m = s.member(who);
-    return Avatar(
-      m.init,
-      m.tone,
-      size: size,
-      fontSize: fontSize,
-      border: border,
-      url: who == 'me' ? s.me?.avatarUrl : null,
-    );
-  }
+  Widget build(BuildContext context) => Avatar(
+    initialOf(u.displayName),
+    toneFor(u.id),
+    url: u.avatarUrl,
+    size: size,
+    fontSize: fontSize,
+    border: border,
+  );
 }
 
-/// Overlapping member faces.
+/// Overlapping faces.
 class FaceStack extends StatelessWidget {
   const FaceStack(this.who, {super.key, this.size = 24});
-  final List<String> who;
+  final List<UserCardDto> who;
   final double size;
 
   @override
@@ -102,28 +101,48 @@ class FaceStack extends StatelessWidget {
   }
 }
 
-/// Join / Ask to join / Requested / Joined, sized for cards or the group page.
+/// "Tonight 21:00", "Tomorrow 20:00", "Sat 18:00", "25/11 18:00".
+String eventWhen(DateTime at, DateTime now) {
+  final l = at.toLocal(), n = now.toLocal();
+  final day = DateTime(l.year, l.month, l.day);
+  final today = DateTime(n.year, n.month, n.day);
+  final d = day.difference(today).inDays;
+  final time = clock(at);
+  if (d == 0) return '${l.hour >= 18 ? 'Tonight' : 'Today'} $time';
+  if (d == 1) return 'Tomorrow $time';
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  if (d > 1 && d < 7) return '${days[l.weekday - 1]} $time';
+  return '${l.day}/${l.month} $time';
+}
+
+/// Join / Ask to join / Requested… / Joined ✓, sized for cards or the page.
 class JoinButton extends StatelessWidget {
   const JoinButton(this.g, {super.key, this.big = false});
-  final Group g;
+  final GroupDto g;
   final bool big;
 
   @override
   Widget build(BuildContext context) {
     final s = context.app;
     final t = context.rt;
-    final member = g.members.contains('me');
-    final requested = s.groupRequests.contains(g.id);
-    final (label, bg, fg) = member
-        ? ('Joined ✓', t.strong, t.onStrong)
-        : requested
-        ? ('Requested…', t.grey, t.text)
-        : (g.approval ? 'Ask to join' : 'Join', t.accent, t.onAccent);
+    final status = g.myStatus;
+    final (label, bg, fg) = switch (status) {
+      MembershipStatus.member => ('Joined ✓', t.strong, t.onStrong),
+      MembershipStatus.pending => ('Requested…', t.grey, t.text),
+      _ => (g.approval ? 'Ask to join' : 'Join', t.accent, t.onAccent),
+    };
     return Pill(
       label,
-      onTap: member
-          ? (big ? () => _confirmLeave(context, s, g) : () => s.openGroup(g.id))
-          : () => s.joinGroup(g),
+      onTap: s.busy
+          ? null
+          : switch (status) {
+              MembershipStatus.member =>
+                big
+                    ? () => _confirmLeave(context, s, g)
+                    : () => s.openGroup(g.id),
+              MembershipStatus.pending => () => _confirmCancel(context, s, g),
+              _ => () => s.joinGroup(g),
+            },
       expand: big,
       height: big ? 46 : 36,
       padH: big ? 18 : 14,
@@ -136,51 +155,33 @@ class JoinButton extends StatelessWidget {
   }
 }
 
-Future<void> _confirmLeave(BuildContext context, AppState s, Group g) async {
-  final leave = await showDialog<bool>(
-    context: context,
-    barrierColor: Colors.black.withValues(alpha: .45),
-    builder: (context) {
-      final t = context.rt;
-      return ThemedDialog(
-        children: [
-          Text('Leave ${g.name}?', style: t.body(22, w: w800, ls: -.6)),
-          Text(
-            'You’ll stop seeing its posts and events. You can join again any time${g.approval ? ' (admins approve requests)' : ''}.',
-            style: t.body(14, c: t.muted, h: 1.35),
-          ),
-          Row(
-            children: [
-              Expanded(
-                child: Pill(
-                  'Stay',
-                  onTap: () => Navigator.pop(context, false),
-                  expand: true,
-                  height: 46,
-                  size: 15,
-                  bg: Colors.transparent,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Pill(
-                  'Leave',
-                  onTap: () => Navigator.pop(context, true),
-                  expand: true,
-                  height: 46,
-                  size: 15,
-                  weight: w700,
-                  bg: t.strong,
-                  fg: t.onStrong,
-                ),
-              ),
-            ],
-          ),
-        ],
-      );
-    },
-  );
-  if (leave == true) s.leaveGroup(g);
+Future<void> _confirmLeave(BuildContext context, AppState s, GroupDto g) async {
+  if (await confirm(
+    context,
+    title: 'Leave ${g.name}?',
+    body:
+        'You’ll stop seeing its posts and events. You can join again any time${g.approval ? ' (admins approve requests)' : ''}.',
+    yes: 'Leave',
+    no: 'Stay',
+  )) {
+    await s.leaveGroup(g);
+  }
+}
+
+Future<void> _confirmCancel(
+  BuildContext context,
+  AppState s,
+  GroupDto g,
+) async {
+  if (await confirm(
+    context,
+    title: 'Cancel your request?',
+    body: 'The admins of ${g.name} won’t see it any more.',
+    yes: 'Cancel request',
+    no: 'Keep it',
+  )) {
+    await s.leaveGroup(g);
+  }
 }
 
 /// ADMIN tag beside a member's name.
@@ -199,17 +200,23 @@ class _AdminTag extends StatelessWidget {
   );
 }
 
+/// "Valorant · Ethiopia", or "City · Addis Ababa".
+String groupLine(GroupDto g) => g.kind == GroupKind.game && g.game != null
+    ? '${g.game!.name} · ${g.place}'
+    : '${groupKindLabel[g.kind]} · ${g.place}';
+
 /// Group summary card used in the Groups list and on profiles.
 class GroupCard extends StatelessWidget {
   const GroupCard(this.g, {super.key});
-  final Group g;
+  final GroupDto g;
 
   @override
   Widget build(BuildContext context) {
     final s = context.app;
     final t = context.rt;
-    final faces = g.members.where((p) => p != 'me').toList();
-    final next = g.events.firstOrNull;
+    final faces = g.membersPreview.toList();
+    final next = g.nextEvent;
+    final n = g.memberCount.toInt();
     return InkBox(
       onTap: () => s.openGroup(g.id),
       padding: const EdgeInsets.all(14),
@@ -218,7 +225,7 @@ class GroupCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              GroupTile(g.short, g.tone, size: 52),
+              GroupTile(g.short, toneOfGroup(g.tone), size: 52),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -231,7 +238,7 @@ class GroupCard extends StatelessWidget {
                       style: t.body(16, w: w700),
                     ),
                     Text(
-                      g.line(s.catalog),
+                      groupLine(g),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: t.body(12, c: t.muted),
@@ -243,21 +250,30 @@ class GroupCard extends StatelessWidget {
               JoinButton(g),
             ],
           ),
-          Text(
-            g.about,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: t.body(13, c: t.muted, h: 1.35),
-          ),
+          if (g.about.isNotEmpty)
+            Text(
+              g.about,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: t.body(13, c: t.muted, h: 1.35),
+            ),
           Row(
             children: [
               FaceStack(faces, size: 22),
               if (faces.isNotEmpty) const SizedBox(width: 8),
               Text(
-                '${groupCount(g.count)} members',
+                '${groupCount(n)} ${n == 1 ? 'member' : 'members'}',
                 style: t.body(12, w: w600),
               ),
-              if (g.approval) ...[
+              if (g.myStatus == MembershipStatus.pending) ...[
+                const SizedBox(width: 8),
+                TypeTag(
+                  'REQUESTED',
+                  t.grey,
+                  size: 7,
+                  pad: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                ),
+              ] else if (g.approval) ...[
                 const SizedBox(width: 8),
                 TypeTag(
                   'APPROVAL',
@@ -270,7 +286,7 @@ class GroupCard extends StatelessWidget {
               if (next != null)
                 Flexible(
                   child: Text(
-                    'Next: ${next.when}',
+                    'Next: ${eventWhen(next.startsAt, s.now.value)}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: t.body(12, c: t.muted),
@@ -284,6 +300,55 @@ class GroupCard extends StatelessWidget {
   }
 }
 
+Widget _spinner() => const Padding(
+  padding: EdgeInsets.all(24),
+  child: Center(child: CircularProgressIndicator()),
+);
+
+Widget _more(VoidCallback onTap) => Center(
+  child: Pill(
+    'Load more',
+    onTap: onTap,
+    height: 42,
+    padH: 18,
+    size: 14,
+    weight: w700,
+  ),
+);
+
+/// A one-line menu entry in a ThemedDialog; closes the dialog first.
+Widget _menuItem(
+  BuildContext context,
+  String label,
+  VoidCallback onTap, {
+  bool strong = false,
+}) {
+  final t = context.rt;
+  return Pill(
+    label,
+    onTap: () {
+      Navigator.pop(context);
+      onTap();
+    },
+    expand: true,
+    height: 48,
+    size: 15,
+    weight: w700,
+    bg: strong ? t.strong : Colors.transparent,
+    fg: strong ? t.onStrong : null,
+  );
+}
+
+Widget _cancelItem(BuildContext context) => Pill(
+  'Cancel',
+  onTap: () => Navigator.pop(context),
+  expand: true,
+  height: 44,
+  size: 14,
+  bg: Colors.transparent,
+  border: 0,
+);
+
 // ---- Groups tab ----
 
 class CommunitiesScreen extends StatelessWidget {
@@ -293,89 +358,95 @@ class CommunitiesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = context.app;
     final t = context.rt;
-    final mine = s.myGroups;
-    final pool = s.groupsTab == 'Yours' ? mine : s.groups;
-    final q = s.groupQuery.trim().toLowerCase();
-    final shown = pool.where((g) {
-      final kindOk = s.groupKind == 'All' || g.kind.label == s.groupKind;
-      final game = g.gameId == null ? '' : s.catalog.byId(g.gameId!).name;
-      final text = '${g.name} ${g.place} $game'.toLowerCase();
-      return kindOk && (q.isEmpty || text.contains(q));
-    }).toList();
-    final yours = 'Yours (${mine.length})';
+    final yoursTab = s.groupsTab == 'Yours';
+    final yours = 'Yours (${s.myGroups.length})';
+    final filtered = s.groupQuery.trim().length >= 2 || s.groupKind != 'All';
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 110),
-      child: Gap(
-        14,
-        children: [
-          InkBox.dark(
-            radius: 26,
-            padding: const EdgeInsets.all(18),
-            child: Gap(
-              12,
-              children: [
-                Text(t.up('START A GROUP'), style: t.label(9, c: t.accentText)),
-                Text(
-                  'Your squad, your game, your city or campus.',
-                  style: t.body(22, w: w800, ls: -.6, h: 1.1, c: t.onDark),
-                ),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Pill(
-                    'Create group',
-                    onTap: s.openCreateGroup,
-                    height: 42,
-                    padH: 16,
-                    size: 14,
-                    weight: w700,
-                    bg: t.accent,
-                    fg: t.onAccent,
-                    leading: SvgIcon(Ic.plus, size: 16, color: t.onAccent),
+    return RefreshIndicator(
+      onRefresh: () => Future.wait([s.loadGroups(), s.loadMyGroups()]),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 110),
+        child: Gap(
+          14,
+          children: [
+            InkBox.dark(
+              radius: 26,
+              padding: const EdgeInsets.all(18),
+              child: Gap(
+                12,
+                children: [
+                  Text(
+                    t.up('START A GROUP'),
+                    style: t.label(9, c: t.accentText),
                   ),
-                ),
+                  Text(
+                    'Your squad, your game, your city or campus.',
+                    style: t.body(22, w: w800, ls: -.6, h: 1.1, c: t.onDark),
+                  ),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Pill(
+                      'Create group',
+                      onTap: s.openCreateGroup,
+                      height: 42,
+                      padH: 16,
+                      size: 14,
+                      weight: w700,
+                      bg: t.accent,
+                      fg: t.onAccent,
+                      leading: SvgIcon(Ic.plus, size: 16, color: t.onAccent),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Segmented(
+              options: ['Discover', yours],
+              value: yoursTab ? yours : 'Discover',
+              onChanged: (v) => s.setGroupsFilter(
+                () =>
+                    s.groupsTab = v.startsWith('Yours') ? 'Yours' : 'Discover',
+              ),
+            ),
+            BoxField(
+              value: s.groupQuery,
+              hint: 'Search groups, games, cities',
+              height: 46,
+              padH: 16,
+              onChanged: s.setGroupQuery,
+              leading: SvgIcon(Ic.search, size: 18, color: t.muted),
+            ),
+            ChipScroller(
+              children: [
+                for (final k in ['All', ...groupKindLabel.values])
+                  Pill.chip(
+                    k,
+                    s.groupKind == k,
+                    () => s.setGroupsFilter(() => s.groupKind = k),
+                    height: 32,
+                    padH: 12,
+                  ),
               ],
             ),
-          ),
-          Segmented(
-            options: ['Discover', yours],
-            value: s.groupsTab == 'Yours' ? yours : 'Discover',
-            onChanged: (v) => s.update(
-              () => s.groupsTab = v.startsWith('Yours') ? 'Yours' : 'Discover',
-            ),
-          ),
-          BoxField(
-            value: s.groupQuery,
-            hint: 'Search groups, games, cities',
-            height: 46,
-            padH: 16,
-            onChanged: (v) => s.update(() => s.groupQuery = v),
-            leading: SvgIcon(Ic.search, size: 18, color: t.muted),
-          ),
-          ChipScroller(
-            children: [
-              for (final k in ['All', ...GroupKind.values.map((k) => k.label)])
-                Pill.chip(
-                  k,
-                  s.groupKind == k,
-                  () => s.update(() => s.groupKind = k),
-                  height: 32,
-                  padH: 12,
+            if (!s.groupsLoaded)
+              _spinner()
+            else ...[
+              Label(
+                '${s.groups.length}${s.groupsCursor != null ? '+' : ''} ${yoursTab ? 'JOINED' : 'GROUPS'}',
+                padLeft: 6,
+              ),
+              if (s.groups.isEmpty)
+                EmptyNote(
+                  yoursTab && !filtered
+                      ? 'You haven’t joined any groups yet. Discover one, or start your own.'
+                      : 'No groups match. Try another search, or create it.',
                 ),
+              for (final g in s.groups) GroupCard(g, key: ValueKey(g.id)),
+              if (s.groupsCursor != null) _more(() => s.loadGroups(more: true)),
             ],
-          ),
-          Label(
-            '${shown.length} ${s.groupsTab == 'Yours' ? 'JOINED' : 'GROUPS'}',
-            padLeft: 6,
-          ),
-          if (shown.isEmpty)
-            EmptyNote(
-              s.groupsTab == 'Yours' && mine.isEmpty
-                  ? 'You haven’t joined any groups yet. Discover one, or start your own.'
-                  : 'No groups match. Try another search, or create it.',
-            ),
-          for (final g in shown) GroupCard(g, key: ValueKey(g.id)),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -401,13 +472,13 @@ class GroupScreen extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: BackBtn(onTap: s.closeGroup),
             ),
-            const EmptyNote('This group no longer exists.'),
+            _spinner(),
           ],
         ),
       );
     }
-    final member = g.members.contains('me');
-    final admin = g.admins.contains('me');
+    final member = g.myStatus == MembershipStatus.member;
+    final admin = s.groupAdmin;
 
     Widget stat(String n, String label) => Expanded(
       child: Container(
@@ -430,268 +501,148 @@ class GroupScreen extends StatelessWidget {
       ),
     );
 
-    return ListView(
-      padding: const EdgeInsets.only(bottom: 40),
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-          child: Row(
-            children: [
-              BackBtn(onTap: s.closeGroup),
-              const Spacer(),
-              if (admin) ...[
-                TypeTag('YOU’RE ADMIN', t.soft),
-                const SizedBox(width: 8),
-              ],
-              CircleBtn(
-                onTap: () => s.toast('Invite link copied'),
-                child: const SvgIcon(Ic.share, size: 18),
-              ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          child: InkBox.dark(
-            radius: 28,
-            padding: const EdgeInsets.all(16),
-            child: Gap(
-              14,
-              children: [
-                Row(
-                  children: [
-                    GroupTile(g.short, g.tone, size: 66, onDark: true),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            g.name,
-                            style: t.body(
-                              24,
-                              w: w800,
-                              ls: -.8,
-                              h: 1.05,
-                              c: t.onDark,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            g.line(s.catalog),
-                            style: t.body(
-                              13,
-                              c: t.onDark.withValues(alpha: .8),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            t.up(
-                              g.approval
-                                  ? 'ADMINS APPROVE NEW MEMBERS'
-                                  : 'OPEN TO EVERYONE',
-                            ),
-                            style: t.label(8, c: t.accentText),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    // No comma: the segment fonts lack one.
-                    stat('${g.count}', 'MEMBERS'),
-                    const SizedBox(width: 8),
-                    stat(pad2(g.events.length), 'EVENTS'),
-                    const SizedBox(width: 8),
-                    stat(pad2(g.posts.length), 'POSTS'),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-          child: Row(
-            children: [
-              Expanded(child: JoinButton(g, big: true)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Pill(
-                  'Invite players',
-                  onTap: () => s.toast('Invite link copied'),
-                  expand: true,
-                  height: 46,
-                  size: 15,
-                  weight: w700,
-                  shadow: 3,
-                ),
-              ),
-            ],
-          ),
-        ),
-        ChipScroller(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-          children: [
-            for (final tab in ['Feed', 'Members', 'Events', 'About'])
-              Pill.chip(
-                tab,
-                s.groupTab == tab,
-                () => s.update(() => s.groupTab = tab),
-                height: 36,
-                padH: 14,
-                size: 14,
-              ),
-          ],
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-          child: switch (s.groupTab) {
-            'Members' => _Members(g),
-            'Events' => _Events(g, member: member, admin: admin),
-            'About' => _About(g),
-            _ => _Feed(g, member: member),
-          },
-        ),
-      ],
-    );
-  }
-}
-
-class _Feed extends StatelessWidget {
-  const _Feed(this.g, {required this.member});
-  final Group g;
-  final bool member;
-
-  @override
-  Widget build(BuildContext context) {
-    final s = context.app;
-    final t = context.rt;
-    final empty = s.groupDraftPost.trim().isEmpty;
-    return Gap(
-      12,
-      children: [
-        if (member)
-          InkBox(
-            radius: 22,
-            padding: const EdgeInsets.fromLTRB(10, 8, 8, 8),
+    return RefreshIndicator(
+      onRefresh: () async => s.openGroup(g.id, tab: s.groupTab),
+      child: ListView(
+        padding: const EdgeInsets.only(bottom: 40),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
             child: Row(
               children: [
-                const _Face('me', size: 34, fontSize: 14),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Field(
-                    value: s.groupDraftPost,
-                    hint: 'Share with ${g.name}…',
-                    size: 15,
-                    onChanged: (v) => s.update(() => s.groupDraftPost = v),
-                    onSubmitted: (_) => s.postInGroup(g),
+                BackBtn(onTap: s.closeGroup),
+                const Spacer(),
+                if (admin) ...[
+                  TypeTag('YOU’RE ADMIN', t.soft),
+                  const SizedBox(width: 8),
+                ],
+                Semantics(
+                  label: 'Share group',
+                  child: CircleBtn(
+                    onTap: () => s.shareGroup(g),
+                    child: const SvgIcon(Ic.share, size: 18),
                   ),
                 ),
                 const SizedBox(width: 8),
-                Pill(
-                  'Post',
-                  onTap: () => s.postInGroup(g),
-                  height: 36,
-                  padH: 14,
-                  weight: w700,
-                  border: 0,
-                  bg: empty ? t.grey : t.accent,
-                  fg: empty ? t.text : t.onAccent,
+                Semantics(
+                  label: 'Group options',
+                  child: CircleBtn(
+                    onTap: () => _groupMenu(context, s, g),
+                    child: const SvgIcon(Ic.more, size: 18),
+                  ),
                 ),
               ],
             ),
-          )
-        else
-          EmptyNote(
-            g.approval
-                ? 'Ask to join to post and reply in this group.'
-                : 'Join to post and reply in this group.',
-            pad: 16,
           ),
-        if (g.posts.isEmpty)
-          const EmptyNote('No posts yet. Say hi and set the tone.'),
-        for (var i = 0; i < g.posts.length; i++)
-          _GroupPostCard(g, g.posts[i], 'gp:${g.id}:${g.posts.length - i}'),
-      ],
-    );
-  }
-}
-
-class _GroupPostCard extends StatelessWidget {
-  const _GroupPostCard(this.g, this.p, this.k);
-  final Group g;
-  final GroupPost p;
-
-  /// Stable key for this post's GG.
-  final String k;
-
-  @override
-  Widget build(BuildContext context) {
-    final s = context.app;
-    final t = context.rt;
-    final w = s.member(p.who);
-    final me = p.who == 'me';
-    final mine = s.groupGG.contains(k);
-    // Only "me" is a real player with a profile to open.
-    final open = me ? s.goProfileTab : null;
-    return InkBox(
-      radius: 22,
-      padding: const EdgeInsets.all(14),
-      child: Gap(
-        9,
-        children: [
-          Row(
-            children: [
-              GestureDetector(
-                onTap: open,
-                child: _Face(p.who, size: 36, fontSize: 14),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: GestureDetector(
-                            onTap: open,
-                            child: Text(
-                              me ? '${w.name} (you)' : w.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: t.body(14, w: w700),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: InkBox.dark(
+              radius: 28,
+              padding: const EdgeInsets.all(16),
+              child: Gap(
+                14,
+                children: [
+                  Row(
+                    children: [
+                      GroupTile(
+                        g.short,
+                        toneOfGroup(g.tone),
+                        size: 66,
+                        onDark: true,
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              g.name,
+                              style: t.body(
+                                24,
+                                w: w800,
+                                ls: -.8,
+                                h: 1.05,
+                                c: t.onDark,
+                              ),
                             ),
-                          ),
+                            const SizedBox(height: 4),
+                            Text(
+                              groupLine(g),
+                              style: t.body(
+                                13,
+                                c: t.onDark.withValues(alpha: .8),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              t.up(
+                                g.approval
+                                    ? 'ADMINS APPROVE NEW MEMBERS'
+                                    : 'OPEN TO EVERYONE',
+                              ),
+                              style: t.label(8, c: t.accentText),
+                            ),
+                          ],
                         ),
-                        if (g.admins.contains(p.who)) const _AdminTag(),
-                      ],
-                    ),
-                    Text(p.time, style: t.body(12, c: t.muted)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          Text(p.text, style: t.body(15, h: 1.4)),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Pill(
-              'GG',
-              onTap: () => s.toggleGroupGG(k),
-              height: 32,
-              padH: 12,
-              weight: w700,
-              bg: mine ? t.accent : Colors.transparent,
-              fg: mine ? t.onAccent : t.text,
-              trailing: Text(
-                '${p.gg + (mine ? 1 : 0)}',
-                style: t.digits(10, c: mine ? t.onAccent : t.text),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      // No comma: the segment fonts lack one.
+                      stat('${g.memberCount}', 'MEMBERS'),
+                      const SizedBox(width: 8),
+                      stat(pad2(s.events?.length ?? 0), 'EVENTS'),
+                      const SizedBox(width: 8),
+                      stat(pad2(s.groupPosts?.length ?? 0), 'POSTS'),
+                    ],
+                  ),
+                ],
               ),
             ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            child: Row(
+              children: [
+                Expanded(child: JoinButton(g, big: true)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Pill(
+                    'Invite players',
+                    onTap: () => s.shareGroup(g),
+                    expand: true,
+                    height: 46,
+                    size: 15,
+                    weight: w700,
+                    shadow: 3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ChipScroller(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+            children: [
+              for (final tab in ['Feed', 'Members', 'Events', 'About'])
+                Pill.chip(
+                  tab,
+                  s.groupTab == tab,
+                  () => s.setGroupTab(tab),
+                  height: 36,
+                  padH: 14,
+                  size: 14,
+                ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+            child: switch (s.groupTab) {
+              'Members' => _Members(g, admin: admin),
+              'Events' => _Events(g, member: member, admin: admin),
+              'About' => _About(g, admin: admin),
+              _ => _Feed(g, member: member),
+            },
           ),
         ],
       ),
@@ -699,99 +650,307 @@ class _GroupPostCard extends StatelessWidget {
   }
 }
 
-class _Members extends StatelessWidget {
-  const _Members(this.g);
-  final Group g;
+/// The group's ⋯ menu: link, edit (admins) and report.
+Future<void> _groupMenu(BuildContext context, AppState s, GroupDto g) {
+  return showDialog<void>(
+    context: context,
+    barrierColor: Colors.black.withValues(alpha: .45),
+    builder: (context) {
+      final t = context.rt;
+      return ThemedDialog(
+        children: [
+          Text(g.name, style: t.body(22, w: w800, ls: -.6)),
+          _menuItem(context, 'Copy link', () => s.shareGroup(g)),
+          if (s.groupAdmin) _menuItem(context, 'Edit group', s.openEditGroup),
+          _menuItem(context, 'Report group', () => _reportGroup(context, s, g)),
+          _cancelItem(context),
+        ],
+      );
+    },
+  );
+}
+
+/// Reports go against the group's creator (ReportBody.groupId + userId).
+/// The group has no creator field yet, so its longest-standing admin
+/// stands in (see handoffs/mobile-3.md).
+Future<void> _reportGroup(BuildContext context, AppState s, GroupDto g) {
+  final admins = [
+    for (final m in s.members ?? const <GroupMemberDto>[])
+      if (m.role == GroupRole.admin) m,
+  ];
+  admins.sort(
+    (a, b) =>
+        (a.joinedAt ?? DateTime(2100)).compareTo(b.joinedAt ?? DateTime(2100)),
+  );
+  final owner = admins.firstOrNull?.user;
+  if (owner == null) {
+    s.toast('Couldn’t report this group right now. Try again.');
+    return Future.value();
+  }
+  return showReportDialog(
+    context,
+    userId: owner.id,
+    name: g.name,
+    groupId: g.id,
+  );
+}
+
+class _Feed extends StatelessWidget {
+  const _Feed(this.g, {required this.member});
+  final GroupDto g;
+  final bool member;
 
   @override
   Widget build(BuildContext context) {
     final s = context.app;
     final t = context.rt;
-    final known = [...g.members]
-      ..sort(
-        (a, b) =>
-            (g.admins.contains(b) ? 1 : 0) - (g.admins.contains(a) ? 1 : 0),
+    final empty = s.groupDraftPost.trim().isEmpty;
+    final posts = s.groupPosts;
+    if (!member) {
+      return EmptyNote(
+        g.approval
+            ? 'Ask to join to post and reply in this group.'
+            : 'Join to post and reply in this group.',
+        pad: 16,
       );
+    }
     return Gap(
-      10,
+      12,
       children: [
-        Label('${groupCount(g.count)} MEMBERS', padLeft: 6),
-        RowList(
-          children: [
-            for (final who in known)
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: who == 'me' ? s.goProfileTab : null,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                  child: Row(
-                    children: [
-                      _Face(who, size: 40, fontSize: 16),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    who == 'me'
-                                        ? '${s.member(who).name} (you)'
-                                        : s.member(who).name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: t.body(15, w: w700),
-                                  ),
-                                ),
-                                if (g.admins.contains(who)) const _AdminTag(),
-                              ],
-                            ),
-                            Text(
-                              s.member(who).rank,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: t.body(12, c: t.muted),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+        InkBox(
+          radius: 22,
+          padding: const EdgeInsets.fromLTRB(10, 8, 8, 8),
+          child: Row(
+            children: [
+              Avatar(
+                s.init,
+                Tone.accent,
+                url: s.me?.avatarUrl,
+                size: 34,
+                fontSize: 14,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Field(
+                  value: s.groupDraftPost,
+                  hint: 'Share with ${g.name}…',
+                  size: 15,
+                  onChanged: (v) => s.update(() => s.groupDraftPost = v),
+                  onSubmitted: (_) => s.postInGroup(),
                 ),
               ),
-          ],
-        ),
-        if (g.extra > 0)
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Text(
-              '+ ${groupCount(g.extra)} more members',
-              textAlign: TextAlign.center,
-              style: t.body(13, c: t.muted),
-            ),
+              const SizedBox(width: 8),
+              Pill(
+                'Post',
+                onTap: s.busy ? null : s.postInGroup,
+                height: 36,
+                padH: 14,
+                weight: w700,
+                border: 0,
+                bg: empty ? t.grey : t.accent,
+                fg: empty ? t.text : t.onAccent,
+              ),
+            ],
           ),
+        ),
+        if (posts == null)
+          _spinner()
+        else if (posts.isEmpty)
+          const EmptyNote('No posts yet. Say hi and set the tone.'),
+        for (final p in posts ?? const <PostDto>[])
+          InkBox(
+            key: ValueKey(p.id),
+            radius: 22,
+            padding: const EdgeInsets.only(top: 4),
+            child: FeedPost(p),
+          ),
+        if (s.groupPostsCursor != null)
+          _more(() => s.loadGroupPosts(more: true)),
       ],
     );
   }
 }
 
+class _Members extends StatelessWidget {
+  const _Members(this.g, {required this.admin});
+  final GroupDto g;
+  final bool admin;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.app;
+    final t = context.rt;
+    final list = s.members;
+    final reqs = s.joinRequests ?? const <GroupMemberDto>[];
+    final known = [...?list]
+      ..sort(
+        (a, b) =>
+            (b.role == GroupRole.admin ? 1 : 0) -
+            (a.role == GroupRole.admin ? 1 : 0),
+      );
+
+    Widget who(GroupMemberDto m, {List<Widget> trailing = const []}) {
+      final mine = m.user.id == s.me?.id;
+      final rank = s.rankLine(m.user.topGame);
+      return GestureDetector(
+        key: ValueKey('m-${m.user.id}-${m.status.name}'),
+        behavior: HitTestBehavior.opaque,
+        onTap: () => s.openPlayer(m.user.username),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Row(
+            children: [
+              _Face(m.user, size: 40, fontSize: 16),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            mine
+                                ? '${m.user.displayName} (you)'
+                                : m.user.displayName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: t.body(15, w: w700),
+                          ),
+                        ),
+                        if (m.role == GroupRole.admin &&
+                            m.status == MembershipStatus.member)
+                          const _AdminTag(),
+                      ],
+                    ),
+                    Text(
+                      rank.isEmpty ? '@${m.user.username}' : rank,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.body(12, c: t.muted),
+                    ),
+                  ],
+                ),
+              ),
+              ...trailing,
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Gap(
+      10,
+      children: [
+        if (admin && reqs.isNotEmpty) ...[
+          Label('REQUESTS (${reqs.length})', padLeft: 6),
+          RowList(
+            children: [
+              for (final m in reqs)
+                who(
+                  m,
+                  trailing: [
+                    Pill(
+                      'Decline',
+                      onTap: s.busy ? null : () => s.approveRequest(m, false),
+                      height: 32,
+                      padH: 10,
+                      bg: Colors.transparent,
+                    ),
+                    const SizedBox(width: 6),
+                    Pill(
+                      'Approve',
+                      onTap: s.busy ? null : () => s.approveRequest(m, true),
+                      height: 32,
+                      padH: 12,
+                      weight: w700,
+                      bg: t.accent,
+                      fg: t.onAccent,
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ],
+        Label('${groupCount(g.memberCount.toInt())} MEMBERS', padLeft: 6),
+        if (list == null)
+          _spinner()
+        else
+          RowList(
+            children: [
+              for (final m in known)
+                who(
+                  m,
+                  trailing: [
+                    if (admin && m.user.id != s.me?.id)
+                      Semantics(
+                        label: 'Manage ${m.user.displayName}',
+                        child: CircleBtn(
+                          size: 34,
+                          onTap: () => _memberMenu(context, s, m),
+                          child: const SvgIcon(Ic.more, size: 16),
+                        ),
+                      ),
+                  ],
+                ),
+            ],
+          ),
+        if (s.membersCursor != null) _more(() => s.loadMembers(more: true)),
+      ],
+    );
+  }
+}
+
+/// An admin's options for one member: role and removal.
+Future<void> _memberMenu(BuildContext context, AppState s, GroupMemberDto m) {
+  final isAdmin = m.role == GroupRole.admin;
+  return showDialog<void>(
+    context: context,
+    barrierColor: Colors.black.withValues(alpha: .45),
+    builder: (context) {
+      final t = context.rt;
+      return ThemedDialog(
+        children: [
+          Text(m.user.displayName, style: t.body(22, w: w800, ls: -.6)),
+          _menuItem(
+            context,
+            isAdmin ? 'Make member' : 'Make admin',
+            () => s.setMemberRole(
+              m,
+              isAdmin ? GroupRole.member : GroupRole.admin,
+            ),
+          ),
+          _menuItem(context, 'Remove from group', () async {
+            if (await confirm(
+              context,
+              title: 'Remove ${m.user.displayName}?',
+              body: 'They leave the group. They can ask to join again.',
+              yes: 'Remove',
+            )) {
+              await s.removeMember(m);
+            }
+          }, strong: true),
+          _cancelItem(context),
+        ],
+      );
+    },
+  );
+}
+
 class _Events extends StatelessWidget {
   const _Events(this.g, {required this.member, required this.admin});
-  final Group g;
+  final GroupDto g;
   final bool member, admin;
 
   @override
   Widget build(BuildContext context) {
     final s = context.app;
     final t = context.rt;
+    final list = s.events;
     return Gap(
       12,
       children: [
-        if (admin)
+        if (member)
           Dashed(
             radius: 22,
             onTap: () => _newEvent(context, s, g),
@@ -807,32 +966,36 @@ class _Events extends StatelessWidget {
               ),
             ),
           ),
-        if (g.events.isEmpty)
+        if (list == null)
+          _spinner()
+        else if (list.isEmpty)
           EmptyNote(
-            admin
+            member
                 ? 'No events yet. Plan the first one.'
                 : 'No events planned yet.',
           ),
-        for (final e in g.events) _EventCard(e, member: member),
+        for (final e in list ?? const <GroupEventDto>[])
+          _EventCard(e, member: member, admin: admin),
+        if (s.eventsCursor != null) _more(() => s.loadEvents(more: true)),
       ],
     );
   }
 }
 
 class _EventCard extends StatelessWidget {
-  const _EventCard(this.e, {required this.member});
-  final GroupEvent e;
-  final bool member;
+  const _EventCard(this.e, {required this.member, required this.admin});
+  final GroupEventDto e;
+  final bool member, admin;
 
   @override
   Widget build(BuildContext context) {
     final s = context.app;
     final t = context.rt;
-    final going = e.going.contains('me');
-    final time =
-        RegExp(r'\d{1,2}:\d{2}').firstMatch(e.when)?.group(0) ?? '--:--';
-    final day = e.when.replaceAll(time, '').trim();
-    final game = e.gameId == null ? '' : ' · ${s.catalog.byId(e.gameId!).name}';
+    final going = e.imGoing;
+    final time = clock(e.startsAt);
+    final day = eventWhen(e.startsAt, s.now.value).replaceAll(time, '').trim();
+    final game = e.game == null ? '' : ' · ${e.game!.name}';
+    final canDelete = admin || e.createdBy.id == s.me?.id;
     return InkBox(
       key: ValueKey(e.id),
       radius: 22,
@@ -847,10 +1010,12 @@ class _EventCard extends StatelessWidget {
               width: 56,
               child: Column(
                 children: [
-                  Text(
-                    t.up(day.isEmpty ? 'SOON' : day.toUpperCase()),
-                    maxLines: 1,
-                    style: t.label(8, c: t.accentText),
+                  FittedBox(
+                    child: Text(
+                      t.up(day.toUpperCase()),
+                      maxLines: 1,
+                      style: t.label(8, c: t.accentText),
+                    ),
                   ),
                   const SizedBox(height: 4),
                   FittedBox(
@@ -874,11 +1039,11 @@ class _EventCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    FaceStack(e.going.toList(), size: 20),
-                    if (e.going.isNotEmpty) const SizedBox(width: 6),
+                    FaceStack(e.goingPreview.toList(), size: 20),
+                    if (e.goingPreview.isNotEmpty) const SizedBox(width: 6),
                     Flexible(
                       child: Text(
-                        '${e.going.length} going$game',
+                        '${e.goingCount} going$game',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: t.body(12, c: t.muted),
@@ -890,16 +1055,47 @@ class _EventCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          Pill(
-            going ? 'Going ✓' : 'I’m in',
-            onTap: member
-                ? () => s.toggleGoing(e)
-                : () => s.toast('Join the group to RSVP'),
-            height: 34,
-            padH: 12,
-            weight: w700,
-            bg: going ? t.strong : (member ? t.accent : t.grey),
-            fg: going ? t.onStrong : (member ? t.onAccent : t.text),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Pill(
+                going ? 'Going ✓' : 'I’m in',
+                onTap: member
+                    ? () => s.toggleGoing(e)
+                    : () => s.toast('Join the group to RSVP'),
+                height: 34,
+                padH: 12,
+                weight: w700,
+                bg: going ? t.strong : (member ? t.accent : t.grey),
+                fg: going ? t.onStrong : (member ? t.onAccent : t.text),
+              ),
+              if (canDelete)
+                GestureDetector(
+                  onTap: () async {
+                    if (await confirm(
+                      context,
+                      title: 'Delete this event?',
+                      body: 'It’s gone for everyone in the group.',
+                      yes: 'Delete',
+                    )) {
+                      await s.deleteGroupEvent(e);
+                    }
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      'Delete',
+                      style: t.body(
+                        12,
+                        w: w700,
+                        c: t.muted,
+                        deco: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ],
       ),
@@ -907,16 +1103,50 @@ class _EventCard extends StatelessWidget {
   }
 }
 
-Future<void> _newEvent(BuildContext context, AppState s, Group g) {
+/// Tonight at 21:00, or tomorrow when that is less than 30 minutes away.
+DateTime _defaultStart(DateTime now) {
+  final tonight = DateTime(now.year, now.month, now.day, 21);
+  return tonight.isAfter(now.add(const Duration(minutes: 30)))
+      ? tonight
+      : tonight.add(const Duration(days: 1));
+}
+
+Future<void> _newEvent(BuildContext context, AppState s, GroupDto g) {
   var title = '';
-  var when = 'Tonight 21:00';
-  String? game = g.gameId;
+  final now = DateTime.now();
+  var at = _defaultStart(now);
+  String? game = g.game?.id;
   return showDialog<void>(
     context: context,
     barrierColor: Colors.black.withValues(alpha: .45),
     builder: (context) => StatefulBuilder(
       builder: (context, setLocal) {
         final t = context.rt;
+        Future<void> pickDay() async {
+          final d = await showDatePicker(
+            context: context,
+            initialDate: at,
+            firstDate: DateTime(now.year, now.month, now.day),
+            // The API takes events within the next 60 days.
+            lastDate: now.add(const Duration(days: 59)),
+          );
+          if (d == null) return;
+          setLocal(
+            () => at = DateTime(d.year, d.month, d.day, at.hour, at.minute),
+          );
+        }
+
+        Future<void> pickTime() async {
+          final tm = await showTimePicker(
+            context: context,
+            initialTime: TimeOfDay.fromDateTime(at),
+          );
+          if (tm == null) return;
+          setLocal(
+            () => at = DateTime(at.year, at.month, at.day, tm.hour, tm.minute),
+          );
+        }
+
         return ThemedDialog(
           children: [
             Text('New event', style: t.body(22, w: w800, ls: -.6)),
@@ -926,38 +1156,47 @@ Future<void> _newEvent(BuildContext context, AppState s, Group g) {
               height: 50,
               sunken: true,
               autofocus: true,
+              maxLength: 80,
               onChanged: (v) => title = v,
             ),
             const Label('WHEN'),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
+            Row(
               children: [
-                for (final w in const [
-                  'Tonight 21:00',
-                  'Tomorrow 20:00',
-                  'Sat 18:00',
-                  'Sun 16:00',
-                ])
-                  Pill.chip(
-                    w,
-                    when == w,
-                    () => setLocal(() => when = w),
-                    height: 32,
-                    padH: 12,
+                Expanded(
+                  child: Semantics(
+                    label: 'Pick the day',
+                    child: Pill(
+                      eventWhen(at, now).replaceAll(clock(at), '').trim(),
+                      onTap: pickDay,
+                      expand: true,
+                      height: 40,
+                    ),
                   ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Semantics(
+                    label: 'Pick the time',
+                    child: Pill(
+                      clock(at),
+                      onTap: pickTime,
+                      expand: true,
+                      height: 40,
+                    ),
+                  ),
+                ),
               ],
             ),
-            if (g.gameId != null) ...[
+            if (g.game != null) ...[
               const Label('GAME'),
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
                 children: [
                   Pill.chip(
-                    s.catalog.byId(g.gameId!).name,
-                    game == g.gameId,
-                    () => setLocal(() => game = g.gameId),
+                    g.game!.name,
+                    game == g.game!.id,
+                    () => setLocal(() => game = g.game!.id),
                     height: 32,
                     padH: 12,
                   ),
@@ -987,12 +1226,17 @@ Future<void> _newEvent(BuildContext context, AppState s, Group g) {
                 Expanded(
                   child: Pill(
                     'Add event',
-                    onTap: () {
+                    onTap: () async {
                       if (title.trim().isEmpty) {
                         return s.toast('Give the event a name');
                       }
-                      Navigator.pop(context);
-                      s.addGroupEvent(g, title.trim(), when, game);
+                      if (!at.isAfter(DateTime.now())) {
+                        return s.toast('Pick a time that hasn’t passed');
+                      }
+                      final nav = Navigator.of(context);
+                      if (await s.addGroupEvent(title.trim(), at, game)) {
+                        nav.pop();
+                      }
                     },
                     expand: true,
                     height: 46,
@@ -1013,16 +1257,19 @@ Future<void> _newEvent(BuildContext context, AppState s, Group g) {
 }
 
 class _About extends StatelessWidget {
-  const _About(this.g);
-  final Group g;
+  const _About(this.g, {required this.admin});
+  final GroupDto g;
+  final bool admin;
 
   @override
   Widget build(BuildContext context) {
     final s = context.app;
     final t = context.rt;
-    final admins = g.admins
-        .map((p) => p == 'me' ? 'You' : s.member(p).name)
-        .join(', ');
+    final admins = [
+      for (final m in s.members ?? const <GroupMemberDto>[])
+        if (m.role == GroupRole.admin)
+          m.user.id == s.me?.id ? 'You' : m.user.displayName,
+    ].join(', ');
     Widget detail(String k, String v) => Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       child: Row(
@@ -1041,10 +1288,25 @@ class _About extends StatelessWidget {
     return Gap(
       12,
       children: [
+        if (admin)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Pill(
+              'Edit group',
+              onTap: s.openEditGroup,
+              height: 40,
+              padH: 16,
+              weight: w700,
+              shadow: 3,
+            ),
+          ),
         InkBox(
           radius: 22,
           padding: const EdgeInsets.all(16),
-          child: Text(g.about, style: t.body(15, h: 1.45)),
+          child: Text(
+            g.about.isEmpty ? 'No description yet.' : g.about,
+            style: t.body(15, h: 1.45),
+          ),
         ),
         if (g.rules.isNotEmpty) ...[
           const Label('RULES', padLeft: 6),
@@ -1077,16 +1339,15 @@ class _About extends StatelessWidget {
         const Label('DETAILS', padLeft: 6),
         RowList(
           children: [
-            detail('Type', g.kind.label),
-            if (g.gameId != null)
-              detail('Game', s.catalog.byId(g.gameId!).name),
+            detail('Type', groupKindLabel[g.kind]!),
+            if (g.game != null) detail('Game', g.game!.name),
             detail('Place', g.place),
             detail(
               'Who can join',
               g.approval ? 'Admins approve requests' : 'Anyone',
             ),
-            detail('Admins', admins),
-            detail('Created', g.since),
+            if (admins.isNotEmpty) detail('Admins', admins),
+            detail('Created', monthYear(g.createdAt)),
           ],
         ),
       ],
@@ -1094,7 +1355,7 @@ class _About extends StatelessWidget {
   }
 }
 
-// ---- Create group ----
+// ---- Create / edit group ----
 
 class CreateGroupScreen extends StatelessWidget {
   const CreateGroupScreen({super.key});
@@ -1105,6 +1366,7 @@ class CreateGroupScreen extends StatelessWidget {
     final t = context.rt;
     final d = s.newGroup;
     if (d == null) return const SizedBox.shrink();
+    final editing = d.editId != null;
     void set(VoidCallback fn) => s.update(fn);
     final ready =
         d.name.trim().length >= 3 &&
@@ -1125,7 +1387,7 @@ class CreateGroupScreen extends StatelessWidget {
     };
     final what = d.kind == GroupKind.game && d.gameId != null
         ? s.catalog.byId(d.gameId!).name
-        : d.kind.label;
+        : groupKindLabel[d.kind]!;
     final where = d.place.trim().isEmpty ? placeHint : d.place.trim();
 
     return Column(
@@ -1135,19 +1397,17 @@ class CreateGroupScreen extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
           child: Row(
             children: [
-              CloseBtn(
-                onTap: () => s.go(Screen.communities, () => s.newGroup = null),
-              ),
+              CloseBtn(onTap: s.closeGroupForm),
               Expanded(
                 child: Text(
-                  'New group',
+                  editing ? 'Edit group' : 'New group',
                   textAlign: TextAlign.center,
                   style: t.body(20, w: w800, ls: -.5),
                 ),
               ),
               Pill(
-                'Create',
-                onTap: s.createGroup,
+                s.busy ? 'Saving…' : (editing ? 'Save' : 'Create'),
+                onTap: s.busy ? null : s.createGroup,
                 height: 42,
                 padH: 20,
                 size: 15,
@@ -1170,7 +1430,11 @@ class CreateGroupScreen extends StatelessWidget {
                     padding: const EdgeInsets.all(14),
                     child: Row(
                       children: [
-                        GroupTile(s.groupShort(d), d.tone, size: 56),
+                        GroupTile(
+                          s.groupShort(d),
+                          toneOfGroup(d.tone),
+                          size: 56,
+                        ),
                         const SizedBox(width: 14),
                         Expanded(
                           child: Column(
@@ -1198,26 +1462,44 @@ class CreateGroupScreen extends StatelessWidget {
                   ),
                   labeled(
                     'NAME',
-                    BoxField(
-                      value: d.name,
-                      hint: 'e.g. Valorant Addis Duo Queue',
-                      height: 50,
-                      onChanged: (v) => set(() => d.name = v),
+                    Gap(
+                      6,
+                      children: [
+                        BoxField(
+                          value: d.name,
+                          hint: 'e.g. Valorant Addis Duo Queue',
+                          height: 50,
+                          maxLength: 40,
+                          onChanged: (v) => set(() {
+                            d.name = v;
+                            d.nameError = null;
+                          }),
+                        ),
+                        if (d.nameError != null)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 14),
+                            child: Text(
+                              d.nameError!,
+                              style: t.body(13, w: w600, c: t.acc),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                  labeled(
-                    'TYPE',
-                    Segmented(
-                      options: [for (final k in GroupKind.values) k.label],
-                      value: d.kind.label,
-                      onChanged: (v) => set(
-                        () => d.kind = GroupKind.values.firstWhere(
-                          (k) => k.label == v,
+                  if (!editing)
+                    labeled(
+                      'TYPE',
+                      Segmented(
+                        options: [...groupKindLabel.values],
+                        value: groupKindLabel[d.kind]!,
+                        onChanged: (v) => set(
+                          () => d.kind = groupKindLabel.entries
+                              .firstWhere((e) => e.value == v)
+                              .key,
                         ),
                       ),
                     ),
-                  ),
-                  if (d.kind == GroupKind.game)
+                  if (!editing && d.kind == GroupKind.game)
                     labeled(
                       'GAME',
                       ChipScroller(
@@ -1236,8 +1518,9 @@ class CreateGroupScreen extends StatelessWidget {
                               single: true,
                               selected: () => [?d.gameId],
                               onToggle: (id) => set(() => d.gameId = id),
-                              onAddCustom: (name) => set(
-                                () => d.gameId = s.catalog.addCustom(name),
+                              // A game group needs a catalog game.
+                              onAddCustom: (_) => s.toast(
+                                'Pick a game from the list for a game group',
                               ),
                             ),
                             bg: Colors.transparent,
@@ -1279,6 +1562,7 @@ class CreateGroupScreen extends StatelessWidget {
                       ),
                     ),
                   ),
+                  labeled('RULES', _RulesEditor(d)),
                   labeled(
                     'WHO CAN JOIN',
                     Segmented(
@@ -1291,12 +1575,7 @@ class CreateGroupScreen extends StatelessWidget {
                     'COLOUR',
                     Row(
                       children: [
-                        for (final tone in const [
-                          Tone.accent,
-                          Tone.lav,
-                          Tone.soft,
-                          Tone.grey,
-                        ])
+                        for (final tone in GroupTone.values)
                           Padding(
                             padding: const EdgeInsets.only(right: 10),
                             child: Semantics(
@@ -1322,7 +1601,7 @@ class CreateGroupScreen extends StatelessWidget {
                                   child: Container(
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      color: t.tone(tone),
+                                      color: t.tone(toneOfGroup(tone)),
                                       border: t.border(1.5),
                                     ),
                                   ),
@@ -1333,15 +1612,82 @@ class CreateGroupScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Text(
-                    'You’ll be the admin. You can post events and approve members.',
-                    style: t.body(13, c: t.muted),
-                  ),
+                  if (!editing)
+                    Text(
+                      'You’ll be the admin. You can post events and approve members.',
+                      style: t.body(13, c: t.muted),
+                    ),
                 ],
               ),
             ],
           ),
         ),
+      ],
+    );
+  }
+}
+
+/// Up to [maxRules] rules of [maxRuleLength] characters.
+class _RulesEditor extends StatelessWidget {
+  const _RulesEditor(this.d);
+  final GroupDraft d;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.app;
+    final t = context.rt;
+    return Gap(
+      7,
+      children: [
+        for (var i = 0; i < d.rules.length; i++)
+          Container(
+            // Index in the key so removing a row doesn't reuse another
+            // row's controller.
+            key: ValueKey('rule-$i-${d.rules.length}'),
+            height: 44,
+            padding: const EdgeInsets.fromLTRB(12, 0, 6, 0),
+            decoration: BoxDecoration(
+              color: t.surface,
+              border: t.border(),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 22,
+                  child: Text(pad2(i + 1), style: t.digits(10)),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Field(
+                    value: d.rules[i],
+                    hint: 'Rule ${i + 1}',
+                    size: 15,
+                    maxLength: maxRuleLength,
+                    onChanged: (v) => d.rules[i] = v,
+                  ),
+                ),
+                CloseBtn(
+                  size: 28,
+                  fontSize: 14,
+                  transparent: true,
+                  onTap: () =>
+                      s.update(() => d.rules = [...d.rules]..removeAt(i)),
+                ),
+              ],
+            ),
+          ),
+        if (d.rules.length < maxRules)
+          Dashed(
+            radius: 14,
+            onTap: () => s.update(() => d.rules = [...d.rules, '']),
+            child: SizedBox(
+              height: 40,
+              child: Center(
+                child: Text('+ Add rule', style: t.body(14, w: w600)),
+              ),
+            ),
+          ),
       ],
     );
   }

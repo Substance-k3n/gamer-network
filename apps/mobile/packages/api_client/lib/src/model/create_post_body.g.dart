@@ -16,6 +16,8 @@ class _$CreatePostBody extends CreatePostBody {
   @override
   final String? gameId;
   @override
+  final String? groupId;
+  @override
   final BuiltSet<String>? media;
   @override
   final PollBody? poll;
@@ -30,6 +32,7 @@ class _$CreatePostBody extends CreatePostBody {
       this.audience,
       required this.text,
       this.gameId,
+      this.groupId,
       this.media,
       this.poll,
       this.recruit})
@@ -49,6 +52,7 @@ class _$CreatePostBody extends CreatePostBody {
         audience == other.audience &&
         text == other.text &&
         gameId == other.gameId &&
+        groupId == other.groupId &&
         media == other.media &&
         poll == other.poll &&
         recruit == other.recruit;
@@ -61,6 +65,7 @@ class _$CreatePostBody extends CreatePostBody {
     _$hash = $jc(_$hash, audience.hashCode);
     _$hash = $jc(_$hash, text.hashCode);
     _$hash = $jc(_$hash, gameId.hashCode);
+    _$hash = $jc(_$hash, groupId.hashCode);
     _$hash = $jc(_$hash, media.hashCode);
     _$hash = $jc(_$hash, poll.hashCode);
     _$hash = $jc(_$hash, recruit.hashCode);
@@ -75,6 +80,7 @@ class _$CreatePostBody extends CreatePostBody {
           ..add('audience', audience)
           ..add('text', text)
           ..add('gameId', gameId)
+          ..add('groupId', groupId)
           ..add('media', media)
           ..add('poll', poll)
           ..add('recruit', recruit))
@@ -102,6 +108,10 @@ class CreatePostBodyBuilder
   String? get gameId => _$this._gameId;
   set gameId(String? gameId) => _$this._gameId = gameId;
 
+  String? _groupId;
+  String? get groupId => _$this._groupId;
+  set groupId(String? groupId) => _$this._groupId = groupId;
+
   SetBuilder<String>? _media;
   SetBuilder<String> get media => _$this._media ??= SetBuilder<String>();
   set media(SetBuilder<String>? media) => _$this._media = media;
@@ -125,6 +135,7 @@ class CreatePostBodyBuilder
       _audience = $v.audience;
       _text = $v.text;
       _gameId = $v.gameId;
+      _groupId = $v.groupId;
       _media = $v.media?.toBuilder();
       _poll = $v.poll?.toBuilder();
       _recruit = $v.recruit?.toBuilder();
@@ -157,6 +168,7 @@ class CreatePostBodyBuilder
             text: BuiltValueNullFieldError.checkNotNull(
                 text, r'CreatePostBody', 'text'),
             gameId: gameId,
+            groupId: groupId,
             media: _media?.build(),
             poll: _poll?.build(),
             recruit: _recruit?.build(),
