@@ -9,7 +9,7 @@ Owner: Kidus (ADR-0002, ADR-0011). Moderation lives in `apps/admin`.
 | `/privacy`                        | Privacy policy (the Play listing links here). Keep it in step with docs/DATA_MODEL.md          |
 | `/.well-known/assetlinks.json`    | Android App Links, so the app opens `/l/<id>` itself. `[]` until `ANDROID_CERT_SHA256` is set  |
 | `/`                               | One-screen landing: "Open the web app", "Get the app"                                          |
-| `/app/*`                          | The player PWA (ADR-0011): every MVP screen of `apps/mobile`, the same four skins              |
+| `/app/*`                          | The player PWA (ADR-0011): the screens of `apps/mobile`, the same four skins                   |
 | `/api/v1/*`                       | The PWA's proxy to the API: adds the session from the `gn_session` httpOnly cookie             |
 | `/manifest.webmanifest`, `/sw.js` | Install and offline shell for the PWA                                                          |
 
@@ -33,7 +33,10 @@ are removed, or whose owner is banned or deleted, answer 404.
 The same screens as `apps/mobile`, on the same API, in React. The browser
 never sees the session token: sign-in answers go through `/api/v1/auth/*`,
 which keeps the token in an httpOnly cookie and returns the rest, and every
-other call goes through the same proxy (so no CORS). Code:
+other call goes through the same proxy (so no CORS). The Home feed and the
+composer run on the feed API; Groups run on the sample data in
+`_lib/groups.ts` (the same as `apps/mobile/lib/groups_data.dart`), kept in
+memory per browser until the API has groups. Code:
 
 | Where                      | What                                                                   |
 | -------------------------- | ---------------------------------------------------------------------- |

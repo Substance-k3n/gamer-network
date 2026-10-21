@@ -10,17 +10,24 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type Dispatch,
   type ReactNode,
+  type SetStateAction,
 } from 'react';
 import {
   api,
   ApiError,
+  query,
   setSignedOutHandler,
   type AppConfig,
+  type FeedFilter,
   type Me,
+  type Page,
   type PlayInvite,
+  type Post,
 } from './api';
 import { customGame, type Game } from './data';
+import { resetGroups } from './groups';
 
 export type Skin = 'inked' | 'soft' | 'dot' | 'glass';
 export const skins: { id: Skin; name: string; tagline: string; bg: string }[] = [
@@ -61,9 +68,21 @@ export function mayShow(path: string, me: Me | null) {
 }
 
 type Sheet =
-  | { kind: 'listing' }
-  | { kind: 'post' }
-  | { kind: 'invite'; userId: string; name: string; games: string[] };
+  { kind: 'listing' } | { kind: 'invite'; userId: string; name: string; games: string[] };
+
+/**
+ * Home's timeline, kept while the player moves around the app (like
+ * AppState.posts on mobile). `tab` is for_you, connections, lfg or a game id.
+ */
+export type FeedCache = {
+  tab: string;
+  posts: Post[];
+  cursor: string | null;
+  loaded: boolean;
+  /** The `version` it was loaded at; Home reloads when that moves on. */
+  at: number;
+};
+const noFeed: FeedCache = { tab: 'for_you', posts: [], cursor: null, loaded: false, at: -1 };
 
 type Store = {
   ready: boolean;
@@ -89,6 +108,13 @@ type Store = {
   setSkin: (s: Skin) => void;
   sheet: Sheet | null;
   setSheet: (s: Sheet | null) => void;
+  feed: FeedCache;
+  setFeed: Dispatch<SetStateAction<FeedCache>>;
+  /** Loads the first page of `tab` (default: the current one), or the next page. */
+  loadPosts: (opts?: { more?: boolean; tab?: string }) => Promise<void>;
+  /** Replaces a post in the feed, or drops it (deleted, reported away). */
+  putPost: (p: Post) => void;
+  dropPost: (id: string) => void;
   /** Bumped after something changes elsewhere (a post, a ban…); pages reload on it. */
   version: number;
   bump: () => void;
@@ -115,7 +141,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [games, setGames] = useState<Game[]>([]);
   const [custom, setCustom] = useState<Record<string, Game>>({});
-  const [me, setMe] = useState<Me | null>(null);
+  const [me, setMeState] = useState<Me | null>(null);
   const [unread, setUnread] = useState(0);
   const [invites, setInvites] = useState<PlayInvite[]>([]);
   const [toastMsg, setToast] = useState<string | null>(null);
@@ -123,10 +149,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const skin = useSyncExternalStore(subscribeSkin, readSkin, () => 'inked' as Skin);
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [version, setVersion] = useState(0);
+  const [feed, setFeed] = useState<FeedCache>(noFeed);
+  // The timeline's filter and next-page cursor, for loadPosts; kept next to
+  // `feed` by every call that changes them.
+  const feedTab = useRef(noFeed.tab);
+  const feedCursor = useRef<string | null>(null);
+  const loadingMore = useRef(false);
   const visited = useRef<string[]>([]);
   const bump = useCallback(() => setVersion((v) => v + 1), []);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const busyRef = useRef(false);
+
+  /** Sets the session; signing out also leaves an empty timeline and fresh sample groups. */
+  const setMe = useCallback((m: Me | null) => {
+    if (!m) {
+      feedTab.current = noFeed.tab;
+      feedCursor.current = null;
+      setFeed(noFeed);
+      resetGroups();
+    }
+    setMeState(m);
+  }, []);
 
   const toast = useCallback((msg: string) => {
     clearTimeout(toastTimer.current);
@@ -186,14 +229,60 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const m = await run(() => api<Me>('me'), { quiet: true, busy: false });
     if (m) setMe(m);
     return m;
-  }, [run]);
+  }, [run, setMe]);
+
+  const loadPosts = useCallback(
+    async (opts?: { more?: boolean; tab?: string }) => {
+      const tab = opts?.tab ?? feedTab.current;
+      const more = !!opts?.more;
+      if (tab !== feedTab.current) {
+        feedTab.current = tab;
+        feedCursor.current = null;
+        setFeed({ ...noFeed, tab });
+      }
+      const preset = ['for_you', 'connections', 'lfg'].includes(tab);
+      const filter = (preset ? tab : 'game') as FeedFilter;
+      const cursor = more ? feedCursor.current : null;
+      if (more && (!cursor || loadingMore.current)) return;
+      if (more) loadingMore.current = true;
+      const at = version;
+      const pg = await run(
+        () =>
+          api<Page<Post>>(`feed${query({ filter, game: preset ? null : tab, cursor, limit: 20 })}`),
+        { busy: false, quiet: more },
+      );
+      if (more) loadingMore.current = false;
+      // A newer pick of filter wins.
+      if (tab !== feedTab.current) return;
+      if (!pg) return setFeed((f) => ({ ...f, loaded: true, at }));
+      feedCursor.current = pg.nextCursor;
+      setFeed((f) => ({
+        tab,
+        posts: more
+          ? [...f.posts, ...pg.items.filter((x) => !f.posts.some((y) => y.id === x.id))]
+          : pg.items,
+        cursor: pg.nextCursor,
+        loaded: true,
+        at,
+      }));
+    },
+    [run, version],
+  );
+  const putPost = useCallback(
+    (p: Post) => setFeed((f) => ({ ...f, posts: f.posts.map((x) => (x.id === p.id ? p : x)) })),
+    [],
+  );
+  const dropPost = useCallback(
+    (id: string) => setFeed((f) => ({ ...f, posts: f.posts.filter((x) => x.id !== id) })),
+    [],
+  );
 
   const signedIn = useCallback(
     (m: Me) => {
       setMe(m);
       router.replace(m.onboardedAt ? '/app' : '/app/onboarding/games');
     },
-    [router],
+    [router, setMe],
   );
 
   const boot = useCallback(async () => {
@@ -224,7 +313,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       clearTimeout(slow);
       setWaking(false);
     }
-  }, [run]);
+  }, [run, setMe]);
 
   useEffect(() => {
     setSignedOutHandler(() => {
@@ -232,7 +321,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       router.replace('/app/login');
     });
     boot();
-  }, [boot, router]);
+  }, [boot, router, setMe]);
 
   // The pages visited in this tab, so back never leaves the app.
   useEffect(() => {
@@ -315,6 +404,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setSkin,
       sheet,
       setSheet,
+      feed,
+      setFeed,
+      loadPosts,
+      putPost,
+      dropPost,
       version,
       bump,
       boot,
@@ -330,6 +424,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       game,
       addCustomGame,
       me,
+      setMe,
       refreshMe,
       unread,
       invites,
@@ -340,6 +435,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       skin,
       setSkin,
       sheet,
+      feed,
+      loadPosts,
+      putPost,
+      dropPost,
       version,
       bump,
       boot,
