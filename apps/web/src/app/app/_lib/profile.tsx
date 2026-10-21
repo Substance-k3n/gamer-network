@@ -6,6 +6,7 @@ import { useRef, useState } from 'react';
 import {
   api,
   type Connection,
+  type Group,
   type Me,
   type Page,
   type PlayerStatus,
@@ -29,7 +30,6 @@ import {
 } from './data';
 import { FeedPost } from './feed';
 import { GroupCard, GroupStrip } from './groupui';
-import { groupsOf, useGroups } from './groups';
 import { PhotoGrid } from './postparts';
 import { PlayerMenu } from './safety';
 import { skins, useApp, useLoad, type Skin } from './store';
@@ -65,9 +65,18 @@ export function ProfileView({ p, onReload }: { p: View; onReload: () => void }) 
   const [tab, setTab] = useState('Overview');
   const [menu, setMenu] = useState(false);
   const [ask, confirm] = useConfirm();
-  const groupsState = useGroups();
-  // Sample groups know only me; real players other than me are in none (D5).
-  const groups = p.isMe ? groupsOf(groupsState, 'me') : [];
+  // My groups include my pending requests (D20); someone else's only where they're a member.
+  const groupsList = useLoad(
+    async () =>
+      (
+        await api<Page<Group>>(
+          p.isMe ? 'me/groups?limit=50' : `users/${encodeURIComponent(p.username)}/groups?limit=50`,
+        )
+      ).items,
+    [p.isMe, p.username],
+  );
+  const groups = groupsList.data ?? [];
+  const groupChanged = (g: Group) => groupsList.setData(groups.map((x) => (x.id === g.id ? g : x)));
   const tabs = p.isMe
     ? ['Overview', 'Games', 'Groups', 'Posts', 'Moments', 'Saved', 'Connections']
     : ['Overview', 'Games', 'Groups', 'Posts', 'Moments'];
@@ -262,7 +271,9 @@ export function ProfileView({ p, onReload }: { p: View; onReload: () => void }) 
         )}
         {tab === 'Groups' &&
           (groups.length ? (
-            groups.map((g) => <GroupCard key={g.id} g={g} />)
+            groups.map((g) => <GroupCard key={g.id} g={g} onChange={groupChanged} />)
+          ) : !groupsList.loaded ? (
+            <Spinner />
           ) : (
             <>
               <EmptyNote>

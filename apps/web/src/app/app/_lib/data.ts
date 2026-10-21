@@ -89,7 +89,7 @@ export const postTypes: { id: PostType; label: string; tone: Tone; placeholder: 
     id: 'gameplay',
     label: 'Gameplay',
     tone: 'accent',
-    placeholder: 'Add a caption for your clip or screenshot…',
+    placeholder: 'Add a caption for your screenshots…',
   },
   {
     id: 'recruitment',

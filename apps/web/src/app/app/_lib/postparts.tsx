@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
 import {
   api,
   uuid,
@@ -14,7 +15,7 @@ import {
 } from './api';
 import { pad2, rankLine, toneFor } from './data';
 import { useApp, useLoad } from './store';
-import { Avatar, CircleBtn, Digits, Icon, Label, Pill, Sheet, Spinner } from './ui';
+import { Avatar, CircleBtn, Digits, Icon, Label, Pill, Sheet, Spinner, TypeTag } from './ui';
 
 // What a post can carry beyond text (phases 2–3): photos, a poll, a
 // recruitment box. Laid out as the prototype's FeedPost does (D23).
@@ -89,6 +90,8 @@ function PhotoViewer({
 }) {
   const [i, setI] = useState(start);
   const n = media.length;
+  const from = useRef<number | null>(null);
+  const swiped = useRef(false);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -110,8 +113,20 @@ function PhotoViewer({
       role="dialog"
       aria-modal
       aria-label="Photo"
-      onClick={onClose}
+      onClick={() => (swiped.current ? (swiped.current = false) : onClose())}
+      // A swipe moves to the next or previous photo (D35); a tap still closes.
+      onPointerDown={(e) => (from.current = e.clientX)}
+      onPointerUp={(e) => {
+        const dx = e.clientX - (from.current ?? e.clientX);
+        from.current = null;
+        if (Math.abs(dx) > 50 && n > 1) {
+          swiped.current = true;
+          setI((x) => (x + (dx < 0 ? 1 : -1) + n) % n);
+        }
+      }}
+      onPointerCancel={() => (from.current = null)}
       style={{
+        touchAction: 'pan-y',
         position: 'fixed',
         inset: 0,
         zIndex: 70,
@@ -272,7 +287,7 @@ export function RecruitBox({
   onChange: (p: Post) => void;
   openApplications?: boolean;
 }) {
-  const { run } = useApp();
+  const { run, toast } = useApp();
   const [list, setList] = useState(openApplications && p.mine);
   const [key] = useState(uuid);
   const r = p.recruit!;
@@ -280,8 +295,10 @@ export function RecruitBox({
     if (p.mine) return setList(true);
     if (r.myApplication) return;
     const res = await run(() => api<Recruit>(`posts/${p.id}/apply`, { method: 'POST', key }));
-    if (res) onChange({ ...p, recruit: res });
-    else refresh(p, onChange);
+    if (res) {
+      onChange({ ...p, recruit: res });
+      toast(`Applied — ${p.author.displayName} gets a notification`);
+    } else refresh(p, onChange);
   };
   const done = p.mine || !!r.myApplication;
   return (
@@ -311,7 +328,13 @@ export function RecruitBox({
           </div>
         </div>
         <Pill h={36} padH={14} bold look={done ? 'strong' : 'accent'} onClick={apply}>
-          {p.mine ? `Yours · ${r.applications} applied` : r.myApplication ? 'Applied ✓' : 'Apply'}
+          {p.mine
+            ? `Yours · ${r.applications} applied`
+            : r.myApplication === 'accepted'
+              ? 'Accepted ✓'
+              : r.myApplication
+                ? 'Applied ✓'
+                : 'Apply'}
         </Pill>
       </div>
     </>
@@ -368,54 +391,88 @@ function ApplicationsSheet({ p, onClose }: { p: Post; onClose: () => void }) {
         </CircleBtn>
       </div>
       <Label style={{ paddingLeft: 6 }}>
-        {p.recruit!.slots} SLOTS · {p.recruit!.roles ? p.recruit!.roles.toUpperCase() : 'ANY ROLE'}
+        {p.recruit!.slots} {p.recruit!.slots === 1 ? 'SLOT' : 'SLOTS'} ·{' '}
+        {p.recruit!.roles.trim() ? p.recruit!.roles.toUpperCase() : 'ANY ROLE'}
       </Label>
       <div className="gap" style={{ gap: 8, marginTop: 10 }}>
         {!list.loaded && <Spinner />}
         {list.loaded && items.length === 0 && (
           <div className="dashed muted" style={{ padding: 18, textAlign: 'center', fontSize: 14 }}>
-            No applications yet.
+            No applications yet. They show up here.
           </div>
         )}
         {items.length > 0 && (
           <div className="rows">
             {items.map((a) => (
               <div key={a.id} className="r" style={{ flexWrap: 'wrap' }}>
-                <Avatar
-                  name={a.user.displayName}
-                  tone={toneFor(a.user.id)}
-                  url={a.user.avatarUrl}
-                  size={38}
-                />
-                <span style={{ flex: '1 1 130px', minWidth: 0 }}>
-                  <b className="ellipsis" style={{ display: 'block', fontSize: 15 }}>
-                    {a.user.displayName}
-                  </b>
-                  <span className="muted ellipsis" style={{ display: 'block', fontSize: 12 }}>
-                    {rankLine(a.user.topGame) || `@${a.user.username}`}
+                <Link
+                  href={`/app/players/${a.user.username}`}
+                  className="row"
+                  style={{ gap: 12, flex: '1 1 130px', minWidth: 0 }}
+                >
+                  <Avatar
+                    name={a.user.displayName}
+                    tone={toneFor(a.user.id)}
+                    url={a.user.avatarUrl}
+                    size={38}
+                  />
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <b className="ellipsis" style={{ display: 'block', fontSize: 15 }}>
+                      {a.user.displayName}
+                    </b>
+                    <span className="muted ellipsis" style={{ display: 'block', fontSize: 12 }}>
+                      {rankLine(a.user.topGame) || `@${a.user.username}`}
+                    </span>
                   </span>
-                </span>
-                <span className="row" style={{ gap: 6, marginLeft: 'auto' }}>
-                  <Pill
-                    h={34}
-                    padH={12}
-                    bold
-                    look={a.status === 'accepted' ? 'strong' : 'accent'}
-                    onClick={() => a.status !== 'accepted' && answer(a, 'accept')}
-                    disabled={answering === a.id}
+                </Link>
+                {a.status === 'pending' ? (
+                  <span className="row" style={{ gap: 6, marginLeft: 'auto' }}>
+                    <Pill
+                      h={34}
+                      padH={12}
+                      look="clear"
+                      onClick={() => answer(a, 'decline')}
+                      disabled={answering === a.id}
+                    >
+                      Decline
+                    </Pill>
+                    <Pill
+                      h={34}
+                      padH={12}
+                      bold
+                      look="accent"
+                      onClick={() => answer(a, 'accept')}
+                      disabled={answering === a.id}
+                    >
+                      Accept
+                    </Pill>
+                  </span>
+                ) : (
+                  // The author may change the answer by tapping the tag (D24).
+                  <button
+                    type="button"
+                    onClick={() =>
+                      answering !== a.id &&
+                      answer(a, a.status === 'accepted' ? 'decline' : 'accept')
+                    }
+                    aria-label={
+                      a.status === 'accepted'
+                        ? 'Accepted, tap to decline'
+                        : 'Declined, tap to accept'
+                    }
+                    style={{
+                      marginLeft: 'auto',
+                      padding: 0,
+                      background: 'none',
+                      border: 0,
+                      cursor: 'pointer',
+                    }}
                   >
-                    {a.status === 'accepted' ? 'Accepted ✓' : 'Accept'}
-                  </Pill>
-                  <Pill
-                    h={34}
-                    padH={12}
-                    look={a.status === 'declined' ? 'quiet' : 'clear'}
-                    onClick={() => a.status !== 'declined' && answer(a, 'decline')}
-                    disabled={answering === a.id}
-                  >
-                    {a.status === 'declined' ? 'Declined' : 'Decline'}
-                  </Pill>
-                </span>
+                    <TypeTag bg={a.status === 'accepted' ? 'var(--accent)' : 'var(--grey)'}>
+                      {a.status === 'accepted' ? 'ACCEPTED' : 'DECLINED'}
+                    </TypeTag>
+                  </button>
+                )}
               </div>
             ))}
           </div>
