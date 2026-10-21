@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import {
   applicationStatus,
   contentStatus,
+  groupTone,
   mediaKind,
   postAudience,
   postType,
@@ -19,6 +20,8 @@ export const MEDIA_KINDS = mediaKind.enumValues;
 export type MediaKind = (typeof MEDIA_KINDS)[number];
 export const APPLICATION_STATUSES = applicationStatus.enumValues;
 export type ApplicationStatus = (typeof APPLICATION_STATUSES)[number];
+export const GROUP_TONES = groupTone.enumValues;
+export type GroupTone = (typeof GROUP_TONES)[number];
 
 /** How the card is drawn; `type` is only its label. */
 export function kindOf(type: PostType): PostKind {
@@ -105,7 +108,18 @@ export class RecruitDto {
   myApplication: ApplicationStatus | null;
 }
 
-/** A post on Home or a profile's Moments. */
+/** The group a post is in, for its header. */
+export class PostGroupDto {
+  id: string;
+  name: string;
+  /** The badge, e.g. "VAL". */
+  short: string;
+
+  @ApiProperty({ enum: GROUP_TONES, enumName: 'GroupTone' })
+  tone: GroupTone;
+}
+
+/** A post on Home, a profile's Moments or in a group. */
 export class PostDto {
   id: string;
 
@@ -118,6 +132,8 @@ export class PostDto {
 
   /** topGame gives "Diamond Valorant" for the header. */
   author: UserCardDto;
+  /** Null on Home posts. */
+  group: PostGroupDto | null;
   /** Null: "Any game". */
   game: GameRefDto | null;
   text: string;

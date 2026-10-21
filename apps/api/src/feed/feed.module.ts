@@ -22,6 +22,7 @@ import { RecruitService } from './recruit.service.js';
 /**
  * Home feed (docs/FEED_AND_GROUPS_API.md): posts, comments, GG and saves
  * (phase 1); photos (phase 2, images only); polls and recruitment (phase 3).
+ * Group posts are posts with a group_id; the groups themselves are in src/groups.
  */
 @Module({
   imports: [ConnectionsModule],
@@ -45,6 +46,6 @@ import { RecruitService } from './recruit.service.js';
     FeedNotifier,
     MediaCleanupJob,
   ],
-  exports: [MediaCleanupJob],
+  exports: [MediaCleanupJob, PostsService, FeedReader, MediaService],
 })
 export class FeedModule {}

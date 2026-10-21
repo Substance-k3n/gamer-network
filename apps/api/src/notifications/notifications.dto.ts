@@ -23,6 +23,10 @@ export class NotificationDto {
   commentId: string | null;
   /** recruit_application and recruit_accepted: the application (its post is postId). */
   recruitApplicationId: string | null;
+  /** The group it is about (group_join_request, group_join_approved, group_event). */
+  groupId: string | null;
+  /** group_event: the event (its group is groupId). */
+  groupEventId: string | null;
   /** Push title. */
   title: string;
   /** Ready to show, e.g. "Hana wants to play PUBG Mobile with you". */

@@ -1,6 +1,7 @@
 export * from './catalog.js';
 export * from './enums.js';
 export * from './feed.js';
+export * from './groups.js';
 export * from './idempotency.js';
 export * from './identity.js';
 export * from './listings.js';
