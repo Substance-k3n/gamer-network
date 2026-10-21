@@ -13,6 +13,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { games } from './catalog.js';
 import { applicationStatus, contentStatus, mediaKind, postAudience, postType } from './enums.js';
+import { groups } from './groups.js';
 import { users } from './identity.js';
 import { createdAt, id, ts } from './types.js';
 
@@ -26,6 +27,8 @@ export const posts = pgTable(
     authorId: uuid('author_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
+    /** Null: a Home post. Group posts are for the group's members only. */
+    groupId: uuid('group_id').references(() => groups.id, { onDelete: 'cascade' }),
     type: postType('type').notNull(),
     /** Null: "Any game". */
     gameId: text('game_id').references(() => games.id),
@@ -39,6 +42,7 @@ export const posts = pgTable(
   (t) => [
     index('posts_feed').on(t.status, t.id.desc()),
     index('posts_by_author').on(t.authorId, t.id.desc()),
+    index('posts_of_group').on(t.groupId, t.id.desc()),
     check('posts_text_length', sql`char_length(${t.text}) between 1 and 2000`),
   ],
 );

@@ -2,11 +2,13 @@ import { and, type AnyColumn, eq, exists, isNull, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { Db, Tx } from '../db/db.js';
 import { comments, connections, posts } from '../db/schema/index.js';
+import { inVisibleGroup } from '../groups/group-visibility.js';
 import { visibleTo } from '../users/visibility.js';
 
 // docs/FEED_AND_GROUPS_API.md "Endpoints": hidden means 404. A post is
 // hidden when deleted or removed, when its author is banned, deleted or
-// blocked either way, or when it's for connections and you aren't one.
+// blocked either way, when it's for connections and you aren't one, or
+// when it's in a group you aren't a member of (or that is hidden).
 
 /** `viewerId` and the user in `other` are connected. */
 export const connectedTo = (db: Db | Tx, viewerId: string, other: AnyColumn) =>
@@ -32,6 +34,7 @@ export const postVisibleTo = (db: Db, viewerId: string) =>
       eq(posts.authorId, viewerId),
       connectedTo(db, viewerId, posts.authorId),
     ),
+    or(isNull(posts.groupId), inVisibleGroup(db, posts.groupId, viewerId)),
   );
 
 const parent = alias(comments, 'parent');

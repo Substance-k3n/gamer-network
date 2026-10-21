@@ -1,5 +1,5 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
-import { and, desc, eq, inArray, lt, or, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import type { User } from '../auth/sessions.service.js';
 import { AppError, notFound } from '../common/app-error.js';
 import { decodeCursor, page, type PageQuery } from '../common/cursor.js';
@@ -8,6 +8,7 @@ import type { Db } from '../db/db.js';
 import { DB } from '../db/db.module.js';
 import {
   games,
+  groups,
   pollOptions,
   polls,
   postGg,
@@ -16,6 +17,7 @@ import {
   savedPosts,
   users,
 } from '../db/schema/index.js';
+import { groupVisible, isGroupAdmin, memberOf } from '../groups/group-visibility.js';
 import { ProfileService } from '../me/profile.service.js';
 import { isLive, visibleTo } from '../users/visibility.js';
 import type { CreatePostBody, FeedQuery } from './feed.body.js';
@@ -60,10 +62,11 @@ export class PostsService {
     private readonly media: MediaService,
   ) {}
 
-  /** Photos must be your own unused uploads; polls and slots go with their types only. */
+  /** Photos must be your own unused uploads; polls and slots go with their types only. Group posts: members only. */
   async create(author: User, body: CreatePostBody): Promise<PostDto> {
     const shape = postShapeErrors(body);
     if (shape) throw invalid(shape);
+    if (body.groupId) await this.checkMember(author.id, body.groupId);
     if (body.gameId) {
       const game = await this.db.query.games.findFirst({ where: eq(games.id, body.gameId) });
       if (!game) throw invalid({ gameId: 'Unknown game' });
@@ -84,6 +87,7 @@ export class PostsService {
         .insert(posts)
         .values({
           authorId: author.id,
+          groupId: body.groupId ?? null,
           type: body.type,
           gameId: body.gameId ?? null,
           text: body.text,
@@ -114,7 +118,23 @@ export class PostsService {
     return this.reader.post(author.id, id);
   }
 
-  /** Home, newest first. */
+  /** 404 when the group is hidden, 403 not_member when you aren't in it. */
+  private async checkMember(viewerId: string, groupId: string): Promise<void> {
+    const [group] = await this.db
+      .select({ id: groups.id, member: memberOf(this.db, groups.id, viewerId) })
+      .from(groups)
+      .where(and(eq(groups.id, groupId), groupVisible(this.db)));
+    if (!group) throw notFound('That group');
+    if (!group.member) {
+      throw new AppError(
+        HttpStatus.FORBIDDEN,
+        'not_member',
+        'Join the group to see and post there.',
+      );
+    }
+  }
+
+  /** Home, newest first. Group posts stay in their group. */
   async feed(viewer: User, q: FeedQuery): Promise<PostPageDto> {
     const filter = q.filter ?? 'for_you';
     if (filter === 'game' && !q.game) throw invalid({ game: 'Pick a game for filter=game' });
@@ -124,6 +144,7 @@ export class PostsService {
       .posts(
         viewer.id,
         and(
+          isNull(posts.groupId),
           after ? lt(posts.id, after) : undefined,
           filter === 'connections'
             ? or(eq(posts.authorId, viewer.id), connectedTo(this.db, viewer.id, posts.authorId))
@@ -141,7 +162,19 @@ export class PostsService {
     return this.reader.post(viewer.id, id);
   }
 
-  /** Moments: someone's posts you may see, newest first. 404 when you can't see them. */
+  /** A group's posts, newest first. Members only (403 not_member). */
+  async ofGroup(viewer: User, groupId: string, q: PageQuery): Promise<PostPageDto> {
+    await this.checkMember(viewer.id, groupId);
+    const limit = q.limit ?? 20;
+    const after = decodeCursor(q.cursor);
+    const rows = await this.reader
+      .posts(viewer.id, and(eq(posts.groupId, groupId), after ? lt(posts.id, after) : undefined))
+      .orderBy(desc(posts.id))
+      .limit(limit + 1);
+    return this.paged(rows, limit, viewer.id);
+  }
+
+  /** Moments: someone's Home posts you may see, newest first. 404 when you can't see them. */
   async byUser(viewer: User, username: string, q: PageQuery): Promise<PostPageDto> {
     const user = await this.db.query.users.findFirst({
       where: and(eq(users.username, username.trim().toLowerCase()), visibleTo(this.db, viewer.id)),
@@ -150,7 +183,7 @@ export class PostsService {
     return this.authored(viewer, user.id, q);
   }
 
-  /** Yours, connections-only ones included. */
+  /** Your Home posts, connections-only ones included. */
   mine(viewer: User, q: PageQuery): Promise<PostPageDto> {
     return this.authored(viewer, viewer.id, q);
   }
@@ -159,7 +192,14 @@ export class PostsService {
     const limit = q.limit ?? 20;
     const after = decodeCursor(q.cursor);
     const rows = await this.reader
-      .posts(viewer.id, and(eq(posts.authorId, authorId), after ? lt(posts.id, after) : undefined))
+      .posts(
+        viewer.id,
+        and(
+          eq(posts.authorId, authorId),
+          isNull(posts.groupId),
+          after ? lt(posts.id, after) : undefined,
+        ),
+      )
       .orderBy(desc(posts.id))
       .limit(limit + 1);
     return this.paged(rows, limit, viewer.id);
@@ -177,17 +217,25 @@ export class PostsService {
     return { items: await this.reader.buildPosts(items, viewerId), nextCursor };
   }
 
-  /** Author only; 403 not_owner for anyone else. */
+  /** Its author, or a group admin for group posts (removed, not deleted); 403 not_owner for anyone else. */
   async delete(viewer: User, id: string): Promise<void> {
     const post = await this.reader.postRow(viewer.id, id);
-    if (post.authorId !== viewer.id) {
-      throw new AppError(
-        HttpStatus.FORBIDDEN,
-        'not_owner',
-        'Only the person who posted it can delete it.',
-      );
+    if (post.authorId === viewer.id) {
+      await this.db.update(posts).set({ status: 'deleted' }).where(eq(posts.id, id));
+      return;
     }
-    await this.db.update(posts).set({ status: 'deleted' }).where(eq(posts.id, id));
+    if (post.groupId && (await isGroupAdmin(this.db, post.groupId, viewer.id))) {
+      await this.db
+        .update(posts)
+        .set({ status: 'removed', removedAt: new Date(), removedBy: viewer.id })
+        .where(eq(posts.id, id));
+      return;
+    }
+    throw new AppError(
+      HttpStatus.FORBIDDEN,
+      'not_owner',
+      'Only the person who posted it or a group admin can delete it.',
+    );
   }
 
   /** Repeating either is fine. */
@@ -256,7 +304,7 @@ export class PostsService {
     return { items: await this.reader.buildPosts(items, viewer.id), nextCursor };
   }
 
-  /** For share pages, no sign-in: live posts for everyone by live authors only. */
+  /** For share pages, no sign-in: live Home posts for everyone by live authors only. */
   async publicPost(id: string): Promise<PublicPostDto> {
     const [row] = await this.db
       .select({
@@ -268,7 +316,13 @@ export class PostsService {
       .innerJoin(users, eq(users.id, posts.authorId))
       .leftJoin(games, eq(games.id, posts.gameId))
       .where(
-        and(eq(posts.id, id), eq(posts.status, 'live'), eq(posts.audience, 'everyone'), isLive()),
+        and(
+          eq(posts.id, id),
+          eq(posts.status, 'live'),
+          eq(posts.audience, 'everyone'),
+          isNull(posts.groupId),
+          isLive(),
+        ),
       )
       .limit(1);
     if (!row) throw notFound('That post');

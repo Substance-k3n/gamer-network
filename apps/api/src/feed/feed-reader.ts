@@ -7,6 +7,7 @@ import {
   commentGg,
   comments,
   games,
+  groups,
   pollOptions,
   polls,
   pollVotes,
@@ -84,7 +85,8 @@ export class FeedReader {
     const ids = rows.map((r) => r.post.id);
     const ofType = (type: PostDto['type']) =>
       rows.filter((r) => r.post.type === type).map((r) => r.post.id);
-    const [authors, ggs, commentCounts, mine, saved, tops, media, pollOf, recruitOf] =
+    const groupIds = [...new Set(rows.flatMap((r) => (r.post.groupId ? [r.post.groupId] : [])))];
+    const [authors, ggs, commentCounts, mine, saved, tops, media, pollOf, recruitOf, groupRows] =
       await Promise.all([
         this.profiles.cards(rows.map((r) => r.author)),
         this.ggCounts(ids),
@@ -95,12 +97,20 @@ export class FeedReader {
         this.media.forPosts(ids),
         this.polls(ofType('poll'), viewerId),
         this.recruits(ofType('recruitment'), viewerId),
+        groupIds.length
+          ? this.db
+              .select({ id: groups.id, name: groups.name, short: groups.short, tone: groups.tone })
+              .from(groups)
+              .where(inArray(groups.id, groupIds))
+          : [],
       ]);
+    const groupOf = new Map(groupRows.map((g) => [g.id, g]));
     return rows.map(({ post: p, game }, i) => ({
       id: p.id,
       type: p.type,
       kind: kindOf(p.type),
       author: authors[i]!,
+      group: (p.groupId && groupOf.get(p.groupId)) || null,
       game,
       text: p.text,
       audience: p.audience,

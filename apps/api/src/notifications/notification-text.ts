@@ -1,5 +1,22 @@
 import type { notificationType } from '../db/schema/index.js';
 
+const ADDIS_OFFSET_MS = 3 * 3600_000;
+const DAY_MS = 24 * 3600_000;
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** "tonight 21:00", "today 14:00", "tomorrow 18:30" or "Sat 25 Oct 21:00", in Addis time. */
+export function eventWhen(startsAt: Date, now: Date): string {
+  const local = new Date(startsAt.getTime() + ADDIS_OFFSET_MS);
+  const time = local.toISOString().slice(11, 16);
+  const day = (d: Date) => Math.floor((d.getTime() + ADDIS_OFFSET_MS) / DAY_MS);
+  const days = day(startsAt) - day(now);
+  if (days === 0) return `${local.getUTCHours() >= 18 ? 'tonight' : 'today'} ${time}`;
+  if (days === 1) return `tomorrow ${time}`;
+  const date = `${WEEKDAYS[local.getUTCDay()]} ${local.getUTCDate()} ${MONTHS[local.getUTCMonth()]}`;
+  return `${date} ${time}`;
+}
+
 export type NotificationType = (typeof notificationType.enumValues)[number];
 
 export interface NotificationFacts {
@@ -15,6 +32,11 @@ export interface NotificationFacts {
   commentId: string | null;
   /** post_gg: how many more people GG'd while it was unread. */
   others: number;
+  groupId: string | null;
+  groupName: string | null;
+  /** group_event: the event's title and start. */
+  eventTitle: string | null;
+  eventStartsAt: Date | null;
 }
 
 export interface NotificationText {
@@ -27,8 +49,10 @@ export interface NotificationText {
 }
 
 /** The words and the tap target for each notification type. One place, so Alerts and push agree. */
-export function notificationText(n: NotificationFacts): NotificationText {
+export function notificationText(n: NotificationFacts, now = new Date()): NotificationText {
   const who = n.actorName ?? 'Someone';
+  const group = n.groupName ?? 'a group';
+  const groupPage = n.groupId ? `/groups/${n.groupId}` : '/alerts';
   const game = n.gameName ?? 'a game';
   const post = n.postId ? `/posts/${n.postId}` : '/alerts';
   const profile = n.actorUsername ? `/players/${n.actorUsername}` : '/alerts';
@@ -93,5 +117,21 @@ export function notificationText(n: NotificationFacts): NotificationText {
       };
     case 'recruit_accepted':
       return { title: "You're in", text: `${who} accepted your application`, route: profile };
+    case 'group_join_request':
+      return {
+        title: 'Join request',
+        text: `${who} wants to join ${group}`,
+        route: n.groupId ? `${groupPage}/members?status=pending` : groupPage,
+      };
+    case 'group_join_approved':
+      return { title: 'Request approved', text: `You're in ${group}`, route: groupPage };
+    case 'group_event': {
+      const when = n.eventStartsAt ? `, ${eventWhen(n.eventStartsAt, now)}` : '';
+      return {
+        title: 'New event',
+        text: `New event in ${group}: ${n.eventTitle ?? 'an event'}${when}`,
+        route: groupPage,
+      };
+    }
   }
 }

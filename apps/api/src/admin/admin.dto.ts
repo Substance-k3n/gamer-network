@@ -3,6 +3,7 @@ import { Transform, Type } from 'class-transformer';
 import { IsBoolean, IsDate, IsIn, IsOptional, IsString, Length, MaxLength } from 'class-validator';
 import { PageQuery } from '../common/cursor.js';
 import { reportStatus } from '../db/schema/index.js';
+import { MediaDto } from '../feed/feed.dto.js';
 import { REPORT_REASONS, type ReportReason } from '../safety/safety.dto.js';
 
 export const REPORT_STATUSES = reportStatus.enumValues;
@@ -13,6 +14,7 @@ export const RESOLVE_ACTIONS = [
   'remove_listing',
   'remove_post',
   'remove_comment',
+  'remove_group',
   'ban',
 ] as const;
 export type ResolveAction = (typeof RESOLVE_ACTIONS)[number];
@@ -43,6 +45,10 @@ export class AdminUserDto {
   playedWith: number;
   /** Reports against them still open. */
   openReports: number;
+  /** Their live posts, on Home and in groups. */
+  postsCount: number;
+  /** Live groups they're a member of. */
+  groupsCount: number;
 }
 
 export class AdminUserPageDto {
@@ -71,8 +77,13 @@ export class AdminReportDto {
   listingId: string | null;
   postId: string | null;
   commentId: string | null;
-  /** What was reported: the first 300 characters of the post or comment. */
+  groupId: string | null;
+  /** What was reported: the first 300 characters of the post or comment, or of the group's about. */
   excerpt: string | null;
+  /** A reported group's name. */
+  groupName: string | null;
+  /** A reported post's first image. */
+  image: MediaDto | null;
 
   @ApiProperty({ enum: REPORT_REASONS, enumName: 'ReportReason' })
   reason: ReportReason;
@@ -100,7 +111,7 @@ export class AdminReportsQuery extends PageQuery {
 }
 
 export class ResolveReportBody {
-  /** dismiss: no action. warn, remove_listing, remove_post, remove_comment (the reported one), ban (the target). */
+  /** dismiss: no action. warn, remove_listing, remove_post, remove_comment, remove_group (the reported one), ban (the target). */
   @ApiProperty({ enum: RESOLVE_ACTIONS, enumName: 'ResolveAction' })
   @IsIn(RESOLVE_ACTIONS)
   action: ResolveAction;

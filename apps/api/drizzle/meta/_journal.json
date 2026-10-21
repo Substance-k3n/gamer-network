@@ -50,6 +50,13 @@
       "when": 1792477117228,
       "tag": "0006_feed_media_polls_recruit",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792483167647,
+      "tag": "0007_feed_groups_events",
+      "breakpoints": true
     }
   ]
 }

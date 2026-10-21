@@ -16,9 +16,9 @@ export class AppConfigController {
       minSupportedVersion: env.minAppVersion,
       latestVersion: env.latestAppVersion,
       launchCity: env.launchCity,
-      groupsComingSoon: true,
+      groupsComingSoon: !env.groupsEnabled,
       feedEnabled: env.feedEnabled,
-      groupsEnabled: false,
+      groupsEnabled: env.groupsEnabled,
     };
   }
 }

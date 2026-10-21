@@ -7,8 +7,9 @@ moderation, and the tests that prove it works. The mobile app, the web
 PWA and the admin integrate once it exists.
 
 **Status:** accepted with [ADR-0012](decisions/0012-feed-and-groups-in-the-mvp.md).
-Phases 1, 2 (images only; video waits) and 3 (section 10) are built and
-hidden behind `feedEnabled`; the rest is not.
+Phases 1, 2 (images only; video waits), 3, 4 and 5 (section 10) are
+built; `feedEnabled` and `groupsEnabled` are on by default. Only video
+is left.
 
 **Source of truth for the screens:** the prototype at
 `Natnsis/rally` (`lib/screens/home.dart`, `compose.dart`, `groups.dart`,
@@ -658,8 +659,9 @@ in a separate PR, following the git workflow.
 2. **Media:** upload URLs, images, then video. Images built; video waits
    for the bandwidth check.
 3. **Polls and recruitment.** Built.
-4. **Groups:** list, page, join and approval, group posts.
-5. **Events, Moments and the profile's groups.**
+4. **Groups:** list, page, join and approval, group posts. Built.
+5. **Events, Moments and the profile's groups.** Built (with
+   `GET /v1/me/groups` for my groups and requests).
 
 ---
 
