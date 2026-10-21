@@ -2566,7 +2566,9 @@ class AppState extends ChangeNotifier {
     if (d == null) return;
     final name = d.name.trim();
     if (name.length < 3) {
-      return toast('Give your group a name (3+ characters)');
+      return update(
+        () => d.nameError = 'Give your group a name (3+ characters)',
+      );
     }
     if (d.kind == GroupKind.game && d.gameId == null) {
       return toast('Pick the game this group is for');

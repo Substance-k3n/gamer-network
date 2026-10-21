@@ -176,7 +176,7 @@ Future<void> _confirmCancel(
   if (await confirm(
     context,
     title: 'Cancel your request?',
-    body: 'The admins of ${g.name} won’t see it any more.',
+    body: '${g.name}’s admins won’t see it any more. You can ask again later.',
     yes: 'Cancel request',
     no: 'Keep it',
   )) {
@@ -662,7 +662,12 @@ Future<void> _groupMenu(BuildContext context, AppState s, GroupDto g) {
           Text(g.name, style: t.body(22, w: w800, ls: -.6)),
           _menuItem(context, 'Copy link', () => s.shareGroup(g)),
           if (s.groupAdmin) _menuItem(context, 'Edit group', s.openEditGroup),
-          _menuItem(context, 'Report group', () => _reportGroup(context, s, g)),
+          if (g.createdBy.id != s.me?.id)
+            _menuItem(
+              context,
+              'Report group',
+              () => _reportGroup(context, s, g),
+            ),
           _cancelItem(context),
         ],
       );
@@ -908,7 +913,8 @@ Future<void> _memberMenu(BuildContext context, AppState s, GroupMemberDto m) {
             if (await confirm(
               context,
               title: 'Remove ${m.user.displayName}?',
-              body: 'They leave the group. They can ask to join again.',
+              body:
+                  'They leave ${s.group?.name ?? 'the group'}. They can ask to join again.',
               yes: 'Remove',
             )) {
               await s.removeMember(m);
