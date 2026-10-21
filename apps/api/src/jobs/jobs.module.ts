@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { FeedModule } from '../feed/feed.module.js';
+import { MediaCleanupJob } from '../feed/media-cleanup.job.js';
 import { IdempotencyKeysJob } from '../idempotency/idempotency-keys.job.js';
 import { IdempotencyModule } from '../idempotency/idempotency.module.js';
 import { ListingExpiryJob } from '../listings/listing-expiry.job.js';
@@ -12,7 +14,7 @@ import { type Job, JOBS, JobRunner } from './jobs.js';
 
 /** Every timed job, run by JobRunner. Add new jobs to `inject` and the factory. */
 @Module({
-  imports: [IdempotencyModule, ListingsModule, PlayModule, SafetyModule],
+  imports: [FeedModule, IdempotencyModule, ListingsModule, PlayModule, SafetyModule],
   providers: [
     {
       provide: JOBS,
@@ -23,6 +25,7 @@ import { type Job, JOBS, JobRunner } from './jobs.js';
         AccountScrubJob,
         PushDispatcher,
         IdempotencyKeysJob,
+        MediaCleanupJob,
       ],
     },
     JobRunner,

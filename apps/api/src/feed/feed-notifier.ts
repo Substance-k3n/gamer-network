@@ -126,6 +126,36 @@ export class FeedNotifier {
     await this.mentions(tx, post, comment.text, comment.id, actorId, done);
   }
 
+  /** Someone applied to a recruitment post: its author, pushed. */
+  async applied(tx: Tx, post: Post, application: { id: string; userId: string }): Promise<void> {
+    const allowed = await this.canSee(tx, post, application.userId, [post.authorId]);
+    if (!allowed.has(post.authorId)) return;
+    await this.notifier.notify(tx, [
+      {
+        userId: post.authorId,
+        type: 'recruit_application',
+        actorId: application.userId,
+        postId: post.id,
+        recruitApplicationId: application.id,
+      },
+    ]);
+  }
+
+  /** The author accepted an application: the applicant, pushed. Declines tell no one. */
+  async accepted(tx: Tx, post: Post, application: { id: string; userId: string }): Promise<void> {
+    const allowed = await this.canSee(tx, post, post.authorId, [application.userId]);
+    if (!allowed.has(application.userId)) return;
+    await this.notifier.notify(tx, [
+      {
+        userId: application.userId,
+        type: 'recruit_accepted',
+        actorId: post.authorId,
+        postId: post.id,
+        recruitApplicationId: application.id,
+      },
+    ]);
+  }
+
   private async mentions(
     tx: Tx,
     post: Post,

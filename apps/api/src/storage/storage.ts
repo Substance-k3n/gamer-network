@@ -16,12 +16,14 @@ export interface StoredObject {
   contentType: string | undefined;
 }
 
-/** Where avatars live. Clients upload straight to it with a presigned URL. */
+/** Where avatars and post photos live. Clients upload straight to it with a presigned URL. */
 export interface MediaStorage {
   /** A URL that accepts one PUT of exactly this type and size, for `expiresIn` seconds. */
   uploadUrl(key: string, contentType: string, size: number, expiresIn: number): Promise<string>;
   /** Null when nothing is stored at `key`. */
   head(key: string): Promise<StoredObject | null>;
+  /** Up to the first `n` bytes stored at `key`; null when nothing is there. */
+  firstBytes(key: string, n: number): Promise<Buffer | null>;
   delete(key: string): Promise<void>;
   /** Where clients read `key`: public, or signed when the bucket is private. */
   url(key: string): Promise<string>;
@@ -59,6 +61,18 @@ export class S3MediaStorage implements MediaStorage {
       return { size: res.ContentLength ?? 0, contentType: res.ContentType };
     } catch (e) {
       if (e instanceof NotFound || (e as { name?: string }).name === 'NotFound') return null;
+      throw e;
+    }
+  }
+
+  async firstBytes(key: string, n: number): Promise<Buffer | null> {
+    try {
+      const res = await this.s3.send(
+        new GetObjectCommand({ Bucket: this.bucket, Key: key, Range: `bytes=0-${n - 1}` }),
+      );
+      return Buffer.from(await res.Body!.transformToByteArray());
+    } catch (e) {
+      if ((e as { name?: string }).name === 'NoSuchKey') return null;
       throw e;
     }
   }

@@ -1,8 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  ArrayUnique,
+  IsArray,
   IsIn,
   IsInt,
+  IsObject,
   IsOptional,
   IsString,
   IsUUID,
@@ -10,10 +15,65 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateNested,
 } from 'class-validator';
 import { POST_AUDIENCES, POST_TYPES, type PostAudience, type PostType } from './feed.dto.js';
 
 const trim = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value);
+const trimEach = ({ value }: { value: unknown }) =>
+  Array.isArray(value) ? value.map((v) => (typeof v === 'string' ? v.trim() : v)) : value;
+
+/** What the upload URL accepts (docs/FEED_AND_GROUPS_API.md "Media uploads"; images only for now). */
+export const MEDIA_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
+export type MediaType = (typeof MEDIA_TYPES)[number];
+export const MEDIA_MAX_BYTES = 10 * 1024 * 1024;
+
+export class MediaUploadBody {
+  @ApiProperty({ enum: MEDIA_TYPES, enumName: 'MediaContentType' })
+  @IsIn(MEDIA_TYPES, { message: 'Use a JPEG, PNG or WebP image' })
+  contentType: MediaType;
+
+  /** The file's exact size in bytes, at most 10 MB. Resize on the phone first (longest side 1600 px). */
+  @IsInt()
+  @Min(1)
+  @Max(MEDIA_MAX_BYTES, { message: 'Images can be up to 10 MB' })
+  size: number;
+}
+
+export const POLL_DURATIONS = ['1d', '3d', '1w'] as const;
+export type PollDuration = (typeof POLL_DURATIONS)[number];
+
+export class PollBody {
+  /** 2–4 options, 1–60 characters each, trimmed, all different. */
+  @Transform(trimEach)
+  @IsArray()
+  @ArrayMinSize(2, { message: 'Add 2 to 4 options' })
+  @ArrayMaxSize(4, { message: 'Add 2 to 4 options' })
+  @ArrayUnique({ message: 'Each option must be different' })
+  @IsString({ each: true })
+  @Length(1, 60, { each: true, message: 'Use 1 to 60 characters per option' })
+  options: string[];
+
+  /** How long it stays open: 1 day, 3 days or 1 week. */
+  @ApiProperty({ enum: POLL_DURATIONS, enumName: 'PollDuration' })
+  @IsIn(POLL_DURATIONS)
+  duration: PollDuration;
+}
+
+export class RecruitBody {
+  /** Players wanted, 1–10. */
+  @IsInt()
+  @Min(1, { message: 'Use 1 to 10 slots' })
+  @Max(10, { message: 'Use 1 to 10 slots' })
+  slots: number;
+
+  /** Free text, e.g. "Sniper, Support". Up to 80 characters, trimmed. */
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MaxLength(80, { message: 'Use up to 80 characters' })
+  roles?: string;
+}
 
 export class CreatePostBody {
   @ApiProperty({ enum: POST_TYPES, enumName: 'PostType' })
@@ -35,6 +95,39 @@ export class CreatePostBody {
   @IsOptional()
   @IsIn(POST_AUDIENCES)
   audience?: PostAudience;
+
+  /** Up to 4 keys from POST /v1/media/upload-url, uploaded by you and not used yet. Required on gameplay. */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(4, { message: 'Up to 4 photos per post' })
+  @ArrayUnique({ message: 'Each photo once' })
+  @IsString({ each: true })
+  @MaxLength(200, { each: true })
+  media?: string[];
+
+  /** Required on poll posts, refused on others. */
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => PollBody)
+  poll?: PollBody;
+
+  /** Required on recruitment posts, refused on others. */
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => RecruitBody)
+  recruit?: RecruitBody;
+}
+
+const PICK_ONE = { message: 'Pick one of the options' };
+
+export class VoteBody {
+  /** The option's position (0–3). */
+  @IsInt(PICK_ONE)
+  @Min(0, PICK_ONE)
+  @Max(3, PICK_ONE)
+  position: number;
 }
 
 export const FEED_FILTERS = ['for_you', 'connections', 'lfg', 'game'] as const;

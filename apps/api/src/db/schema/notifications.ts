@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { index, pgTable, uuid } from 'drizzle-orm/pg-core';
 import { notificationType } from './enums.js';
-import { comments, posts } from './feed.js';
+import { comments, posts, recruitApplications } from './feed.js';
 import { users } from './identity.js';
 import { listings } from './listings.js';
 import { checkIns, connectionRequests, playInvites } from './relationships.js';
@@ -26,6 +26,9 @@ export const notifications = pgTable(
     checkInId: uuid('check_in_id').references(() => checkIns.id, { onDelete: 'cascade' }),
     postId: uuid('post_id').references(() => posts.id, { onDelete: 'cascade' }),
     commentId: uuid('comment_id').references(() => comments.id, { onDelete: 'cascade' }),
+    recruitApplicationId: uuid('recruit_application_id').references(() => recruitApplications.id, {
+      onDelete: 'cascade',
+    }),
     readAt: ts('read_at'),
     /** Set once handed to push (or skipped). Null rows are the push outbox. */
     pushedAt: ts('pushed_at'),

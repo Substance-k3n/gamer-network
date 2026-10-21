@@ -275,7 +275,7 @@ Show due check-ins as a card on Home: "Did you play with Dave?"
 | POST   | `/v1/notifications/read`         | `{ ids: [...] }` or `{ all: true }` → `204`                      |
 | PUT    | `/v1/me/devices`                 | `{ fcmToken, platform: android\|ios\|web, appVersion? }` → `204` |
 
-`Notification { id, type, actor: UserCard | null, listingId, connectionRequestId, playInviteId, checkInId, postId, commentId, title, text, route, readAt, createdAt }`.
+`Notification { id, type, actor: UserCard | null, listingId, connectionRequestId, playInviteId, checkInId, postId, commentId, recruitApplicationId, title, text, route, readAt, createdAt }`.
 `text` is ready to show ("Hana wants to play PUBG Mobile with you");
 `route` is where tapping it goes. Notifications from people you can no
 longer see (blocked, banned) are left out.
@@ -284,7 +284,9 @@ longer see (blocked, banned) are left out.
 the person registered, with `notification: { title, body: text }` and
 `data: { type, id, route }`. `route` is the in-app path to open:
 `/alerts`, `/players/<username>`, `/listings/<id>`, `/check-ins/<id>`,
-`/posts/<id>` (`?comments=1` to open its comments). `post_gg` is never
+`/posts/<id>` (`?comments=1` to open its comments),
+`/posts/<id>/applications` (`recruit_application`; `recruit_accepted`
+opens the author's profile). `post_gg` is never
 pushed, and stays one unread row per post ("Meron and 2 others reacted
 GG to your post").
 Register the device (`PUT /v1/me/devices`) on every launch and when the
@@ -308,36 +310,64 @@ ways. Deleting an account closes the live listing, withdraws everything
 pending and removes connections at once; personal data is erased 30
 days later and the email can then sign up again.
 
-### Home feed (ADR-0012, phase 1)
+### Home feed (ADR-0012, phases 1–3)
 
 Shown only when `feedEnabled` in `/v1/app/config`. The full plan, with
-later phases (media, polls, recruitment, groups), is
+later phases (video, groups), is
 [FEED_AND_GROUPS_API.md](FEED_AND_GROUPS_API.md). Hidden posts and
 comments are `404`: deleted, removed, by someone banned or blocked
 either way, or connections-only and you aren't connected.
 
-| Method | Path                                    | Body → Response                                                                                                               |
-| ------ | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `/v1/feed?filter=&game=&cursor=&limit=` | `Page<Post>`, newest first. `filter`: `for_you` (default), `connections`, `lfg`, `game` (needs `game`). `limit` 1–30          |
-| POST   | `/v1/posts`                             | **Idempotent.** `{ type, text, gameId?, audience? }` → `201 Post`. Verified email. 10 an hour (`429 rate_limited`)            |
-| GET    | `/v1/posts/{id}`                        | `Post`                                                                                                                        |
-| DELETE | `/v1/posts/{id}`                        | Author only (`403 not_owner`) → `204`                                                                                         |
-| PUT    | `/v1/posts/{id}/gg`                     | `{ ggCount, myGG: true }`. Safe to repeat. `DELETE` takes it back                                                             |
-| PUT    | `/v1/posts/{id}/save`                   | `204`. `DELETE` unsaves                                                                                                       |
-| GET    | `/v1/me/saved`                          | `Page<Post>`, most recently saved first                                                                                       |
-| GET    | `/v1/me/posts`                          | `Page<Post>`, yours                                                                                                           |
-| GET    | `/v1/users/{username}/posts`            | `Page<Post>`: their Moments you may see                                                                                       |
-| GET    | `/v1/posts/{id}/comments?sort=`         | `Page<Comment>` of top-level comments, oldest first; `sort=top` by GG                                                         |
-| POST   | `/v1/posts/{id}/comments`               | **Idempotent.** `{ text, parentId? }` → `201 Comment`. Verified email. 60 an hour                                             |
-| GET    | `/v1/comments/{id}/replies`             | `Page<Comment>`, oldest first                                                                                                 |
-| DELETE | `/v1/comments/{id}`                     | Its author or the post's author → `204`. Its replies go with it                                                               |
-| PUT    | `/v1/comments/{id}/gg`                  | `{ ggCount, myGG: true }`. `DELETE` takes it back                                                                             |
-| GET 🔓 | `/v1/public/posts/{id}`                 | For the share page `/p/<id>`: `{ id, type, text (300 chars), author: { displayName, username, avatarUrl }, game, createdAt }` |
+| Method | Path                                    | Body → Response                                                                                                                                         |
+| ------ | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/v1/feed?filter=&game=&cursor=&limit=` | `Page<Post>`, newest first. `filter`: `for_you` (default), `connections`, `lfg`, `game` (needs `game`). `limit` 1–30                                    |
+| POST   | `/v1/posts`                             | **Idempotent.** `{ type, text, gameId?, audience?, media?, poll?, recruit? }` → `201 Post`. Verified email. 10 an hour (`429 rate_limited`)             |
+| GET    | `/v1/posts/{id}`                        | `Post`                                                                                                                                                  |
+| DELETE | `/v1/posts/{id}`                        | Author only (`403 not_owner`) → `204`                                                                                                                   |
+| PUT    | `/v1/posts/{id}/gg`                     | `{ ggCount, myGG: true }`. Safe to repeat. `DELETE` takes it back                                                                                       |
+| PUT    | `/v1/posts/{id}/save`                   | `204`. `DELETE` unsaves                                                                                                                                 |
+| GET    | `/v1/me/saved`                          | `Page<Post>`, most recently saved first                                                                                                                 |
+| GET    | `/v1/me/posts`                          | `Page<Post>`, yours                                                                                                                                     |
+| GET    | `/v1/users/{username}/posts`            | `Page<Post>`: their Moments you may see                                                                                                                 |
+| POST   | `/v1/media/upload-url`                  | `{ contentType: image/jpeg\|png\|webp, size ≤ 10 MB }` → `{ uploadUrl, headers, key, expiresAt }`. Video is `422`. 30 an hour                           |
+| POST   | `/v1/posts/{id}/vote`                   | `{ position }` → `Poll`. `409 already_voted`, `409 poll_closed`, `422` for a position that isn't an option. Your own poll is fine                       |
+| POST   | `/v1/posts/{id}/apply`                  | **Idempotent.** → `Recruit`. `409 already_applied`, `403 own_post`, `409 recruitment_full`. Tells the author. 20 a day                                  |
+| GET    | `/v1/posts/{id}/applications?cursor=`   | Author only (`403 not_owner`) → `Page<{ id, user: UserCard, status, createdAt }>`, first come first                                                     |
+| POST   | `/v1/recruit-applications/{id}/accept`  | Author only → `{ id, status: "accepted" }`. Tells the applicant and sends them a connection request if you aren't connected. `409 recruitment_full`     |
+| POST   | `/v1/recruit-applications/{id}/decline` | Author only → `{ id, status: "declined" }`. Tells no one                                                                                                |
+| GET    | `/v1/posts/{id}/comments?sort=`         | `Page<Comment>` of top-level comments, oldest first; `sort=top` by GG                                                                                   |
+| POST   | `/v1/posts/{id}/comments`               | **Idempotent.** `{ text, parentId? }` → `201 Comment`. Verified email. 60 an hour                                                                       |
+| GET    | `/v1/comments/{id}/replies`             | `Page<Comment>`, oldest first                                                                                                                           |
+| DELETE | `/v1/comments/{id}`                     | Its author or the post's author → `204`. Its replies go with it                                                                                         |
+| PUT    | `/v1/comments/{id}/gg`                  | `{ ggCount, myGG: true }`. `DELETE` takes it back                                                                                                       |
+| GET 🔓 | `/v1/public/posts/{id}`                 | For the share page `/p/<id>`: `{ id, type, text (300 chars), author: { displayName, username, avatarUrl }, game, media (first image only), createdAt }` |
 
-`Post { id, type, kind, author: UserCard, game, text, audience, topComment, ggCount, commentCount, myGG, saved, mine, shareUrl, createdAt }`.
-Draw by `kind` (`text`, `discussion` now; `moment`, `poll`, `recruit`
-later), label by `type`. `gameplay`, `poll` and `recruitment` posts answer
-`422` until their phase. Counts leave out banned and deleted people.
+`Post { id, type, kind, author: UserCard, game, text, audience, media: Media[], poll: Poll | null, recruit: Recruit | null, topComment, ggCount, commentCount, myGG, saved, mine, shareUrl, createdAt }`.
+Draw by `kind` (`text`, `discussion`, `moment`, `poll`, `recruit`),
+label by `type`. Counts leave out banned and deleted people.
+
+- `Media { id, kind: image|video, url, posterUrl, width, height, durationMs }`:
+  `url` is signed when the bucket is private, so use it as given.
+  `kind` is always `image` for now; `width` and `height` are null (the
+  upload flow sends keys only).
+- `Poll { options: [{ position, label, votes }], totalVotes, myVote, endsAt, closed }`:
+  `myVote` is the position you voted for, or null.
+- `Recruit { slots, roles, applications, myApplication }`: `applications`
+  is a count; `myApplication` is `pending|accepted|declined` or null.
+
+**Photos.** Ask `POST /v1/media/upload-url` for each image (resized on
+the phone to a longest side of 1600 px), `PUT` it to `uploadUrl` with
+`headers`, then send the keys in `media` (≤ 4) before `expiresAt` (an
+hour). `gameplay` needs at least one; any type may have them. Each key
+must be your own, unused, uploaded as promised, and really a JPEG, PNG
+or WebP of the signed type (checked from its first bytes), else `422` on
+`media`. Unused uploads are deleted after a day.
+
+**Polls and recruitment.** `poll: { options: 2–4 × 1–60 chars, unique,
+duration: 1d|3d|1w }` is required on `poll` posts and refused on others;
+`recruit: { slots: 1–10, roles?: ≤ 80 }` the same for `recruitment`. One
+vote per person, final. One application per person; accepted ones fill
+the slots.
 
 `Comment { id, postId, parentId, author: UserCard, text, ggCount, myGG, mine, replies, createdAt }`.
 One level of replies: a reply to a reply goes under the same top-level

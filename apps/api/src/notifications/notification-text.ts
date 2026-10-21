@@ -85,5 +85,13 @@ export function notificationText(n: NotificationFacts): NotificationText {
         text: `${who} mentioned you in ${n.commentId ? 'a comment' : 'a post'}`,
         route: n.commentId && n.postId ? `${post}?comments=1` : post,
       };
+    case 'recruit_application':
+      return {
+        title: 'New applicant',
+        text: `${who} applied to your recruitment post`,
+        route: n.postId ? `${post}/applications` : post,
+      };
+    case 'recruit_accepted':
+      return { title: "You're in", text: `${who} accepted your application`, route: profile };
   }
 }

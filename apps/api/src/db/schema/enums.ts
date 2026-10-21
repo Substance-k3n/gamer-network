@@ -66,6 +66,8 @@ export const notificationType = pgEnum('notification_type', [
   'post_comment',
   'comment_reply',
   'mention',
+  'recruit_application',
+  'recruit_accepted',
 ]);
 export const reportReason = pgEnum('report_reason', [
   'harassment',
@@ -105,3 +107,6 @@ export const postType = pgEnum('post_type', [
 export const postAudience = pgEnum('post_audience', ['everyone', 'connections']);
 /** deleted: by its author. removed: by an admin. */
 export const contentStatus = pgEnum('content_status', ['live', 'deleted', 'removed']);
+/** Only images can be uploaded for now; video waits (ADR-0012). */
+export const mediaKind = pgEnum('media_kind', ['image', 'video']);
+export const applicationStatus = pgEnum('application_status', ['pending', 'accepted', 'declined']);
