@@ -96,6 +96,11 @@ export class CreatePostBody {
   @IsIn(POST_AUDIENCES)
   audience?: PostAudience;
 
+  /** Post in this group instead of Home: members only (403 not_member). Group posts are for everyone in the group, so audience=connections is refused. */
+  @IsOptional()
+  @IsUUID()
+  groupId?: string;
+
   /** Up to 4 keys from POST /v1/media/upload-url, uploaded by you and not used yet. Required on gameplay. */
   @IsOptional()
   @IsArray()

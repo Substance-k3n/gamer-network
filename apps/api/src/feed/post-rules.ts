@@ -8,7 +8,7 @@ const POLL_DAYS: Record<PollDuration, number> = { '1d': 1, '3d': 3, '1w': 7 };
 
 /** The fields that don't fit the post's type, or null when it's fine. */
 export function postShapeErrors(
-  body: Pick<CreatePostBody, 'type' | 'media' | 'poll' | 'recruit'>,
+  body: Pick<CreatePostBody, 'type' | 'media' | 'poll' | 'recruit' | 'groupId' | 'audience'>,
 ): Record<string, string> | null {
   const fields: Record<string, string> = {};
   if (body.type === 'gameplay' && !body.media?.length) {
@@ -21,6 +21,9 @@ export function postShapeErrors(
   }
   if (body.type !== 'recruitment' && body.recruit) {
     fields.recruit = 'Only recruitment posts have slots';
+  }
+  if (body.groupId && body.audience === 'connections') {
+    fields.audience = 'Group posts are for everyone in the group';
   }
   return Object.keys(fields).length ? fields : null;
 }

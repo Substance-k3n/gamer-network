@@ -33,6 +33,18 @@ describe('postShapeErrors', () => {
   });
 });
 
+describe('postShapeErrors in a group', () => {
+  const groupId = '0192f0a0-0000-7000-8000-000000000000';
+  it('refuses audience=connections on group posts only', () => {
+    expect(postShapeErrors({ type: 'question', groupId, audience: 'connections' })).toEqual({
+      audience: 'Group posts are for everyone in the group',
+    });
+    expect(postShapeErrors({ type: 'question', groupId, audience: 'everyone' })).toBeNull();
+    expect(postShapeErrors({ type: 'question', groupId })).toBeNull();
+    expect(postShapeErrors({ type: 'question', audience: 'connections' })).toBeNull();
+  });
+});
+
 describe('pollEndsAt', () => {
   it('is 1 day, 3 days or a week from now', () => {
     const now = new Date('2026-10-20T10:00:00Z');

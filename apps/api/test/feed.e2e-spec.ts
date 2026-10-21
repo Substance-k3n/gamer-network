@@ -552,8 +552,25 @@ describe('share pages and the app switch', () => {
     await http().get(`/v1/public/posts/${hidden.id}`).expect(404);
   });
 
-  it('tells the apps whether the feed is on', async () => {
+  it('tells the apps the feed and groups are on, unless switched off', async () => {
     const res = await http().get('/v1/app/config').expect(200);
-    expect(res.body).toMatchObject({ feedEnabled: false, groupsEnabled: false });
+    expect(res.body).toMatchObject({
+      feedEnabled: true,
+      groupsEnabled: true,
+      groupsComingSoon: false,
+    });
+    process.env.FEED_ENABLED = 'false';
+    process.env.GROUPS_ENABLED = 'false';
+    try {
+      const off = await http().get('/v1/app/config').expect(200);
+      expect(off.body).toMatchObject({
+        feedEnabled: false,
+        groupsEnabled: false,
+        groupsComingSoon: true,
+      });
+    } finally {
+      delete process.env.FEED_ENABLED;
+      delete process.env.GROUPS_ENABLED;
+    }
   });
 });

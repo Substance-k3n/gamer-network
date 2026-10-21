@@ -7,6 +7,8 @@ import { DB } from '../db/db.module.js';
 import {
   devices,
   games,
+  groupEvents,
+  groups,
   listings,
   notifications,
   playInvites,
@@ -52,6 +54,9 @@ export class NotificationsService {
         n: notifications,
         actor: users,
         gameName: games.name,
+        groupName: groups.name,
+        eventTitle: groupEvents.title,
+        eventStartsAt: groupEvents.startsAt,
         // post_gg: everyone else who GG'd between it being written and being read.
         others: sql<number>`case when ${notifications.type} = 'post_gg' then (
           select count(*)::int from ${postGg}
@@ -68,6 +73,8 @@ export class NotificationsService {
       .leftJoin(listings, eq(listings.id, notifications.listingId))
       .leftJoin(playInvites, eq(playInvites.id, notifications.playInviteId))
       .leftJoin(games, eq(games.id, sql`coalesce(${listings.gameId}, ${playInvites.gameId})`))
+      .leftJoin(groups, eq(groups.id, notifications.groupId))
+      .leftJoin(groupEvents, eq(groupEvents.id, notifications.groupEventId))
       .where(where);
   }
 
@@ -82,6 +89,10 @@ export class NotificationsService {
       postId: r.n.postId,
       commentId: r.n.commentId,
       others: r.others,
+      groupId: r.n.groupId,
+      groupName: r.groupName,
+      eventTitle: r.eventTitle,
+      eventStartsAt: r.eventStartsAt,
     });
   }
 
@@ -111,6 +122,8 @@ export class NotificationsService {
       postId: r.n.postId,
       commentId: r.n.commentId,
       recruitApplicationId: r.n.recruitApplicationId,
+      groupId: r.n.groupId,
+      groupEventId: r.n.groupEventId,
       ...this.text(r),
       readAt: r.n.readAt,
       createdAt: r.n.createdAt,
