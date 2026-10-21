@@ -277,7 +277,7 @@ void main() {
       await tapText(t, 'Send report');
       await see(t, 'Thanks. Our team will look at it.');
 
-      // ---- groups (sample data on the phone) ----
+      // ---- groups (the API) ----
       await nav(t, 'GROUPS');
       await see(t, 'START A GROUP');
       await tapText(t, 'Join'); // the first open group I'm not in

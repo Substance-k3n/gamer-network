@@ -14,9 +14,9 @@ part 'app_config_response.g.dart';
 /// * [minSupportedVersion] - Apps below this version must update (they get 426 everywhere else).
 /// * [latestVersion] - Newest released version, for a gentle \"Update available\".
 /// * [launchCity] - The one city the beta runs in.
-/// * [groupsComingSoon] - Show the Groups tab as \"coming soon\" with a waitlist.
-/// * [feedEnabled] - Show the Home feed (posts, comments, GG). Off: today's Home.
-/// * [groupsEnabled] - Show Groups for real. Off until groups ship; then groupsComingSoon goes away.
+/// * [groupsComingSoon] - Show the Groups tab as \"coming soon\" with a waitlist. False once groups ship (the opposite of groupsEnabled).
+/// * [feedEnabled] - Show the Home feed (posts, comments, GG). On by default (FEED_ENABLED=false turns it off).
+/// * [groupsEnabled] - Show Groups for real. On by default (GROUPS_ENABLED=false turns it off).
 @BuiltValue()
 abstract class AppConfigResponse
     implements Built<AppConfigResponse, AppConfigResponseBuilder> {
@@ -32,15 +32,15 @@ abstract class AppConfigResponse
   @BuiltValueField(wireName: r'launchCity')
   String get launchCity;
 
-  /// Show the Groups tab as \"coming soon\" with a waitlist.
+  /// Show the Groups tab as \"coming soon\" with a waitlist. False once groups ship (the opposite of groupsEnabled).
   @BuiltValueField(wireName: r'groupsComingSoon')
   bool get groupsComingSoon;
 
-  /// Show the Home feed (posts, comments, GG). Off: today's Home.
+  /// Show the Home feed (posts, comments, GG). On by default (FEED_ENABLED=false turns it off).
   @BuiltValueField(wireName: r'feedEnabled')
   bool get feedEnabled;
 
-  /// Show Groups for real. Off until groups ship; then groupsComingSoon goes away.
+  /// Show Groups for real. On by default (GROUPS_ENABLED=false turns it off).
   @BuiltValueField(wireName: r'groupsEnabled')
   bool get groupsEnabled;
 

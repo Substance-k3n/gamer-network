@@ -598,7 +598,12 @@ class FeedPost extends StatelessWidget {
                   p.text,
                   style: t.body(big ? 19 : 15, w: big ? w700 : w400, h: 1.4),
                 ),
-                if (p.kind == PostKind.moment) const _Clip(),
+                if (p.media.isNotEmpty)
+                  PhotoGrid(p.media.toList())
+                else if (p.kind == PostKind.moment)
+                  const _Clip(),
+                if (p.poll != null) _PollView(p),
+                if (p.recruit != null) _RecruitBox(p),
                 if (top != null)
                   Dashed(
                     radius: 16,
@@ -716,7 +721,7 @@ Future<void> showPostMenu(BuildContext context, PostDto p) {
             style: t.body(22, w: w800, ls: -.6),
           ),
           item('Copy link', () => s.sharePost(p)),
-          if (p.mine)
+          if (p.mine || s.canModerate(p))
             item('Delete post', () async {
               if (await confirm(
                 context,
@@ -726,8 +731,8 @@ Future<void> showPostMenu(BuildContext context, PostDto p) {
               )) {
                 await s.deletePost(p);
               }
-            }, strong: true)
-          else ...[
+            }, strong: p.mine),
+          if (!p.mine) ...[
             item(
               'Report post',
               () => showReportDialog(
@@ -791,6 +796,482 @@ class _Clip extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// A post's photos: one 220 tall, 2–4 in a 2-column grid of 140,
+/// cover-cropped (D23). Tap opens them full screen.
+class PhotoGrid extends StatelessWidget {
+  const PhotoGrid(this.media, {super.key});
+  final List<MediaDto> media;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.rt;
+    final one = media.length == 1;
+    return LayoutBuilder(
+      builder: (context, c) {
+        final w = one ? c.maxWidth : (c.maxWidth - 6) / 2;
+        return Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (var i = 0; i < media.length; i++)
+              Semantics(
+                button: true,
+                label: 'Photo ${i + 1} of ${media.length}',
+                child: GestureDetector(
+                  onTap: () => showPhotos(context, media, i),
+                  child: Container(
+                    width: w,
+                    height: one ? 220 : 140,
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: t.dark,
+                      border: t.border(),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: NetPhoto(media[i].url),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// A photo from the API, cover-cropped; a dark box until (or if) it loads.
+class NetPhoto extends StatelessWidget {
+  const NetPhoto(this.url, {super.key, this.fit = BoxFit.cover});
+  final String url;
+  final BoxFit fit;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = ColoredBox(color: context.rt.dark);
+    return Image.network(
+      url,
+      fit: fit,
+      width: double.infinity,
+      height: double.infinity,
+      gaplessPlayback: true,
+      loadingBuilder: (_, child, progress) => progress == null ? child : dark,
+      errorBuilder: (_, _, _) => dark,
+    );
+  }
+}
+
+/// Full-screen photos, swipe between them, pinch to zoom.
+Future<void> showPhotos(BuildContext context, List<MediaDto> media, int at) =>
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black,
+      useSafeArea: false,
+      builder: (context) => _PhotoViewer(media, at),
+    );
+
+/// Swipe or step through a post's photos, with a "01/04" counter (D35).
+class _PhotoViewer extends StatefulWidget {
+  const _PhotoViewer(this.media, this.at);
+  final List<MediaDto> media;
+  final int at;
+
+  @override
+  State<_PhotoViewer> createState() => _PhotoViewerState();
+}
+
+class _PhotoViewerState extends State<_PhotoViewer> {
+  late final _pages = PageController(initialPage: widget.at);
+  late int _i = widget.at;
+
+  @override
+  void dispose() {
+    _pages.dispose();
+    super.dispose();
+  }
+
+  void _go(int i) => _pages.animateToPage(
+    i,
+    duration: const Duration(milliseconds: 260),
+    curve: Curves.easeOutCubic,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.rt;
+    final n = widget.media.length;
+    final pad = MediaQuery.paddingOf(context);
+    Widget step(String label, Ic icon, int to, {bool flip = false}) =>
+        Semantics(
+          label: label,
+          button: true,
+          child: CircleBtn(
+            onTap: () => _go(to),
+            child: Transform.flip(flipX: flip, child: SvgIcon(icon, size: 18)),
+          ),
+        );
+    return Stack(
+      children: [
+        PageView(
+          controller: _pages,
+          onPageChanged: (i) => setState(() => _i = i),
+          children: [
+            for (final m in widget.media)
+              InteractiveViewer(child: NetPhoto(m.url, fit: BoxFit.contain)),
+          ],
+        ),
+        Positioned(
+          top: pad.top + 22,
+          left: 18,
+          child: Text(
+            '${pad2(_i + 1)}/${pad2(n)}',
+            style: t.digits(14, c: Colors.white),
+          ),
+        ),
+        Positioned(
+          top: pad.top + 10,
+          right: 14,
+          child: Semantics(
+            label: 'Close photos',
+            child: CloseBtn(onTap: () => Navigator.pop(context)),
+          ),
+        ),
+        if (n > 1) ...[
+          if (_i > 0)
+            Positioned(
+              left: 12,
+              top: 0,
+              bottom: 0,
+              child: Center(child: step('Previous photo', Ic.back, _i - 1)),
+            ),
+          if (_i < n - 1)
+            Positioned(
+              right: 12,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: step('Next photo', Ic.back, _i + 1, flip: true),
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+}
+
+/// "1 SLOT · SNIPER, IGL", "3 SLOTS · ANY ROLE" (D35).
+String slotsLine(RecruitDto r) {
+  final n = r.slots.toInt();
+  final roles = r.roles.trim().isEmpty ? 'ANY ROLE' : r.roles.toUpperCase();
+  return '$n ${n == 1 ? 'SLOT' : 'SLOTS'} · $roles';
+}
+
+/// Time left on a poll in its largest whole unit: "2 DAYS", "5 HOURS",
+/// "30 MIN" (D29).
+String endsIn(DateTime end, DateTime now) {
+  final d = end.difference(now);
+  if (d.inDays > 0) return '${d.inDays} ${d.inDays == 1 ? 'DAY' : 'DAYS'}';
+  if (d.inHours > 0) {
+    return '${d.inHours} ${d.inHours == 1 ? 'HOUR' : 'HOURS'}';
+  }
+  return '${d.inMinutes < 1 ? 1 : d.inMinutes} MIN';
+}
+
+/// "1 VOTE · YOU VOTED", "4 VOTES · ENDS IN 2 DAYS", "3 VOTES · CLOSED".
+String pollFooter(PollDto pl, DateTime now) {
+  final n = pl.totalVotes.toInt();
+  final votes = '$n ${n == 1 ? 'VOTE' : 'VOTES'}';
+  final state = pl.closed
+      ? 'CLOSED'
+      : pl.myVote != null
+      ? 'YOU VOTED'
+      : 'ENDS IN ${endsIn(pl.endsAt, now)}';
+  return '$votes · $state';
+}
+
+/// A poll: bars stay hidden until I vote (or it closes).
+class _PollView extends StatelessWidget {
+  const _PollView(this.p);
+  final PostDto p;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.app;
+    final t = context.rt;
+    final pl = p.poll!;
+    final mine = pl.myVote?.toInt();
+    final shown = mine != null || pl.closed;
+    final tot = pl.totalVotes.toInt();
+    return Gap(
+      7,
+      children: [
+        for (final o in pl.options)
+          Builder(
+            builder: (context) {
+              final pos = o.position.toInt();
+              final pct = (o.votes / (tot < 1 ? 1 : tot) * 100).round();
+              return Semantics(
+                button: !shown,
+                label: 'Vote ${o.label}',
+                child: Tap(
+                  onTap: shown ? null : () => s.vote(p, pos),
+                  child: Container(
+                    height: 42,
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: t.surface,
+                      border: t.border(),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: AnimatedFractionallySizedBox(
+                              duration: const Duration(milliseconds: 500),
+                              curve: Curves.ease,
+                              widthFactor: shown ? pct / 100 : 0,
+                              heightFactor: 1,
+                              child: ColoredBox(
+                                color: mine == pos ? t.pollMine : t.soft,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${o.label}${mine == pos ? '  ✓' : ''}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: t.body(14, w: w600),
+                                ),
+                              ),
+                              if (shown)
+                                Text('${pad2(pct)}%', style: t.digits(11)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        Label(pollFooter(pl, s.now.value), padLeft: 4),
+      ],
+    );
+  }
+}
+
+/// Recruitment: slots, roles and Apply; mine opens its applications.
+class _RecruitBox extends StatelessWidget {
+  const _RecruitBox(this.p);
+  final PostDto p;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.app;
+    final t = context.rt;
+    final r = p.recruit!;
+    final applied = r.myApplication != null;
+    final done = applied || p.mine;
+    final label = p.mine
+        ? 'Yours · ${r.applications} applied'
+        : switch (r.myApplication) {
+            ApplicationStatus.accepted => 'Accepted ✓',
+            null => 'Apply',
+            _ => 'Applied ✓',
+          };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: t.soft,
+        border: t.border(),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Column(
+            children: [
+              Text(pad2(r.slots.toInt()), style: t.digits(22)),
+              const SizedBox(height: 3),
+              Text(t.up('SLOTS'), style: t.label(8)),
+            ],
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(t.up('ROLES NEEDED'), style: t.label(9)),
+                const SizedBox(height: 2),
+                Text(
+                  r.roles.isEmpty ? 'Any role' : r.roles,
+                  style: t.body(14, w: w700),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Pill(
+              label,
+              onTap: applied || s.busy ? null : () => s.apply(p),
+              height: 36,
+              padH: 14,
+              weight: w700,
+              bg: done ? t.strong : t.accent,
+              fg: done ? t.onStrong : t.onAccent,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The applications to my recruitment post, inside the app's bottom sheet.
+class ApplicationsSheet extends StatelessWidget {
+  const ApplicationsSheet({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.app;
+    final t = context.rt;
+    final list = s.apps;
+    return Gap(
+      10,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Applications', style: t.body(24, w: w800, ls: -.8)),
+                  if (s.appsRecruit != null) Label(slotsLine(s.appsRecruit!)),
+                ],
+              ),
+            ),
+            CloseBtn(
+              onTap: s.closeSheet,
+              size: 36,
+              fontSize: 16,
+              transparent: true,
+            ),
+          ],
+        ),
+        if (list == null)
+          const Padding(
+            padding: EdgeInsets.all(20),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (list.isEmpty)
+          const EmptyNote('No applications yet. They show up here.')
+        else
+          RowList(
+            children: [
+              for (final a in list)
+                Padding(
+                  key: ValueKey(a.id),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  child: Row(
+                    children: [
+                      Avatar(
+                        initialOf(a.user.displayName),
+                        toneFor(a.user.id),
+                        url: a.user.avatarUrl,
+                        size: 38,
+                        fontSize: 15,
+                        onTap: () => s.openPlayer(a.user.username),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              a.user.displayName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: t.body(15, w: w700),
+                            ),
+                            Text(
+                              s.rankLine(a.user.topGame).isEmpty
+                                  ? '@${a.user.username}'
+                                  : s.rankLine(a.user.topGame),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: t.body(12, c: t.muted),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      if (a.status != ApplicationStatus.pending)
+                        GestureDetector(
+                          // The author may change the answer (D24).
+                          onTap: () => s.decide(
+                            a,
+                            a.status != ApplicationStatus.accepted,
+                          ),
+                          child: TypeTag(
+                            a.status == ApplicationStatus.accepted
+                                ? 'ACCEPTED'
+                                : 'DECLINED',
+                            a.status == ApplicationStatus.accepted
+                                ? t.accent
+                                : t.grey,
+                          ),
+                        )
+                      else ...[
+                        Pill(
+                          'Decline',
+                          onTap: s.busy ? null : () => s.decide(a, false),
+                          height: 32,
+                          padH: 10,
+                          bg: Colors.transparent,
+                        ),
+                        const SizedBox(width: 6),
+                        Pill(
+                          'Accept',
+                          onTap: s.busy ? null : () => s.decide(a, true),
+                          height: 32,
+                          padH: 12,
+                          weight: w700,
+                          bg: t.accent,
+                          fg: t.onAccent,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        if (s.appsCursor != null)
+          Center(
+            child: Pill(
+              'Load more',
+              onTap: () => s.loadApplications(more: true),
+              height: 40,
+              padH: 16,
+              weight: w700,
+            ),
+          ),
+      ],
     );
   }
 }
@@ -927,7 +1408,8 @@ class _CommentRow extends StatelessWidget {
     final t = context.rt;
     final a = c.author;
     final name = c.mine ? '${a.displayName} (you)' : a.displayName;
-    final canDelete = c.mine || p.mine;
+    // Group admins may remove any comment in their group.
+    final canDelete = c.mine || p.mine || s.canModerate(p);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

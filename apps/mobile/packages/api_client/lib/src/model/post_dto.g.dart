@@ -18,9 +18,17 @@ class _$PostDto extends PostDto {
   @override
   final UserCardDto author;
   @override
+  final PostGroupDto? group;
+  @override
   final GameRefDto? game;
   @override
   final String text;
+  @override
+  final BuiltList<MediaDto> media;
+  @override
+  final PollDto? poll;
+  @override
+  final RecruitDto? recruit;
   @override
   final CommentDto? topComment;
   @override
@@ -47,8 +55,12 @@ class _$PostDto extends PostDto {
       required this.audience,
       required this.id,
       required this.author,
+      this.group,
       this.game,
       required this.text,
+      required this.media,
+      this.poll,
+      this.recruit,
       this.topComment,
       required this.ggCount,
       required this.commentCount,
@@ -74,8 +86,12 @@ class _$PostDto extends PostDto {
         audience == other.audience &&
         id == other.id &&
         author == other.author &&
+        group == other.group &&
         game == other.game &&
         text == other.text &&
+        media == other.media &&
+        poll == other.poll &&
+        recruit == other.recruit &&
         topComment == other.topComment &&
         ggCount == other.ggCount &&
         commentCount == other.commentCount &&
@@ -94,8 +110,12 @@ class _$PostDto extends PostDto {
     _$hash = $jc(_$hash, audience.hashCode);
     _$hash = $jc(_$hash, id.hashCode);
     _$hash = $jc(_$hash, author.hashCode);
+    _$hash = $jc(_$hash, group.hashCode);
     _$hash = $jc(_$hash, game.hashCode);
     _$hash = $jc(_$hash, text.hashCode);
+    _$hash = $jc(_$hash, media.hashCode);
+    _$hash = $jc(_$hash, poll.hashCode);
+    _$hash = $jc(_$hash, recruit.hashCode);
     _$hash = $jc(_$hash, topComment.hashCode);
     _$hash = $jc(_$hash, ggCount.hashCode);
     _$hash = $jc(_$hash, commentCount.hashCode);
@@ -116,8 +136,12 @@ class _$PostDto extends PostDto {
           ..add('audience', audience)
           ..add('id', id)
           ..add('author', author)
+          ..add('group', group)
           ..add('game', game)
           ..add('text', text)
+          ..add('media', media)
+          ..add('poll', poll)
+          ..add('recruit', recruit)
           ..add('topComment', topComment)
           ..add('ggCount', ggCount)
           ..add('commentCount', commentCount)
@@ -153,6 +177,10 @@ class PostDtoBuilder implements Builder<PostDto, PostDtoBuilder> {
   UserCardDtoBuilder get author => _$this._author ??= UserCardDtoBuilder();
   set author(UserCardDtoBuilder? author) => _$this._author = author;
 
+  PostGroupDtoBuilder? _group;
+  PostGroupDtoBuilder get group => _$this._group ??= PostGroupDtoBuilder();
+  set group(PostGroupDtoBuilder? group) => _$this._group = group;
+
   GameRefDtoBuilder? _game;
   GameRefDtoBuilder get game => _$this._game ??= GameRefDtoBuilder();
   set game(GameRefDtoBuilder? game) => _$this._game = game;
@@ -160,6 +188,18 @@ class PostDtoBuilder implements Builder<PostDto, PostDtoBuilder> {
   String? _text;
   String? get text => _$this._text;
   set text(String? text) => _$this._text = text;
+
+  ListBuilder<MediaDto>? _media;
+  ListBuilder<MediaDto> get media => _$this._media ??= ListBuilder<MediaDto>();
+  set media(ListBuilder<MediaDto>? media) => _$this._media = media;
+
+  PollDtoBuilder? _poll;
+  PollDtoBuilder get poll => _$this._poll ??= PollDtoBuilder();
+  set poll(PollDtoBuilder? poll) => _$this._poll = poll;
+
+  RecruitDtoBuilder? _recruit;
+  RecruitDtoBuilder get recruit => _$this._recruit ??= RecruitDtoBuilder();
+  set recruit(RecruitDtoBuilder? recruit) => _$this._recruit = recruit;
 
   CommentDtoBuilder? _topComment;
   CommentDtoBuilder get topComment =>
@@ -207,8 +247,12 @@ class PostDtoBuilder implements Builder<PostDto, PostDtoBuilder> {
       _audience = $v.audience;
       _id = $v.id;
       _author = $v.author.toBuilder();
+      _group = $v.group?.toBuilder();
       _game = $v.game?.toBuilder();
       _text = $v.text;
+      _media = $v.media.toBuilder();
+      _poll = $v.poll?.toBuilder();
+      _recruit = $v.recruit?.toBuilder();
       _topComment = $v.topComment?.toBuilder();
       _ggCount = $v.ggCount;
       _commentCount = $v.commentCount;
@@ -248,9 +292,13 @@ class PostDtoBuilder implements Builder<PostDto, PostDtoBuilder> {
                 audience, r'PostDto', 'audience'),
             id: BuiltValueNullFieldError.checkNotNull(id, r'PostDto', 'id'),
             author: author.build(),
+            group: _group?.build(),
             game: _game?.build(),
             text:
                 BuiltValueNullFieldError.checkNotNull(text, r'PostDto', 'text'),
+            media: media.build(),
+            poll: _poll?.build(),
+            recruit: _recruit?.build(),
             topComment: _topComment?.build(),
             ggCount: BuiltValueNullFieldError.checkNotNull(
                 ggCount, r'PostDto', 'ggCount'),
@@ -272,9 +320,17 @@ class PostDtoBuilder implements Builder<PostDto, PostDtoBuilder> {
       try {
         _$failedField = 'author';
         author.build();
+        _$failedField = 'group';
+        _group?.build();
         _$failedField = 'game';
         _game?.build();
 
+        _$failedField = 'media';
+        media.build();
+        _$failedField = 'poll';
+        _poll?.build();
+        _$failedField = 'recruit';
+        _recruit?.build();
         _$failedField = 'topComment';
         _topComment?.build();
       } catch (e) {

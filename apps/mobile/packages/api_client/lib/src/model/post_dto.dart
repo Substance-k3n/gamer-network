@@ -4,8 +4,13 @@
 
 // ignore_for_file: unused_element
 import 'package:api_client/src/model/user_card_dto.dart';
+import 'package:api_client/src/model/post_group_dto.dart';
+import 'package:built_collection/built_collection.dart';
 import 'package:api_client/src/model/post_type.dart';
 import 'package:api_client/src/model/game_ref_dto.dart';
+import 'package:api_client/src/model/poll_dto.dart';
+import 'package:api_client/src/model/media_dto.dart';
+import 'package:api_client/src/model/recruit_dto.dart';
 import 'package:api_client/src/model/post_kind.dart';
 import 'package:api_client/src/model/comment_dto.dart';
 import 'package:api_client/src/model/post_audience.dart';
@@ -22,8 +27,12 @@ part 'post_dto.g.dart';
 /// * [audience]
 /// * [id]
 /// * [author] - topGame gives \"Diamond Valorant\" for the header.
+/// * [group] - Null on Home posts.
 /// * [game] - Null: \"Any game\".
 /// * [text]
+/// * [media] - In position order, 0–4.
+/// * [poll] - Poll posts only.
+/// * [recruit] - Recruitment posts only.
 /// * [topComment] - Discussions: the most-GG'd answer. Null on other kinds.
 /// * [ggCount]
 /// * [commentCount] - Comments and replies you can see the count of (\"answers\" on discussions).
@@ -54,12 +63,28 @@ abstract class PostDto implements Built<PostDto, PostDtoBuilder> {
   @BuiltValueField(wireName: r'author')
   UserCardDto get author;
 
+  /// Null on Home posts.
+  @BuiltValueField(wireName: r'group')
+  PostGroupDto? get group;
+
   /// Null: \"Any game\".
   @BuiltValueField(wireName: r'game')
   GameRefDto? get game;
 
   @BuiltValueField(wireName: r'text')
   String get text;
+
+  /// In position order, 0–4.
+  @BuiltValueField(wireName: r'media')
+  BuiltList<MediaDto> get media;
+
+  /// Poll posts only.
+  @BuiltValueField(wireName: r'poll')
+  PollDto? get poll;
+
+  /// Recruitment posts only.
+  @BuiltValueField(wireName: r'recruit')
+  RecruitDto? get recruit;
 
   /// Discussions: the most-GG'd answer. Null on other kinds.
   @BuiltValueField(wireName: r'topComment')
@@ -136,6 +161,13 @@ class _$PostDtoSerializer implements PrimitiveSerializer<PostDto> {
       object.author,
       specifiedType: const FullType(UserCardDto),
     );
+    yield r'group';
+    yield object.group == null
+        ? null
+        : serializers.serialize(
+            object.group,
+            specifiedType: const FullType.nullable(PostGroupDto),
+          );
     yield r'game';
     yield object.game == null
         ? null
@@ -148,6 +180,25 @@ class _$PostDtoSerializer implements PrimitiveSerializer<PostDto> {
       object.text,
       specifiedType: const FullType(String),
     );
+    yield r'media';
+    yield serializers.serialize(
+      object.media,
+      specifiedType: const FullType(BuiltList, [FullType(MediaDto)]),
+    );
+    yield r'poll';
+    yield object.poll == null
+        ? null
+        : serializers.serialize(
+            object.poll,
+            specifiedType: const FullType.nullable(PollDto),
+          );
+    yield r'recruit';
+    yield object.recruit == null
+        ? null
+        : serializers.serialize(
+            object.recruit,
+            specifiedType: const FullType.nullable(RecruitDto),
+          );
     yield r'topComment';
     yield object.topComment == null
         ? null
@@ -250,6 +301,14 @@ class _$PostDtoSerializer implements PrimitiveSerializer<PostDto> {
           ) as UserCardDto;
           result.author.replace(valueDes);
           break;
+        case r'group':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(PostGroupDto),
+          ) as PostGroupDto?;
+          if (valueDes == null) continue;
+          result.group.replace(valueDes);
+          break;
         case r'game':
           final valueDes = serializers.deserialize(
             value,
@@ -264,6 +323,29 @@ class _$PostDtoSerializer implements PrimitiveSerializer<PostDto> {
             specifiedType: const FullType(String),
           ) as String;
           result.text = valueDes;
+          break;
+        case r'media':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(BuiltList, [FullType(MediaDto)]),
+          ) as BuiltList<MediaDto>;
+          result.media.replace(valueDes);
+          break;
+        case r'poll':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(PollDto),
+          ) as PollDto?;
+          if (valueDes == null) continue;
+          result.poll.replace(valueDes);
+          break;
+        case r'recruit':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(RecruitDto),
+          ) as RecruitDto?;
+          if (valueDes == null) continue;
+          result.recruit.replace(valueDes);
           break;
         case r'topComment':
           final valueDes = serializers.deserialize(

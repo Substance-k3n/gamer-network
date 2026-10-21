@@ -18,6 +18,8 @@ class _$PublicPostDto extends PublicPostDto {
   @override
   final GameRefDto? game;
   @override
+  final BuiltList<MediaDto> media;
+  @override
   final DateTime createdAt;
 
   factory _$PublicPostDto([void Function(PublicPostDtoBuilder)? updates]) =>
@@ -29,6 +31,7 @@ class _$PublicPostDto extends PublicPostDto {
       required this.text,
       required this.author,
       this.game,
+      required this.media,
       required this.createdAt})
       : super._();
   @override
@@ -47,6 +50,7 @@ class _$PublicPostDto extends PublicPostDto {
         text == other.text &&
         author == other.author &&
         game == other.game &&
+        media == other.media &&
         createdAt == other.createdAt;
   }
 
@@ -58,6 +62,7 @@ class _$PublicPostDto extends PublicPostDto {
     _$hash = $jc(_$hash, text.hashCode);
     _$hash = $jc(_$hash, author.hashCode);
     _$hash = $jc(_$hash, game.hashCode);
+    _$hash = $jc(_$hash, media.hashCode);
     _$hash = $jc(_$hash, createdAt.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
@@ -71,6 +76,7 @@ class _$PublicPostDto extends PublicPostDto {
           ..add('text', text)
           ..add('author', author)
           ..add('game', game)
+          ..add('media', media)
           ..add('createdAt', createdAt))
         .toString();
   }
@@ -101,6 +107,10 @@ class PublicPostDtoBuilder
   GameRefDtoBuilder get game => _$this._game ??= GameRefDtoBuilder();
   set game(GameRefDtoBuilder? game) => _$this._game = game;
 
+  ListBuilder<MediaDto>? _media;
+  ListBuilder<MediaDto> get media => _$this._media ??= ListBuilder<MediaDto>();
+  set media(ListBuilder<MediaDto>? media) => _$this._media = media;
+
   DateTime? _createdAt;
   DateTime? get createdAt => _$this._createdAt;
   set createdAt(DateTime? createdAt) => _$this._createdAt = createdAt;
@@ -117,6 +127,7 @@ class PublicPostDtoBuilder
       _text = $v.text;
       _author = $v.author.toBuilder();
       _game = $v.game?.toBuilder();
+      _media = $v.media.toBuilder();
       _createdAt = $v.createdAt;
       _$v = null;
     }
@@ -149,6 +160,7 @@ class PublicPostDtoBuilder
                 text, r'PublicPostDto', 'text'),
             author: author.build(),
             game: _game?.build(),
+            media: media.build(),
             createdAt: BuiltValueNullFieldError.checkNotNull(
                 createdAt, r'PublicPostDto', 'createdAt'),
           );
@@ -159,6 +171,8 @@ class PublicPostDtoBuilder
         author.build();
         _$failedField = 'game';
         _game?.build();
+        _$failedField = 'media';
+        media.build();
       } catch (e) {
         throw BuiltValueNestedFieldError(
             r'PublicPostDto', _$failedField, e.toString());
