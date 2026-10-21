@@ -27,6 +27,11 @@ const NotificationType _$recruitApplication =
     const NotificationType._('recruitApplication');
 const NotificationType _$recruitAccepted =
     const NotificationType._('recruitAccepted');
+const NotificationType _$groupJoinRequest =
+    const NotificationType._('groupJoinRequest');
+const NotificationType _$groupJoinApproved =
+    const NotificationType._('groupJoinApproved');
+const NotificationType _$groupEvent = const NotificationType._('groupEvent');
 
 NotificationType _$valueOf(String name) {
   switch (name) {
@@ -56,6 +61,12 @@ NotificationType _$valueOf(String name) {
       return _$recruitApplication;
     case 'recruitAccepted':
       return _$recruitAccepted;
+    case 'groupJoinRequest':
+      return _$groupJoinRequest;
+    case 'groupJoinApproved':
+      return _$groupJoinApproved;
+    case 'groupEvent':
+      return _$groupEvent;
     default:
       throw ArgumentError(name);
   }
@@ -76,6 +87,9 @@ final BuiltSet<NotificationType> _$values =
   _$mention,
   _$recruitApplication,
   _$recruitAccepted,
+  _$groupJoinRequest,
+  _$groupJoinApproved,
+  _$groupEvent,
 ]);
 
 class _$NotificationTypeMeta {
@@ -93,6 +107,9 @@ class _$NotificationTypeMeta {
   NotificationType get mention => _$mention;
   NotificationType get recruitApplication => _$recruitApplication;
   NotificationType get recruitAccepted => _$recruitAccepted;
+  NotificationType get groupJoinRequest => _$groupJoinRequest;
+  NotificationType get groupJoinApproved => _$groupJoinApproved;
+  NotificationType get groupEvent => _$groupEvent;
   NotificationType valueOf(String name) => _$valueOf(name);
   BuiltSet<NotificationType> get values => _$values;
 }
@@ -121,6 +138,9 @@ class _$NotificationTypeSerializer
     'mention': 'mention',
     'recruitApplication': 'recruit_application',
     'recruitAccepted': 'recruit_accepted',
+    'groupJoinRequest': 'group_join_request',
+    'groupJoinApproved': 'group_join_approved',
+    'groupEvent': 'group_event',
   };
   static const Map<Object, String> _fromWire = const <Object, String>{
     'connection_request': 'connectionRequest',
@@ -136,6 +156,9 @@ class _$NotificationTypeSerializer
     'mention': 'mention',
     'recruit_application': 'recruitApplication',
     'recruit_accepted': 'recruitAccepted',
+    'group_join_request': 'groupJoinRequest',
+    'group_join_approved': 'groupJoinApproved',
+    'group_event': 'groupEvent',
   };
 
   @override

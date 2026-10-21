@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rally/groups_data.dart';
 import 'package:rally/main.dart';
 import 'package:rally/screens/home.dart'
-    show ApplicationsSheet, endsIn, pollFooter;
+    show ApplicationsSheet, endsIn, pollFooter, slotsLine;
 import 'package:rally/shell.dart';
 import 'package:rally/state.dart';
 import 'package:rally/theme.dart';
@@ -598,34 +598,82 @@ void main() {
     await done(t);
   });
 
-  testWidgets('groups: join an open group, ask to join one with approval', (
+  /// Opens a group page and lets its four calls finish.
+  Future<AppState> openGroup(WidgetTester t, FakeApi api, String id) async {
+    final s = await pumpApp(t, api, token: 't-1');
+    s.openGroup(id);
+    await settle(t);
+    return s;
+  }
+
+  testWidgets('groups: Discover lists the API’s groups, join and ask', (
     t,
   ) async {
     final api = FakeApi();
     final s = await pumpApp(t, api, token: 't-1');
     s.go(Screen.communities);
     await settle(t);
-    expect(find.text('Yours (1)'), findsOneWidget);
+    expect(api.queries, contains(startsWith('GET /v1/groups?')));
+    expect(find.text('Yours (2)'), findsOneWidget); // incl. a pending request
+    expect(find.text('CODM Addis'), findsOneWidget);
     await tapText(t, 'Join'); // Ethiopian FC Players
+    expect(api.bodiesOf('POST /v1/groups/g-fc/join'), hasLength(1));
     expect(find.text('You joined Ethiopian FC Players'), findsOneWidget);
-    expect(find.text('Yours (2)'), findsOneWidget);
+    expect(find.text('Joined ✓'), findsNWidgets(2));
     await tapText(t, 'Ask to join'); // AAU Gamers
+    expect(find.text('Request sent to AAU Gamers admins'), findsOneWidget);
     expect(find.text('Requested…'), findsOneWidget);
-    await t.pump(const Duration(seconds: 4));
-    await settle(t);
-    expect(find.text('Yours (3)'), findsOneWidget);
+    // Taking the request back: DELETE /membership.
+    await tapText(t, 'Requested…');
+    await tapText(t, 'Cancel request');
     expect(
-      find.text('You’re in — AAU Gamers approved your request'),
-      findsOneWidget,
+      api.sent.any(
+        (r) => r.method == 'DELETE' && r.path == '/v1/groups/g-aau/membership',
+      ),
+      isTrue,
     );
-    // Nothing about groups goes to the server.
-    expect(api.sent.where((r) => r.path.contains('group')), isEmpty);
+    expect(find.text('Request to AAU Gamers cancelled'), findsOneWidget);
+    expect(find.text('Ask to join'), findsOneWidget);
+    expect(s.groups.firstWhere((g) => g.id == 'g-aau').myStatus, isNull);
     await done(t);
   });
 
-  testWidgets('groups: create one, it opens on About and is in Yours', (
+  testWidgets('groups: kind chips and search (2+ characters, debounced)', (
     t,
   ) async {
+    final api = FakeApi();
+    final s = await pumpApp(t, api, token: 't-1');
+    s.go(Screen.communities);
+    await settle(t);
+    await tapText(t, 'Campus');
+    expect(api.queries.last, contains('kind=campus'));
+    expect(find.text('AAU Gamers'), findsOneWidget);
+    expect(find.text('CODM Addis'), findsNothing);
+    await tapText(t, 'All');
+    api.queries.clear();
+    await t.enterText(
+      find.widgetWithText(TextField, 'Search groups, games, cities'),
+      'e',
+    );
+    await t.pump(const Duration(milliseconds: 500));
+    expect(api.queries.where((q) => q.contains('/v1/groups?')), isEmpty);
+    await t.enterText(
+      find.widgetWithText(TextField, 'Search groups, games, cities'),
+      'ethio',
+    );
+    await t.pump(const Duration(milliseconds: 100));
+    expect(api.queries.where((q) => q.contains('/v1/groups?')), isEmpty);
+    await t.pump(const Duration(milliseconds: 400));
+    await settle(t);
+    expect(api.queries.last, contains('query=ethio'));
+    expect(find.text('Ethiopian FC Players'), findsOneWidget);
+    expect(find.text('CODM Addis'), findsNothing);
+    await tapText(t, 'Yours (2)');
+    expect(api.queries.last, contains('tab=mine'));
+    await done(t);
+  });
+
+  testWidgets('groups: create one with rules, it opens on About', (t) async {
     final api = FakeApi();
     final s = await pumpApp(t, api, token: 't-1');
     s.go(Screen.communities);
@@ -637,22 +685,262 @@ void main() {
       'Addis CODM Duo',
     );
     await t.pump();
+    await tapText(t, '+ Add rule');
+    await t.enterText(find.widgetWithText(TextField, 'Rule 1'), 'No smurfs');
     await tapText(t, 'Approval');
     await tapText(t, 'Create');
+    final body = api.bodiesOf('POST /v1/groups').single! as Map;
+    expect(body['name'], 'Addis CODM Duo');
+    expect(body['kind'], 'game');
+    expect(body['gameId'], 'codm');
+    expect(body['rules'], ['No smurfs']);
+    expect(body['approval'], true);
+    final h = api.headers.lastWhere((h) => h.$1 == 'POST /v1/groups');
+    expect(h.$2['Idempotency-Key'] ?? h.$2['idempotency-key'], isNotNull);
     expect(
       find.text('Addis CODM Duo is live — invite your squad'),
       findsOneWidget,
     );
-    expect(find.text('Admins approve requests'), findsOneWidget); // About tab
+    expect(s.groupTab, 'About');
+    expect(find.text('No smurfs'), findsOneWidget);
     expect(find.text('YOU’RE ADMIN'), findsOneWidget);
-    expect(s.myGroups.map((g) => g.name), contains('Addis CODM Duo'));
-    await tapText(t, 'Feed');
+    expect(s.myGroups.first.name, 'Addis CODM Duo');
+    await done(t);
+  });
+
+  testWidgets('groups: a taken name shows on the name field', (t) async {
+    final api = FakeApi()
+      ..fail(
+        'POST /v1/groups',
+        409,
+        'group_name_taken',
+        'A group called CODM Addis already exists.',
+      );
+    final s = await pumpApp(t, api, token: 't-1');
+    s.openCreateGroup();
+    await settle(t);
     await t.enterText(
-      find.widgetWithText(TextField, 'Share with Addis CODM Duo…'),
-      'Scrims Friday',
+      find.widgetWithText(TextField, 'e.g. Valorant Addis Duo Queue'),
+      'CODM Addis',
+    );
+    await t.pump();
+    await tapText(t, 'Create');
+    expect(s.screen, Screen.createGroup);
+    expect(s.newGroup!.nameError, 'A group called CODM Addis already exists.');
+    // Typing again clears it.
+    await t.enterText(
+      find.widgetWithText(TextField, 'CODM Addis'),
+      'CODM Addis 2',
+    );
+    await t.pump();
+    expect(s.newGroup!.nameError, isNull);
+    await done(t);
+  });
+
+  testWidgets('group page: feed posts with groupId; admins delete any post', (
+    t,
+  ) async {
+    final api = FakeApi();
+    final s = await openGroup(t, api, 'g-codm');
+    expect(api.queries, contains(startsWith('GET /v1/groups/g-codm/posts')));
+    expect(find.text('Scrims tonight, who is in?'), findsOneWidget);
+    await t.enterText(
+      find.widgetWithText(TextField, 'Share with CODM Addis…'),
+      'Lobby code in 5',
     );
     await tapText(t, 'Post');
-    expect(find.text('Scrims Friday'), findsOneWidget);
+    expect(api.bodiesOf('POST /v1/posts').single, {
+      'type': 'discussion',
+      'text': 'Lobby code in 5',
+      'groupId': 'g-codm',
+      'audience': 'everyone',
+    });
+    expect(s.groupPosts!.first.text, 'Lobby code in 5');
+    // Dave's post: as a group admin I can remove it.
+    s.update(
+      () => s.groupPosts = s.groupPosts!.where((p) => p.id == 'gp-1').toList(),
+    );
+    await settle(t);
+    await t.tap(labelled('Post options'));
+    await settle(t);
+    await tapText(t, 'Delete post');
+    await tapText(t, 'Delete');
+    expect(
+      api.sent.any((r) => r.method == 'DELETE' && r.path == '/v1/posts/gp-1'),
+      isTrue,
+    );
+    expect(find.text('Scrims tonight, who is in?'), findsNothing);
+    await done(t);
+  });
+
+  testWidgets('group page: requests, make admin, remove, open a member', (
+    t,
+  ) async {
+    final api = FakeApi();
+    final s = await openGroup(t, api, 'g-codm');
+    await tapText(t, 'Members');
+    expect(find.text('REQUESTS (1)'), findsOneWidget);
+    await tapText(t, 'Approve');
+    expect(
+      api.sent.any((r) => r.path == '/v1/groups/g-codm/members/u-hana/approve'),
+      isTrue,
+    );
+    expect(find.text('Hana is in'), findsOneWidget);
+    expect(find.text('REQUESTS (1)'), findsNothing);
+    await t.tap(labelled('Manage Dave'));
+    await settle(t);
+    await tapText(t, 'Make admin');
+    expect(api.bodiesOf('PUT /v1/groups/g-codm/members/u-dave/role').single, {
+      'role': 'admin',
+    });
+    await t.tap(labelled('Manage Dave'));
+    await settle(t);
+    await tapText(t, 'Remove from group');
+    await tapText(t, 'Remove');
+    expect(
+      api.sent.any(
+        (r) =>
+            r.method == 'DELETE' &&
+            r.path == '/v1/groups/g-codm/members/u-dave',
+      ),
+      isTrue,
+    );
+    expect(find.text('Dave removed from the group'), findsOneWidget);
+    // Members are real players: tapping one opens their profile.
+    await tapText(t, 'Kaleb (you)');
+    expect(s.screen, Screen.profile);
+    await done(t);
+  });
+
+  testWidgets('group page: going, a new event, deleting one', (t) async {
+    final api = FakeApi();
+    final s = await openGroup(t, api, 'g-codm');
+    await tapText(t, 'Events');
+    expect(find.text('Scrims vs Hawassa'), findsOneWidget);
+    await tapText(t, 'I’m in');
+    expect(
+      api.sent.any(
+        (r) => r.method == 'PUT' && r.path == '/v1/group-events/ev-1/going',
+      ),
+      isTrue,
+    );
+    expect(find.text('Going ✓'), findsOneWidget);
+    expect(find.textContaining('2 going'), findsOneWidget);
+    await tapText(t, 'New event');
+    await t.enterText(
+      find.widgetWithText(TextField, 'What’s happening?'),
+      'Ranked night',
+    );
+    await tapText(t, 'Add event');
+    final body = api.bodiesOf('POST /v1/groups/g-codm/events').single! as Map;
+    expect(body['title'], 'Ranked night');
+    expect(body['gameId'], 'codm');
+    final at = DateTime.parse(body['startsAt'] as String);
+    expect(at.isAfter(DateTime.now()), isTrue);
+    expect(at.difference(DateTime.now()).inDays, lessThan(60));
+    expect(find.text('Ranked night'), findsOneWidget);
+    expect(s.events, hasLength(2));
+    await tapText(t, 'Delete');
+    await tapText(t, 'Delete', last: true);
+    expect(
+      api.sent.where(
+        (r) => r.method == 'DELETE' && r.path.startsWith('/v1/group-events/'),
+      ),
+      hasLength(1),
+    );
+    expect(find.text('Event deleted'), findsOneWidget);
+    await done(t);
+  });
+
+  testWidgets('group page: the last admin can’t leave', (t) async {
+    final api = FakeApi()
+      ..fail(
+        'DELETE /v1/groups/g-codm/membership',
+        409,
+        'last_admin',
+        'Make someone else admin before you leave.',
+      );
+    await openGroup(t, api, 'g-codm');
+    await tapText(t, 'Joined ✓');
+    await tapText(t, 'Leave');
+    expect(
+      find.text('Make someone else admin before you leave.'),
+      findsOneWidget,
+    );
+    await done(t);
+  });
+
+  testWidgets('group page: edit (admins), share, About details', (t) async {
+    final api = FakeApi();
+    final copied = <String>[];
+    t.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (c) async {
+        if (c.method == 'Clipboard.setData') {
+          copied.add((c.arguments as Map)['text'] as String);
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => t.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    final s = await openGroup(t, api, 'g-codm');
+    await t.tap(labelled('Share group'));
+    await settle(t);
+    expect(copied.last, 'https://example.com/app/groups/g-codm');
+    await tapText(t, 'About');
+    expect(find.text('Mar 2025'), findsOneWidget);
+    expect(find.text('You'), findsOneWidget); // admins
+    await tapText(t, 'Edit group');
+    expect(find.text('Edit group'), findsOneWidget);
+    await t.enterText(find.widgetWithText(TextField, 'Addis Ababa'), 'Adama');
+    await tapText(t, 'Save');
+    final body = api.bodiesOf('PATCH /v1/groups/g-codm').single! as Map;
+    expect(body['place'], 'Adama');
+    expect(body.containsKey('kind'), isFalse);
+    expect(find.text('Group updated'), findsOneWidget);
+    expect(s.screen, Screen.group);
+    await done(t);
+  });
+
+  testWidgets('report a group from its menu', (t) async {
+    final api = FakeApi();
+    await openGroup(t, api, 'g-fc');
+    expect(find.text('Join to post and reply in this group.'), findsOneWidget);
+    await t.tap(labelled('Group options'));
+    await settle(t);
+    await tapText(t, 'Report group');
+    expect(find.text('Report group'), findsOneWidget); // the dialog title
+    await tapText(t, 'Spam');
+    await tapText(t, 'Send report');
+    expect(api.bodiesOf('POST /v1/reports').single, {
+      'userId': 'u-hana',
+      'reason': 'spam',
+      'groupId': 'g-fc',
+    });
+    await done(t);
+  });
+
+  testWidgets('group alerts open the group (join requests on Members)', (
+    t,
+  ) async {
+    final api = FakeApi();
+    final s = await pumpApp(t, api, token: 't-1');
+    s.go(Screen.notifs);
+    await settle(t);
+    s.openRoute('/groups/g-codm/members?status=pending');
+    await settle(t);
+    expect(s.screen, Screen.group);
+    expect(s.groupTab, 'Members');
+    expect(find.text('REQUESTS (1)'), findsOneWidget);
+    s.openRoute('/groups/g-fc');
+    await settle(t);
+    expect(s.groupTab, 'Feed');
+    expect(find.text('Ethiopian FC Players'), findsOneWidget);
     await done(t);
   });
 
@@ -855,7 +1143,7 @@ void main() {
     await t.pump();
     await tapText(t, 'Post');
     expect(
-      find.text('Add at least one photo for a gameplay post'),
+      find.text('Add at least one photo to a gameplay post'),
       findsOneWidget,
     );
     s.addPhotos(photos(1));
@@ -1033,6 +1321,7 @@ void main() {
     );
     expect(h.$2['Idempotency-Key'] ?? h.$2['idempotency-key'], isNotNull);
     expect(find.text('Applied ✓'), findsOneWidget);
+    expect(find.text('Applied — Dave gets a notification'), findsOneWidget);
     expect(
       s.posts.firstWhere((p) => p.id == 'p-rec').recruit!.myApplication,
       ApplicationStatus.pending,
@@ -1083,6 +1372,7 @@ void main() {
         find.descendant(of: sheet, matching: find.text(text));
     expect(inSheet('Hana'), findsOneWidget);
     expect(inSheet('Dave'), findsOneWidget);
+    expect(inSheet('2 SLOTS · SNIPER, IGL'), findsOneWidget);
     await t.tap(inSheet('Accept').first);
     await settle(t);
     expect(
@@ -1119,10 +1409,79 @@ void main() {
     await scrollFeedTo(t, labelled('Photo 2 of 2'));
     await t.tap(labelled('Photo 2 of 2'));
     await settle(t);
-    expect(find.text('2 PHOTOS · SWIPE'), findsOneWidget);
+    expect(find.text('02/02'), findsOneWidget);
+    expect(labelled('Next photo'), findsNothing); // the last one
+    await t.tap(labelled('Previous photo'));
+    await settle(t);
+    expect(find.text('01/02'), findsOneWidget);
+    await t.tap(labelled('Next photo'));
+    await settle(t);
+    expect(find.text('02/02'), findsOneWidget);
+    // Swiping works too.
+    await t.fling(find.byType(PageView), const Offset(300, 0), 1000);
+    await settle(t);
+    expect(find.text('01/02'), findsOneWidget);
     await t.tap(labelled('Close photos'));
     await settle(t);
-    expect(find.text('2 PHOTOS · SWIPE'), findsNothing);
+    expect(find.text('01/02'), findsNothing);
+    await done(t);
+  });
+
+  testWidgets('D35: a failed photo upload says so; the draft stays', (t) async {
+    final api = FakeApi()..fail('PUT /upload/1', 503, 'error', 'Unavailable');
+    final s = await pumpApp(t, api, token: 't-1');
+    s.openCompose();
+    await settle(t);
+    s.addPhotos(photos(1));
+    await t.enterText(find.byType(TextField).first, 'Clutch');
+    await t.pump();
+    await tapText(t, 'Post');
+    expect(
+      find.text("A photo didn't upload. Check your connection and try again."),
+      findsOneWidget,
+    );
+    expect(api.bodiesOf('POST /v1/posts'), isEmpty);
+    expect(s.cp.photos, hasLength(1));
+    await done(t);
+  });
+
+  test('D35: slot line plurals', () {
+    RecruitDto r(int n, String roles) => RecruitDto(
+      (b) => b
+        ..slots = n
+        ..roles = roles
+        ..applications = 0,
+    );
+    expect(slotsLine(r(1, 'Sniper, IGL')), '1 SLOT · SNIPER, IGL');
+    expect(slotsLine(r(3, '')), '3 SLOTS · ANY ROLE');
+  });
+
+  testWidgets('D35: accepted shows on my card; an empty applications sheet', (
+    t,
+  ) async {
+    final api = FakeApi();
+    final feed = api.routes['GET /v1/feed']! as Map;
+    (feed['items'] as List)[2] = post(
+      'p-rec',
+      dave,
+      type: 'recruitment',
+      kind: 'recruit',
+      text: recruitText,
+      recruit: recruitOf(myApplication: 'accepted'),
+    );
+    api.routes['GET /v1/posts/p-myrec/applications'] = {
+      'items': <Object>[],
+      'nextCursor': null,
+    };
+    final s = await pumpApp(t, api, token: 't-1');
+    await scrollFeedTo(t, find.text('Accepted ✓'));
+    expect(find.text('Accepted ✓'), findsOneWidget);
+    s.openRoute('/posts/p-myrec/applications');
+    await settle(t);
+    expect(
+      find.text('No applications yet. They show up here.'),
+      findsOneWidget,
+    );
     await done(t);
   });
 
@@ -1229,20 +1588,21 @@ void main() {
     await done(t);
   });
 
-  testWidgets('profile: Posts lists mine, Groups shows my sample groups', (
-    t,
-  ) async {
+  testWidgets('profile: Posts lists mine, Groups shows my groups', (t) async {
     final api = FakeApi();
     final s = await pumpApp(t, api, token: 't-1');
     s.goProfileTab();
     await settle(t);
     expect(find.text('YOUR STATUS'), findsOneWidget); // moved from Home
-    expect(find.text('GROUPS · 1'), findsOneWidget);
+    expect(find.text('GROUPS · 2'), findsOneWidget);
     await tapText(t, 'Posts');
     expect(find.text('Finally hit Legendary in ranked.'), findsOneWidget);
     expect(find.text('GG 12 · 3 comments'), findsOneWidget);
     await tapText(t, 'Groups');
-    expect(find.text('Valorant Ethiopia'), findsOneWidget);
+    expect(api.queries, contains(startsWith('GET /v1/me/groups')));
+    expect(find.text('CODM Addis'), findsOneWidget);
+    expect(find.text('Hawassa Squad'), findsOneWidget);
+    expect(find.text('REQUESTED'), findsOneWidget);
     await tapText(t, 'Moments');
     expect(find.textContaining('No clips yet.'), findsOneWidget);
     await tapText(t, 'Posts');
@@ -1261,6 +1621,10 @@ void main() {
     expect(find.text('Connections'), findsNothing);
     await tapText(t, 'Groups');
     expect(find.text('Dave isn’t in any groups yet.'), findsOneWidget);
+    s.openPlayer('hanaplays');
+    await settle(t);
+    await tapText(t, 'Groups');
+    expect(find.text('Ethiopian FC Players'), findsOneWidget);
     await tapText(t, 'Posts');
     expect(api.queries, contains(startsWith('GET /v1/users/dave.exe/posts')));
     expect(
@@ -1307,18 +1671,24 @@ void main() {
               s.edit = ProfileDraft.from(s.me!, s.catalog);
             }
             if (screen == Screen.ranks) s.onboard.games = ['codm', 'mc'];
-            if (screen == Screen.group) s.groupId = 'g-val';
+            if (screen == Screen.group) s.groupId = 'g-codm';
             if (screen == Screen.createGroup) s.newGroup = GroupDraft();
           });
         }
         await settle(t);
       }
       // The group page's and my profile's tabs.
-      s.openGroup('g-val');
-      for (final tab in ['Feed', 'Members', 'Events', 'About']) {
-        s.update(() => s.groupTab = tab);
-        await settle(t);
+      for (final id in ['g-codm', 'g-fc']) {
+        s.openGroup(id);
+        for (final tab in ['Feed', 'Members', 'Events', 'About']) {
+          s.setGroupTab(tab);
+          await settle(t);
+        }
       }
+      s.openGroup('g-codm');
+      await settle(t);
+      s.openEditGroup();
+      await settle(t);
       s.goProfileTab();
       for (final tab in ['Groups', 'Posts', 'Moments', 'Saved', 'Overview']) {
         s.update(() => s.ptab = tab);

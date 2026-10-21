@@ -15,7 +15,7 @@ part 'recruit_dto.g.dart';
 /// * [myApplication] - Your application, or null.
 /// * [slots] - 1–10 players wanted.
 /// * [roles] - \"Sniper, Support\"; empty when not given.
-/// * [applications] - How many applied; the author sees the list.
+/// * [applications] - How many applied, leaving out people hidden from you (blocked either way); the author sees the list.
 @BuiltValue()
 abstract class RecruitDto implements Built<RecruitDto, RecruitDtoBuilder> {
   /// Your application, or null.
@@ -31,7 +31,7 @@ abstract class RecruitDto implements Built<RecruitDto, RecruitDtoBuilder> {
   @BuiltValueField(wireName: r'roles')
   String get roles;
 
-  /// How many applied; the author sees the list.
+  /// How many applied, leaving out people hidden from you (blocked either way); the author sees the list.
   @BuiltValueField(wireName: r'applications')
   num get applications;
 

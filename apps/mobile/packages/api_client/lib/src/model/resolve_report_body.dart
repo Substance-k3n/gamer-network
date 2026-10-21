@@ -12,15 +12,15 @@ part 'resolve_report_body.g.dart';
 /// ResolveReportBody
 ///
 /// Properties:
-/// * [action] - dismiss: no action. warn, remove_listing, remove_post, remove_comment (the reported one), ban (the target).
+/// * [action] - dismiss: no action. warn, remove_listing, remove_post, remove_comment, remove_group (the reported one), ban (the target).
 /// * [note]
 @BuiltValue()
 abstract class ResolveReportBody
     implements Built<ResolveReportBody, ResolveReportBodyBuilder> {
-  /// dismiss: no action. warn, remove_listing, remove_post, remove_comment (the reported one), ban (the target).
+  /// dismiss: no action. warn, remove_listing, remove_post, remove_comment, remove_group (the reported one), ban (the target).
   @BuiltValueField(wireName: r'action')
   ResolveAction get action;
-  // enum actionEnum {  dismiss,  warn,  remove_listing,  remove_post,  remove_comment,  ban,  };
+  // enum actionEnum {  dismiss,  warn,  remove_listing,  remove_post,  remove_comment,  remove_group,  ban,  };
 
   @BuiltValueField(wireName: r'note')
   String get note;

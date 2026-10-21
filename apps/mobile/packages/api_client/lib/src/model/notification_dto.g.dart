@@ -28,6 +28,10 @@ class _$NotificationDto extends NotificationDto {
   @override
   final String? recruitApplicationId;
   @override
+  final String? groupId;
+  @override
+  final String? groupEventId;
+  @override
   final String title;
   @override
   final String text;
@@ -52,6 +56,8 @@ class _$NotificationDto extends NotificationDto {
       this.postId,
       this.commentId,
       this.recruitApplicationId,
+      this.groupId,
+      this.groupEventId,
       required this.title,
       required this.text,
       required this.route,
@@ -79,6 +85,8 @@ class _$NotificationDto extends NotificationDto {
         postId == other.postId &&
         commentId == other.commentId &&
         recruitApplicationId == other.recruitApplicationId &&
+        groupId == other.groupId &&
+        groupEventId == other.groupEventId &&
         title == other.title &&
         text == other.text &&
         route == other.route &&
@@ -99,6 +107,8 @@ class _$NotificationDto extends NotificationDto {
     _$hash = $jc(_$hash, postId.hashCode);
     _$hash = $jc(_$hash, commentId.hashCode);
     _$hash = $jc(_$hash, recruitApplicationId.hashCode);
+    _$hash = $jc(_$hash, groupId.hashCode);
+    _$hash = $jc(_$hash, groupEventId.hashCode);
     _$hash = $jc(_$hash, title.hashCode);
     _$hash = $jc(_$hash, text.hashCode);
     _$hash = $jc(_$hash, route.hashCode);
@@ -121,6 +131,8 @@ class _$NotificationDto extends NotificationDto {
           ..add('postId', postId)
           ..add('commentId', commentId)
           ..add('recruitApplicationId', recruitApplicationId)
+          ..add('groupId', groupId)
+          ..add('groupEventId', groupEventId)
           ..add('title', title)
           ..add('text', text)
           ..add('route', route)
@@ -176,6 +188,14 @@ class NotificationDtoBuilder
   set recruitApplicationId(String? recruitApplicationId) =>
       _$this._recruitApplicationId = recruitApplicationId;
 
+  String? _groupId;
+  String? get groupId => _$this._groupId;
+  set groupId(String? groupId) => _$this._groupId = groupId;
+
+  String? _groupEventId;
+  String? get groupEventId => _$this._groupEventId;
+  set groupEventId(String? groupEventId) => _$this._groupEventId = groupEventId;
+
   String? _title;
   String? get title => _$this._title;
   set title(String? title) => _$this._title = title;
@@ -213,6 +233,8 @@ class NotificationDtoBuilder
       _postId = $v.postId;
       _commentId = $v.commentId;
       _recruitApplicationId = $v.recruitApplicationId;
+      _groupId = $v.groupId;
+      _groupEventId = $v.groupEventId;
       _title = $v.title;
       _text = $v.text;
       _route = $v.route;
@@ -253,6 +275,8 @@ class NotificationDtoBuilder
             postId: postId,
             commentId: commentId,
             recruitApplicationId: recruitApplicationId,
+            groupId: groupId,
+            groupEventId: groupEventId,
             title: BuiltValueNullFieldError.checkNotNull(
                 title, r'NotificationDto', 'title'),
             text: BuiltValueNullFieldError.checkNotNull(

@@ -35,6 +35,10 @@ class _$AdminUserDto extends AdminUserDto {
   final num playedWith;
   @override
   final num openReports;
+  @override
+  final num postsCount;
+  @override
+  final num groupsCount;
 
   factory _$AdminUserDto([void Function(AdminUserDtoBuilder)? updates]) =>
       (AdminUserDtoBuilder()..update(updates))._build();
@@ -53,7 +57,9 @@ class _$AdminUserDto extends AdminUserDto {
       this.lastSeenAt,
       required this.connections,
       required this.playedWith,
-      required this.openReports})
+      required this.openReports,
+      required this.postsCount,
+      required this.groupsCount})
       : super._();
   @override
   AdminUserDto rebuild(void Function(AdminUserDtoBuilder) updates) =>
@@ -79,7 +85,9 @@ class _$AdminUserDto extends AdminUserDto {
         lastSeenAt == other.lastSeenAt &&
         connections == other.connections &&
         playedWith == other.playedWith &&
-        openReports == other.openReports;
+        openReports == other.openReports &&
+        postsCount == other.postsCount &&
+        groupsCount == other.groupsCount;
   }
 
   @override
@@ -99,6 +107,8 @@ class _$AdminUserDto extends AdminUserDto {
     _$hash = $jc(_$hash, connections.hashCode);
     _$hash = $jc(_$hash, playedWith.hashCode);
     _$hash = $jc(_$hash, openReports.hashCode);
+    _$hash = $jc(_$hash, postsCount.hashCode);
+    _$hash = $jc(_$hash, groupsCount.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -119,7 +129,9 @@ class _$AdminUserDto extends AdminUserDto {
           ..add('lastSeenAt', lastSeenAt)
           ..add('connections', connections)
           ..add('playedWith', playedWith)
-          ..add('openReports', openReports))
+          ..add('openReports', openReports)
+          ..add('postsCount', postsCount)
+          ..add('groupsCount', groupsCount))
         .toString();
   }
 }
@@ -184,6 +196,14 @@ class AdminUserDtoBuilder
   num? get openReports => _$this._openReports;
   set openReports(num? openReports) => _$this._openReports = openReports;
 
+  num? _postsCount;
+  num? get postsCount => _$this._postsCount;
+  set postsCount(num? postsCount) => _$this._postsCount = postsCount;
+
+  num? _groupsCount;
+  num? get groupsCount => _$this._groupsCount;
+  set groupsCount(num? groupsCount) => _$this._groupsCount = groupsCount;
+
   AdminUserDtoBuilder() {
     AdminUserDto._defaults(this);
   }
@@ -205,6 +225,8 @@ class AdminUserDtoBuilder
       _connections = $v.connections;
       _playedWith = $v.playedWith;
       _openReports = $v.openReports;
+      _postsCount = $v.postsCount;
+      _groupsCount = $v.groupsCount;
       _$v = null;
     }
     return this;
@@ -250,6 +272,10 @@ class AdminUserDtoBuilder
               playedWith, r'AdminUserDto', 'playedWith'),
           openReports: BuiltValueNullFieldError.checkNotNull(
               openReports, r'AdminUserDto', 'openReports'),
+          postsCount: BuiltValueNullFieldError.checkNotNull(
+              postsCount, r'AdminUserDto', 'postsCount'),
+          groupsCount: BuiltValueNullFieldError.checkNotNull(
+              groupsCount, r'AdminUserDto', 'groupsCount'),
         );
     replace(_$result);
     return _$result;

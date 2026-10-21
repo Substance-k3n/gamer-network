@@ -37,6 +37,8 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(ConnectionRequestDto.serializer)
       ..add(ConnectionRequestListDto.serializer)
       ..add(CreateCommentBody.serializer)
+      ..add(CreateGroupBody.serializer)
+      ..add(CreateGroupEventBody.serializer)
       ..add(CreateListingBody.serializer)
       ..add(CreateListingBodyDurationHoursEnum.serializer)
       ..add(CreatePostBody.serializer)
@@ -54,6 +56,16 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(GamingIdKind.serializer)
       ..add(GgDto.serializer)
       ..add(GoogleBody.serializer)
+      ..add(GroupDto.serializer)
+      ..add(GroupEventDto.serializer)
+      ..add(GroupEventPageDto.serializer)
+      ..add(GroupKind.serializer)
+      ..add(GroupMemberDto.serializer)
+      ..add(GroupMemberPageDto.serializer)
+      ..add(GroupPageDto.serializer)
+      ..add(GroupRole.serializer)
+      ..add(GroupTab.serializer)
+      ..add(GroupTone.serializer)
       ..add(HealthResponse.serializer)
       ..add(HealthResponseDatabaseEnum.serializer)
       ..add(HealthResponseStatusEnum.serializer)
@@ -73,6 +85,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(MediaKind.serializer)
       ..add(MediaUploadBody.serializer)
       ..add(MediaUploadDto.serializer)
+      ..add(MembershipStatus.serializer)
       ..add(MetricsDto.serializer)
       ..add(ModeDto.serializer)
       ..add(ModeRefDto.serializer)
@@ -95,6 +108,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(PollOptionDto.serializer)
       ..add(PostAudience.serializer)
       ..add(PostDto.serializer)
+      ..add(PostGroupDto.serializer)
       ..add(PostKind.serializer)
       ..add(PostPageDto.serializer)
       ..add(PostType.serializer)
@@ -127,12 +141,14 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(SetAvatarBody.serializer)
       ..add(SetGamesBody.serializer)
       ..add(SetGamingIdsBody.serializer)
+      ..add(SetGroupRoleBody.serializer)
       ..add(SetLaunchBody.serializer)
       ..add(SetPlatformsBody.serializer)
       ..add(SetStatusBody.serializer)
       ..add(SetTagsBody.serializer)
       ..add(SignupBody.serializer)
       ..add(UnreadCountDto.serializer)
+      ..add(UpdateGroupBody.serializer)
       ..add(UpdateListingBody.serializer)
       ..add(UpdateMeBody.serializer)
       ..add(UserCardDto.serializer)
@@ -202,6 +218,15 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(BuiltList, const [const FullType(GamingIdInput)]),
           () => ListBuilder<GamingIdInput>())
       ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(GroupDto)]),
+          () => ListBuilder<GroupDto>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(GroupEventDto)]),
+          () => ListBuilder<GroupEventDto>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(GroupMemberDto)]),
+          () => ListBuilder<GroupMemberDto>())
+      ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(ListingDto)]),
           () => ListBuilder<ListingDto>())
       ..addBuilderFactory(
@@ -241,6 +266,21 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(String)]),
           () => ListBuilder<String>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(String)]),
+          () => ListBuilder<String>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(String)]),
+          () => ListBuilder<String>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(String)]),
+          () => ListBuilder<String>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(UserCardDto)]),
+          () => ListBuilder<UserCardDto>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(UserCardDto)]),
+          () => ListBuilder<UserCardDto>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(UserCardDto)]),
           () => ListBuilder<UserCardDto>())

@@ -153,6 +153,7 @@ Map<String, Object?> post(
   List<String> photos = const [],
   Map<String, Object?>? poll,
   Map<String, Object?>? recruit,
+  Map<String, Object?>? group,
 }) => {
   'id': id,
   'type': type,
@@ -181,6 +182,7 @@ Map<String, Object?> post(
   ],
   'poll': poll,
   'recruit': recruit,
+  'group': group,
   'shareUrl': 'https://example.com/p/$id',
   'createdAt': _at(const Duration(hours: -2)),
 };
@@ -246,6 +248,96 @@ Map<String, Object?> application(
   'status': status,
   'createdAt': _at(const Duration(minutes: -20)),
 };
+
+Map<String, Object?> groupEvent(
+  String id,
+  String groupId,
+  String title, {
+  Duration from = const Duration(days: 2),
+  bool going = false,
+  int count = 1,
+  Map<String, Object?>? by,
+}) => {
+  'id': id,
+  'groupId': groupId,
+  'title': title,
+  'startsAt': _at(from),
+  'game': gameRef('codm', 'CoD Mobile', 'CODM'),
+  'goingCount': count,
+  'goingPreview': [dave],
+  'imGoing': going,
+  'createdBy': by ?? dave,
+};
+
+Map<String, Object?> group(
+  String id,
+  String name, {
+  String kind = 'game',
+  String tone = 'accent',
+  String short = 'CODM',
+  bool approval = false,
+  String? role,
+  String? status,
+  int members = 120,
+  String about = 'Ranked pushes every night.',
+  List<String> rules = const ['Be decent.'],
+  Map<String, Object?>? next,
+}) => {
+  'id': id,
+  'name': name,
+  'short': short,
+  'kind': kind,
+  'tone': tone,
+  'game': kind == 'game' ? gameRef('codm', 'CoD Mobile', 'CODM') : null,
+  'place': kind == 'campus' ? 'Addis Ababa University' : 'Addis Ababa',
+  'about': about,
+  'rules': rules,
+  'approval': approval,
+  'memberCount': members,
+  'membersPreview': [dave, hana],
+  'nextEvent': next,
+  'myRole': role,
+  'myStatus': status,
+  'createdAt': '2025-03-04T10:00:00.000Z',
+};
+
+Map<String, Object?> member(
+  Map<String, Object?> user, {
+  String role = 'member',
+  String status = 'member',
+}) => {
+  'user': user,
+  'role': role,
+  'status': status,
+  'joinedAt': status == 'member' ? _at(const Duration(days: -30)) : null,
+};
+
+final meCard = card('me-1', 'kaleb.gg', 'Kaleb');
+
+/// The groups the fake server knows: I run CODM Addis, the others I'm not in.
+final codmGroup = group(
+  'g-codm',
+  'CODM Addis',
+  role: 'admin',
+  status: 'member',
+  next: groupEvent('ev-1', 'g-codm', 'Scrims vs Hawassa'),
+);
+final fcGroup = group(
+  'g-fc',
+  'Ethiopian FC Players',
+  short: 'FC',
+  tone: 'lav',
+  members: 860,
+);
+final aauGroup = group(
+  'g-aau',
+  'AAU Gamers',
+  kind: 'campus',
+  short: 'AAU',
+  tone: 'grey',
+  approval: true,
+  members: 212,
+);
 
 const pollText = 'Best map for ranked?';
 const recruitText = 'Recruiting for our CODM squad, scrims weekly.';
@@ -548,6 +640,150 @@ class FakeApi implements HttpClientAdapter {
         'nextCursor': null,
       },
       'DELETE /v1/posts/p-saved/save': null,
+      'GET /v1/groups': (RequestOptions o) {
+        final q = o.uri.queryParameters;
+        final all = q['tab'] == 'mine'
+            ? [codmGroup]
+            : [codmGroup, fcGroup, aauGroup];
+        final kind = q['kind'];
+        final text = (q['query'] ?? '').toLowerCase();
+        return {
+          'items': [
+            for (final g in all)
+              if ((kind == null || g['kind'] == kind) &&
+                  '${g['name']} ${g['place']}'.toLowerCase().contains(text))
+                g,
+          ],
+          'nextCursor': null,
+        };
+      },
+      'GET /v1/me/groups': {
+        'items': [
+          codmGroup,
+          group('g-pend', 'Hawassa Squad', short: 'HS', status: 'pending'),
+        ],
+        'nextCursor': null,
+      },
+      'GET /v1/users/dave.exe/groups': {
+        'items': <Object>[],
+        'nextCursor': null,
+      },
+      'GET /v1/users/hanaplays/groups': {
+        'items': [fcGroup],
+        'nextCursor': null,
+      },
+      'GET /v1/groups/g-codm': codmGroup,
+      'GET /v1/groups/g-fc': fcGroup,
+      'GET /v1/groups/g-aau': aauGroup,
+      'POST /v1/groups/g-fc/join': {
+        ...fcGroup,
+        'myRole': 'member',
+        'myStatus': 'member',
+        'memberCount': 861,
+      },
+      'POST /v1/groups/g-aau/join': {
+        ...aauGroup,
+        'myRole': 'member',
+        'myStatus': 'pending',
+      },
+      'DELETE /v1/groups/g-aau/membership': null,
+      'DELETE /v1/groups/g-codm/membership': null,
+      'GET /v1/groups/g-codm/posts': {
+        'items': [
+          post(
+            'gp-1',
+            dave,
+            text: 'Scrims tonight, who is in?',
+            gg: 3,
+            comments: 0,
+            group: {
+              'id': 'g-codm',
+              'name': 'CODM Addis',
+              'short': 'CODM',
+              'tone': 'accent',
+            },
+          ),
+        ],
+        'nextCursor': null,
+      },
+      'GET /v1/groups/g-fc/posts': {'items': <Object>[], 'nextCursor': null},
+      'GET /v1/groups/g-codm/members': (RequestOptions o) =>
+          o.uri.queryParameters['status'] == 'pending'
+          ? {
+              'items': [member(hana, status: 'pending')],
+              'nextCursor': null,
+            }
+          : {
+              'items': [member(dave), member(meCard, role: 'admin')],
+              'nextCursor': null,
+            },
+      'GET /v1/groups/g-fc/members': {
+        'items': [member(hana, role: 'admin')],
+        'nextCursor': null,
+      },
+      'GET /v1/groups/g-aau/members': {
+        'items': [member(dave, role: 'admin')],
+        'nextCursor': null,
+      },
+      'POST /v1/groups/g-codm/members/u-hana/approve': null,
+      'POST /v1/groups/g-codm/members/u-hana/decline': null,
+      'PUT /v1/groups/g-codm/members/u-dave/role': null,
+      'DELETE /v1/groups/g-codm/members/u-dave': null,
+      'GET /v1/groups/g-codm/events': {
+        'items': [groupEvent('ev-1', 'g-codm', 'Scrims vs Hawassa')],
+        'nextCursor': null,
+      },
+      'GET /v1/groups/g-fc/events': {'items': <Object>[], 'nextCursor': null},
+      'GET /v1/groups/g-aau/events': {'items': <Object>[], 'nextCursor': null},
+      'POST /v1/groups/g-codm/events': (RequestOptions o) {
+        final b = _bodyOf(o)! as Map;
+        return {
+          ...groupEvent('ev-new', 'g-codm', b['title'] as String, by: meCard),
+          'startsAt': b['startsAt'],
+          'imGoing': true,
+          'goingPreview': [meCard],
+        };
+      },
+      'PUT /v1/group-events/ev-1/going': groupEvent(
+        'ev-1',
+        'g-codm',
+        'Scrims vs Hawassa',
+        going: true,
+        count: 2,
+      ),
+      'DELETE /v1/group-events/ev-1/going': groupEvent(
+        'ev-1',
+        'g-codm',
+        'Scrims vs Hawassa',
+      ),
+      'DELETE /v1/group-events/ev-1': null,
+      'DELETE /v1/group-events/ev-new': null,
+      'DELETE /v1/posts/gp-1': null,
+      'POST /v1/groups': (RequestOptions o) {
+        final b = _bodyOf(o)! as Map;
+        return {
+          ...group(
+            'g-new',
+            b['name'] as String,
+            kind: b['kind'] as String,
+            approval: (b['approval'] as bool?) ?? false,
+            role: 'admin',
+            status: 'member',
+            members: 1,
+            rules: [for (final r in (b['rules'] as List?) ?? const []) '$r'],
+            about: (b['about'] as String?) ?? '',
+          ),
+          'membersPreview': <Object>[],
+        };
+      },
+      'GET /v1/groups/g-new/members': {
+        'items': [member(meCard, role: 'admin')],
+        'nextCursor': null,
+      },
+      'PATCH /v1/groups/g-codm': (RequestOptions o) {
+        final b = _bodyOf(o)! as Map;
+        return {...codmGroup, ...b};
+      },
       'GET /v1/posts/p-1': post('p-1', dave),
       'POST /v1/posts': (RequestOptions o) {
         final b = _bodyOf(o)! as Map;

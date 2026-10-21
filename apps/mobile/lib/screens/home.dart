@@ -721,7 +721,7 @@ Future<void> showPostMenu(BuildContext context, PostDto p) {
             style: t.body(22, w: w800, ls: -.6),
           ),
           item('Copy link', () => s.sharePost(p)),
-          if (p.mine)
+          if (p.mine || s.canModerate(p))
             item('Delete post', () async {
               if (await confirm(
                 context,
@@ -731,8 +731,8 @@ Future<void> showPostMenu(BuildContext context, PostDto p) {
               )) {
                 await s.deletePost(p);
               }
-            }, strong: true)
-          else ...[
+            }, strong: p.mine),
+          if (!p.mine) ...[
             item(
               'Report post',
               () => showReportDialog(
@@ -870,43 +870,104 @@ Future<void> showPhotos(BuildContext context, List<MediaDto> media, int at) =>
       context: context,
       barrierColor: Colors.black,
       useSafeArea: false,
-      builder: (context) {
-        final t = context.rt;
-        return Stack(
-          children: [
-            PageView(
-              controller: PageController(initialPage: at),
-              children: [
-                for (final m in media)
-                  InteractiveViewer(
-                    child: NetPhoto(m.url, fit: BoxFit.contain),
-                  ),
-              ],
-            ),
-            Positioned(
-              top: MediaQuery.paddingOf(context).top + 10,
-              right: 14,
-              child: Semantics(
-                label: 'Close photos',
-                child: CloseBtn(onTap: () => Navigator.pop(context)),
-              ),
-            ),
-            if (media.length > 1)
-              Positioned(
-                bottom: MediaQuery.paddingOf(context).bottom + 18,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Text(
-                    t.up('${media.length} PHOTOS · SWIPE'),
-                    style: t.label(9, c: Colors.white70),
-                  ),
-                ),
-              ),
-          ],
-        );
-      },
+      builder: (context) => _PhotoViewer(media, at),
     );
+
+/// Swipe or step through a post's photos, with a "01/04" counter (D35).
+class _PhotoViewer extends StatefulWidget {
+  const _PhotoViewer(this.media, this.at);
+  final List<MediaDto> media;
+  final int at;
+
+  @override
+  State<_PhotoViewer> createState() => _PhotoViewerState();
+}
+
+class _PhotoViewerState extends State<_PhotoViewer> {
+  late final _pages = PageController(initialPage: widget.at);
+  late int _i = widget.at;
+
+  @override
+  void dispose() {
+    _pages.dispose();
+    super.dispose();
+  }
+
+  void _go(int i) => _pages.animateToPage(
+    i,
+    duration: const Duration(milliseconds: 260),
+    curve: Curves.easeOutCubic,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.rt;
+    final n = widget.media.length;
+    final pad = MediaQuery.paddingOf(context);
+    Widget step(String label, Ic icon, int to, {bool flip = false}) =>
+        Semantics(
+          label: label,
+          button: true,
+          child: CircleBtn(
+            onTap: () => _go(to),
+            child: Transform.flip(flipX: flip, child: SvgIcon(icon, size: 18)),
+          ),
+        );
+    return Stack(
+      children: [
+        PageView(
+          controller: _pages,
+          onPageChanged: (i) => setState(() => _i = i),
+          children: [
+            for (final m in widget.media)
+              InteractiveViewer(child: NetPhoto(m.url, fit: BoxFit.contain)),
+          ],
+        ),
+        Positioned(
+          top: pad.top + 22,
+          left: 18,
+          child: Text(
+            '${pad2(_i + 1)}/${pad2(n)}',
+            style: t.digits(14, c: Colors.white),
+          ),
+        ),
+        Positioned(
+          top: pad.top + 10,
+          right: 14,
+          child: Semantics(
+            label: 'Close photos',
+            child: CloseBtn(onTap: () => Navigator.pop(context)),
+          ),
+        ),
+        if (n > 1) ...[
+          if (_i > 0)
+            Positioned(
+              left: 12,
+              top: 0,
+              bottom: 0,
+              child: Center(child: step('Previous photo', Ic.back, _i - 1)),
+            ),
+          if (_i < n - 1)
+            Positioned(
+              right: 12,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: step('Next photo', Ic.back, _i + 1, flip: true),
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+}
+
+/// "1 SLOT · SNIPER, IGL", "3 SLOTS · ANY ROLE" (D35).
+String slotsLine(RecruitDto r) {
+  final n = r.slots.toInt();
+  final roles = r.roles.trim().isEmpty ? 'ANY ROLE' : r.roles.toUpperCase();
+  return '$n ${n == 1 ? 'SLOT' : 'SLOTS'} · $roles';
+}
 
 /// Time left on a poll in its largest whole unit: "2 DAYS", "5 HOURS",
 /// "30 MIN" (D29).
@@ -1094,7 +1155,13 @@ class ApplicationsSheet extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Flexible(
-              child: Text('Applications', style: t.body(24, w: w800, ls: -.8)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Applications', style: t.body(24, w: w800, ls: -.8)),
+                  if (s.appsRecruit != null) Label(slotsLine(s.appsRecruit!)),
+                ],
+              ),
             ),
             CloseBtn(
               onTap: s.closeSheet,
@@ -1341,7 +1408,8 @@ class _CommentRow extends StatelessWidget {
     final t = context.rt;
     final a = c.author;
     final name = c.mine ? '${a.displayName} (you)' : a.displayName;
-    final canDelete = c.mine || p.mine;
+    // Group admins may remove any comment in their group.
+    final canDelete = c.mine || p.mine || s.canModerate(p);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
