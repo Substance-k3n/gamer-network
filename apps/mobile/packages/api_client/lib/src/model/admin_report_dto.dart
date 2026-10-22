@@ -6,6 +6,7 @@
 import 'package:api_client/src/model/admin_user_dto.dart';
 import 'package:api_client/src/model/report_status.dart';
 import 'package:api_client/src/model/report_reason.dart';
+import 'package:api_client/src/model/media_dto.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
@@ -20,6 +21,12 @@ part 'admin_report_dto.g.dart';
 /// * [reporter]
 /// * [target]
 /// * [listingId]
+/// * [postId]
+/// * [commentId]
+/// * [groupId]
+/// * [excerpt] - What was reported: the first 300 characters of the post or comment, or of the group's about.
+/// * [groupName] - A reported group's name.
+/// * [image] - A reported post's first image.
 /// * [details]
 /// * [createdAt]
 /// * [resolvedAt]
@@ -46,6 +53,27 @@ abstract class AdminReportDto
 
   @BuiltValueField(wireName: r'listingId')
   String? get listingId;
+
+  @BuiltValueField(wireName: r'postId')
+  String? get postId;
+
+  @BuiltValueField(wireName: r'commentId')
+  String? get commentId;
+
+  @BuiltValueField(wireName: r'groupId')
+  String? get groupId;
+
+  /// What was reported: the first 300 characters of the post or comment, or of the group's about.
+  @BuiltValueField(wireName: r'excerpt')
+  String? get excerpt;
+
+  /// A reported group's name.
+  @BuiltValueField(wireName: r'groupName')
+  String? get groupName;
+
+  /// A reported post's first image.
+  @BuiltValueField(wireName: r'image')
+  MediaDto? get image;
 
   @BuiltValueField(wireName: r'details')
   String? get details;
@@ -116,6 +144,48 @@ class _$AdminReportDtoSerializer
         : serializers.serialize(
             object.listingId,
             specifiedType: const FullType.nullable(String),
+          );
+    yield r'postId';
+    yield object.postId == null
+        ? null
+        : serializers.serialize(
+            object.postId,
+            specifiedType: const FullType.nullable(String),
+          );
+    yield r'commentId';
+    yield object.commentId == null
+        ? null
+        : serializers.serialize(
+            object.commentId,
+            specifiedType: const FullType.nullable(String),
+          );
+    yield r'groupId';
+    yield object.groupId == null
+        ? null
+        : serializers.serialize(
+            object.groupId,
+            specifiedType: const FullType.nullable(String),
+          );
+    yield r'excerpt';
+    yield object.excerpt == null
+        ? null
+        : serializers.serialize(
+            object.excerpt,
+            specifiedType: const FullType.nullable(String),
+          );
+    yield r'groupName';
+    yield object.groupName == null
+        ? null
+        : serializers.serialize(
+            object.groupName,
+            specifiedType: const FullType.nullable(String),
+          );
+    yield r'image';
+    yield object.image == null
+        ? null
+        : serializers.serialize(
+            object.image,
+            specifiedType: const FullType.nullable(MediaDto),
           );
     yield r'details';
     yield object.details == null
@@ -210,6 +280,54 @@ class _$AdminReportDtoSerializer
           ) as String?;
           if (valueDes == null) continue;
           result.listingId = valueDes;
+          break;
+        case r'postId':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.postId = valueDes;
+          break;
+        case r'commentId':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.commentId = valueDes;
+          break;
+        case r'groupId':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.groupId = valueDes;
+          break;
+        case r'excerpt':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.excerpt = valueDes;
+          break;
+        case r'groupName':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.groupName = valueDes;
+          break;
+        case r'image':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(MediaDto),
+          ) as MediaDto?;
+          if (valueDes == null) continue;
+          result.image.replace(valueDes);
           break;
         case r'details':
           final valueDes = serializers.deserialize(

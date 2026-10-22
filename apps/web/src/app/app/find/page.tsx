@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { use, useState } from 'react';
 import { api, query, type Listing, type Page, type Platform } from '../_lib/api';
 import { ListingCard } from '../_lib/cards';
 import { pad2, partyLabel, platformLabel, platforms } from '../_lib/data';
@@ -29,10 +29,14 @@ const none: Filters = {
   myRank: false,
 };
 
-/** Find Players: open listings with the API's filters (GET /listings). */
-export default function Find() {
+/**
+ * Find Players: open listings with the API's filters (GET /listings).
+ * `?game=<id>` starts on that game (Play on a feed post).
+ */
+export default function Find({ searchParams }: { searchParams: Promise<{ game?: string }> }) {
+  const { game: start } = use(searchParams);
   const { games, me, run, version } = useApp();
-  const [f, setF] = useState<Filters>(none);
+  const [f, setF] = useState<Filters>(() => ({ ...none, game: start || 'all' }));
   const [more, setMore] = useState<string | null>(null);
   const now = useNow(5000);
   const game = games.find((g) => g.id === f.game);

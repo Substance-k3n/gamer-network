@@ -14,6 +14,12 @@ class _$ReportBody extends ReportBody {
   @override
   final String? listingId;
   @override
+  final String? postId;
+  @override
+  final String? commentId;
+  @override
+  final String? groupId;
+  @override
   final String? details;
 
   factory _$ReportBody([void Function(ReportBodyBuilder)? updates]) =>
@@ -23,6 +29,9 @@ class _$ReportBody extends ReportBody {
       {required this.reason,
       required this.userId,
       this.listingId,
+      this.postId,
+      this.commentId,
+      this.groupId,
       this.details})
       : super._();
   @override
@@ -39,6 +48,9 @@ class _$ReportBody extends ReportBody {
         reason == other.reason &&
         userId == other.userId &&
         listingId == other.listingId &&
+        postId == other.postId &&
+        commentId == other.commentId &&
+        groupId == other.groupId &&
         details == other.details;
   }
 
@@ -48,6 +60,9 @@ class _$ReportBody extends ReportBody {
     _$hash = $jc(_$hash, reason.hashCode);
     _$hash = $jc(_$hash, userId.hashCode);
     _$hash = $jc(_$hash, listingId.hashCode);
+    _$hash = $jc(_$hash, postId.hashCode);
+    _$hash = $jc(_$hash, commentId.hashCode);
+    _$hash = $jc(_$hash, groupId.hashCode);
     _$hash = $jc(_$hash, details.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
@@ -59,6 +74,9 @@ class _$ReportBody extends ReportBody {
           ..add('reason', reason)
           ..add('userId', userId)
           ..add('listingId', listingId)
+          ..add('postId', postId)
+          ..add('commentId', commentId)
+          ..add('groupId', groupId)
           ..add('details', details))
         .toString();
   }
@@ -79,6 +97,18 @@ class ReportBodyBuilder implements Builder<ReportBody, ReportBodyBuilder> {
   String? get listingId => _$this._listingId;
   set listingId(String? listingId) => _$this._listingId = listingId;
 
+  String? _postId;
+  String? get postId => _$this._postId;
+  set postId(String? postId) => _$this._postId = postId;
+
+  String? _commentId;
+  String? get commentId => _$this._commentId;
+  set commentId(String? commentId) => _$this._commentId = commentId;
+
+  String? _groupId;
+  String? get groupId => _$this._groupId;
+  set groupId(String? groupId) => _$this._groupId = groupId;
+
   String? _details;
   String? get details => _$this._details;
   set details(String? details) => _$this._details = details;
@@ -93,6 +123,9 @@ class ReportBodyBuilder implements Builder<ReportBody, ReportBodyBuilder> {
       _reason = $v.reason;
       _userId = $v.userId;
       _listingId = $v.listingId;
+      _postId = $v.postId;
+      _commentId = $v.commentId;
+      _groupId = $v.groupId;
       _details = $v.details;
       _$v = null;
     }
@@ -120,6 +153,9 @@ class ReportBodyBuilder implements Builder<ReportBody, ReportBodyBuilder> {
           userId: BuiltValueNullFieldError.checkNotNull(
               userId, r'ReportBody', 'userId'),
           listingId: listingId,
+          postId: postId,
+          commentId: commentId,
+          groupId: groupId,
           details: details,
         );
     replace(_$result);

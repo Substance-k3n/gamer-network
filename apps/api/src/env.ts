@@ -90,9 +90,13 @@ export const env = {
   get publicWebUrl() {
     return devDefault('PUBLIC_WEB_URL', 'http://localhost:3000').replace(/\/+$/, '');
   },
-  /** Turns the Home feed on in the apps (GET /v1/app/config). Off until ADR-0012's switch-on. */
+  /** Turns the Home feed on in the apps (GET /v1/app/config). On unless FEED_ENABLED=false. */
   get feedEnabled() {
-    return process.env.FEED_ENABLED === 'true';
+    return process.env.FEED_ENABLED !== 'false';
+  },
+  /** Turns Groups on in the apps (and groupsComingSoon off). On unless GROUPS_ENABLED=false. */
+  get groupsEnabled() {
+    return process.env.GROUPS_ENABLED !== 'false';
   },
   /** Timed jobs (listing expiry …). Tests turn them off and run them by hand. */
   get jobsEnabled() {

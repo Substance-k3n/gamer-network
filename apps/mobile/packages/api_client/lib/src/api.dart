@@ -13,7 +13,9 @@ import 'package:api_client/src/api/admin_api.dart';
 import 'package:api_client/src/api/app_api.dart';
 import 'package:api_client/src/api/auth_api.dart';
 import 'package:api_client/src/api/connections_api.dart';
+import 'package:api_client/src/api/feed_api.dart';
 import 'package:api_client/src/api/games_api.dart';
+import 'package:api_client/src/api/groups_api.dart';
 import 'package:api_client/src/api/health_api.dart';
 import 'package:api_client/src/api/listings_api.dart';
 import 'package:api_client/src/api/me_api.dart';
@@ -166,10 +168,22 @@ class ApiClient {
     return ConnectionsApi(dio, serializers);
   }
 
+  /// Get FeedApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  FeedApi getFeedApi() {
+    return FeedApi(dio, serializers);
+  }
+
   /// Get GamesApi instance, base route and serializer can be overridden by a given but be careful,
   /// by doing that all interceptors will not be executed
   GamesApi getGamesApi() {
     return GamesApi(dio, serializers);
+  }
+
+  /// Get GroupsApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  GroupsApi getGroupsApi() {
+    return GroupsApi(dio, serializers);
   }
 
   /// Get HealthApi instance, base route and serializer can be overridden by a given but be careful,

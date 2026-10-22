@@ -8,12 +8,12 @@ export class AppConfigResponse {
   /** The one city the beta runs in. */
   launchCity: string;
 
-  /** Show the Groups tab as "coming soon" with a waitlist. */
+  /** Show the Groups tab as "coming soon" with a waitlist. False once groups ship (the opposite of groupsEnabled). */
   groupsComingSoon: boolean;
 
-  /** Show the Home feed (posts, comments, GG). Off: today's Home. */
+  /** Show the Home feed (posts, comments, GG). On by default (FEED_ENABLED=false turns it off). */
   feedEnabled: boolean;
 
-  /** Show Groups for real. Off until groups ship; then groupsComingSoon goes away. */
+  /** Show Groups for real. On by default (GROUPS_ENABLED=false turns it off). */
   groupsEnabled: boolean;
 }

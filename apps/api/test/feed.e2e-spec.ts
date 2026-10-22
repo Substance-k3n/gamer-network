@@ -18,7 +18,7 @@ import { createTestApp, uniq } from './app.js';
 import { TEST_DATABASE_URL } from './test-db.js';
 
 // docs/FEED_AND_GROUPS_API.md, phase 1: posts, feed, GG, comments, saves,
-// reports and admin removal. The feed is shared with other runs, so tests
+// reports and admin removal (photos, polls and recruitment: feed-media-polls-recruit). The feed is shared with other runs, so tests
 // look for their own posts by id rather than comparing whole pages.
 
 let app: INestApplication<App>;
@@ -133,18 +133,17 @@ describe('posts', () => {
         saved: false,
         mine: true,
         topComment: null,
+        media: [],
+        poll: null,
+        recruit: null,
       });
       expect(post.shareUrl).toMatch(new RegExp(`/p/${post.id}$`));
     }
     expect((await me.postIt({ gameId: null })).game).toBeNull();
   });
 
-  it('refuses media, poll and recruitment types until their phase, and bad fields', async () => {
+  it('refuses bad fields', async () => {
     const me = await player();
-    for (const type of ['gameplay', 'poll', 'recruitment']) {
-      const res = await me.post('/v1/posts', { type, text: 'soon' }).expect(422);
-      expect(res.body.error.fields.type).toBeDefined();
-    }
     await me.post('/v1/posts', { type: 'milestone', text: '   ' }).expect(422);
     await me.post('/v1/posts', { type: 'milestone', text: 'x'.repeat(2001) }).expect(422);
     await me.post('/v1/posts', { type: 'nope', text: 'x' }).expect(422);
@@ -553,8 +552,25 @@ describe('share pages and the app switch', () => {
     await http().get(`/v1/public/posts/${hidden.id}`).expect(404);
   });
 
-  it('tells the apps whether the feed is on', async () => {
+  it('tells the apps the feed and groups are on, unless switched off', async () => {
     const res = await http().get('/v1/app/config').expect(200);
-    expect(res.body).toMatchObject({ feedEnabled: false, groupsEnabled: false });
+    expect(res.body).toMatchObject({
+      feedEnabled: true,
+      groupsEnabled: true,
+      groupsComingSoon: false,
+    });
+    process.env.FEED_ENABLED = 'false';
+    process.env.GROUPS_ENABLED = 'false';
+    try {
+      const off = await http().get('/v1/app/config').expect(200);
+      expect(off.body).toMatchObject({
+        feedEnabled: false,
+        groupsEnabled: false,
+        groupsComingSoon: true,
+      });
+    } finally {
+      delete process.env.FEED_ENABLED;
+      delete process.env.GROUPS_ENABLED;
+    }
   });
 });

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, query, type AdminReport, type Page, type ResolveAction } from '../api';
-import { ago, REASON, SEV_ORDER, severity, STATE_LABEL, subject } from '../data';
+import { ago, directRemove, REASON, SEV_ORDER, severity, STATE_LABEL, subject } from '../data';
 import type { Admin } from '../state';
 import { Chip, btnPrimary, btnSecondary } from '../ui';
 import { ACC, C1, DOTO, LINE, MUT, PANEL, SEV, TX, card, grot, label, mono, pill } from '../tokens';
@@ -15,6 +15,7 @@ const DONE: Record<ResolveAction, string> = {
   remove_listing: 'Listing removed',
   remove_post: 'Post removed',
   remove_comment: 'Comment removed',
+  remove_group: 'Group removed',
   ban: 'User banned',
 };
 
@@ -61,6 +62,23 @@ export function Reports({ admin }: { admin: Admin }) {
       set({ repSel: next?.id ?? null });
       changed();
       toast(`${DONE[action]} · @${r.target.username}`);
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Takes the post, comment or group down now; the report stays open to resolve. */
+  const removeNow = async (r: AdminReport) => {
+    const path = directRemove(r);
+    if (!path) return;
+    const note = (notes[r.id] ?? '').trim();
+    setBusy(true);
+    try {
+      await api(path, { method: 'POST', body: note ? { note } : {} });
+      changed();
+      toast(`${subject(r).kind} removed · the report is still open`);
     } catch (e) {
       fail(e);
     } finally {
@@ -212,11 +230,28 @@ export function Reports({ admin }: { admin: Admin }) {
                 gap: 8,
               }}
             >
-              {rep.excerpt !== null && (
+              {(rep.excerpt !== null || rep.groupName || rep.image) && (
                 <>
                   <div style={{ ...label, letterSpacing: '.04em' }}>
                     WHAT WAS REPORTED · {subject(rep).kind.toUpperCase()}
                   </div>
+                  {rep.groupName && (
+                    <div style={{ fontWeight: 700, fontSize: 17 }}>{rep.groupName}</div>
+                  )}
+                  {rep.image && (
+                    // eslint-disable-next-line @next/next/no-img-element -- signed storage URL
+                    <img
+                      src={rep.image.url}
+                      alt=""
+                      style={{
+                        width: '100%',
+                        maxHeight: 220,
+                        objectFit: 'cover',
+                        borderRadius: 12,
+                        border: `1px solid ${LINE}`,
+                      }}
+                    />
+                  )}
                   <div
                     style={{
                       fontSize: 15,
@@ -226,7 +261,7 @@ export function Reports({ admin }: { admin: Admin }) {
                       overflowWrap: 'anywhere',
                     }}
                   >
-                    {rep.excerpt}
+                    {rep.excerpt || <span style={{ color: MUT }}>No text.</span>}
                   </div>
                 </>
               )}
@@ -304,6 +339,17 @@ export function Reports({ admin }: { admin: Admin }) {
                       style={btnPrimary}
                     >
                       Remove {subject(rep).kind.toLowerCase()}
+                    </button>
+                  )}
+                  {directRemove(rep) && (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => removeNow(rep)}
+                      style={btnSecondary}
+                      title="Takes it down with the note; the report stays open"
+                    >
+                      Remove only
                     </button>
                   )}
                   <button

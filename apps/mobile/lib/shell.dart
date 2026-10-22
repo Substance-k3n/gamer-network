@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:api_client/api_client.dart';
 
 import 'data.dart';
+import 'screens/compose.dart';
 import 'screens/edit_profile.dart';
 import 'screens/find.dart';
 import 'screens/groups.dart';
@@ -37,8 +38,11 @@ class RallyShell extends StatelessWidget {
     Screen.platforms => const PlatformsScreen(),
     Screen.editProfile => const EditProfileScreen(),
     Screen.home => const HomeScreen(),
+    Screen.compose => const ComposeScreen(),
     Screen.find => const FindScreen(),
     Screen.communities => const CommunitiesScreen(),
+    Screen.group => const GroupScreen(),
+    Screen.createGroup => const CreateGroupScreen(),
     Screen.notifs => const NotifsScreen(),
     Screen.profile => const ProfileScreen(),
     Screen.search => const SearchScreen(),
@@ -503,63 +507,67 @@ class _SheetState extends State<_Sheet> with SingleTickerProviderStateMixin {
                         ),
                       ),
                     ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            editing
-                                ? 'Edit your listing'
-                                : listing
-                                ? 'Looking for players'
-                                : 'Play with ${p?.displayName ?? ''}',
-                            style: t.body(24, w: w800, ls: -.8),
-                          ),
-                        ),
-                        CloseBtn(
-                          onTap: s.closeSheet,
-                          size: 36,
-                          fontSize: 16,
-                          transparent: true,
-                        ),
-                      ],
-                    ),
-                    ...groups,
-                    if (listing)
-                      Gap(
-                        6,
+                    if (s.sheet == SheetKind.applications)
+                      const ApplicationsSheet()
+                    else ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Padding(
-                            padding: EdgeInsets.only(top: 2),
-                            child: Label('NOTE'),
+                          Flexible(
+                            child: Text(
+                              editing
+                                  ? 'Edit your listing'
+                                  : listing
+                                  ? 'Looking for players'
+                                  : 'Play with ${p?.displayName ?? ''}',
+                              style: t.body(24, w: w800, ls: -.8),
+                            ),
                           ),
-                          BoxField(
-                            value: d.note,
-                            hint: 'Looking for a ranked duo tonight.',
-                            height: 48,
-                            radius: 16,
-                            padH: 14,
-                            size: 15,
-                            sunken: true,
-                            onChanged: (v) => d.note = v,
+                          CloseBtn(
+                            onTap: s.closeSheet,
+                            size: 36,
+                            fontSize: 16,
+                            transparent: true,
                           ),
                         ],
                       ),
-                    const SizedBox(height: 0),
-                    BigButton(
-                      s.busy
-                          ? 'Sending…'
-                          : editing
-                          ? 'Save changes'
-                          : (listing
-                                ? 'Post listing · expires in ${d.dur}h'
-                                : 'Send session invite'),
-                      onTap: s.busy
-                          ? null
-                          : (listing ? s.submitListing : s.submitSession),
-                      height: 54,
-                      size: 16,
-                    ),
+                      ...groups,
+                      if (listing)
+                        Gap(
+                          6,
+                          children: [
+                            const Padding(
+                              padding: EdgeInsets.only(top: 2),
+                              child: Label('NOTE'),
+                            ),
+                            BoxField(
+                              value: d.note,
+                              hint: 'Looking for a ranked duo tonight.',
+                              height: 48,
+                              radius: 16,
+                              padH: 14,
+                              size: 15,
+                              sunken: true,
+                              onChanged: (v) => d.note = v,
+                            ),
+                          ],
+                        ),
+                      const SizedBox(height: 0),
+                      BigButton(
+                        s.busy
+                            ? 'Sending…'
+                            : editing
+                            ? 'Save changes'
+                            : (listing
+                                  ? 'Post listing · expires in ${d.dur}h'
+                                  : 'Send session invite'),
+                        onTap: s.busy
+                            ? null
+                            : (listing ? s.submitListing : s.submitSession),
+                        height: 54,
+                        size: 16,
+                      ),
+                    ],
                   ],
                 ),
               ),

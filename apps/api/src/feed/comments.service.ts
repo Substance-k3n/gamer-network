@@ -7,6 +7,7 @@ import { checkRate } from '../common/rate-limit.js';
 import type { Db } from '../db/db.js';
 import { DB } from '../db/db.module.js';
 import { commentGg, comments, posts } from '../db/schema/index.js';
+import { isGroupAdmin } from '../groups/group-visibility.js';
 import type { CommentsQuery, CreateCommentBody } from './feed.body.js';
 import type { CommentDto, CommentPageDto, GgDto } from './feed.dto.js';
 import { FeedNotifier } from './feed-notifier.js';
@@ -148,16 +149,20 @@ export class CommentsService {
     return (await this.reader.buildComments([row!], viewer.id))[0]!;
   }
 
-  /** Its author, or the post's author. Replies under a deleted comment go with it. */
+  /** Its author, the post's author, or a group admin in a group. Replies under a deleted comment go with it. */
   async delete(viewer: User, id: string): Promise<void> {
     const comment = await this.visible(viewer, id);
     const post = await this.db.query.posts.findFirst({ where: eq(posts.id, comment.postId) });
     const own = comment.authorId === viewer.id;
-    if (!own && post!.authorId !== viewer.id) {
+    if (
+      !own &&
+      post!.authorId !== viewer.id &&
+      !(post!.groupId && (await isGroupAdmin(this.db, post!.groupId, viewer.id)))
+    ) {
       throw new AppError(
         HttpStatus.FORBIDDEN,
         'not_owner',
-        'Only its author or the post’s author can delete it.',
+        'Only its author, the post’s author or a group admin can delete it.',
       );
     }
     await this.db

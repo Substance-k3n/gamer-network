@@ -339,6 +339,88 @@ class Profile {
   bool get isMe => relationship == Relationship.self;
 }
 
+/// How a post type looks: its label, tag colour and composer placeholder.
+class PostTypeInfo {
+  const PostTypeInfo(this.type, this.label, this.bg, this.placeholder);
+  final PostType type;
+  final String label, placeholder;
+  final Tone bg;
+}
+
+/// Every post type, in the composer's order.
+const postTypes = [
+  PostTypeInfo(
+    PostType.discussion,
+    'Discussion',
+    Tone.lav,
+    'Start a conversation — e.g. Best co-op game you’ve played recently?',
+  ),
+  PostTypeInfo(
+    PostType.gameplay,
+    'Gameplay',
+    Tone.accent,
+    'Add a caption for your screenshots…',
+  ),
+  PostTypeInfo(
+    PostType.recruitment,
+    'Recruitment',
+    Tone.soft,
+    'Tell players about your team and what you’re looking for…',
+  ),
+  PostTypeInfo(PostType.poll, 'Poll', Tone.lav, 'Ask the community something…'),
+  PostTypeInfo(
+    PostType.milestone,
+    'Milestone',
+    Tone.accent,
+    'Finally hit Diamond? Share it…',
+  ),
+  PostTypeInfo(
+    PostType.question,
+    'Question',
+    Tone.soft,
+    'What do you want to know?',
+  ),
+  PostTypeInfo(
+    PostType.lookingForPlayers,
+    'Looking for players',
+    Tone.accent,
+    'What are you playing, and when?',
+  ),
+  PostTypeInfo(
+    PostType.tipGuide,
+    'Tip / Guide',
+    Tone.lav,
+    'Share a tip that helped you climb…',
+  ),
+  PostTypeInfo(
+    PostType.review,
+    'Review',
+    Tone.soft,
+    'What did you think of it?',
+  ),
+  PostTypeInfo(
+    PostType.event,
+    'Event',
+    Tone.lav,
+    'What’s happening, where and when?',
+  ),
+  PostTypeInfo(PostType.meme, 'Meme', Tone.soft, 'Caption it…'),
+];
+
+PostTypeInfo postTypeInfo(PostType t) =>
+    postTypes.firstWhere((p) => p.type == t);
+
+/// "now", "12m", "3h", "2d", then the date: how long ago [t] was.
+String ago(DateTime t, DateTime now) {
+  final d = now.difference(t);
+  if (d.inMinutes < 1) return 'now';
+  if (d.inHours < 1) return '${d.inMinutes}m';
+  if (d.inDays < 1) return '${d.inHours}h';
+  if (d.inDays < 7) return '${d.inDays}d';
+  final l = t.toLocal();
+  return '${l.day}/${l.month}';
+}
+
 class Intro {
   const Intro(
     this.kicker,

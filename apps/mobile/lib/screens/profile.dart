@@ -2,10 +2,13 @@ import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 
 import '../data.dart';
+import '../groups_data.dart';
 import '../state.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'find.dart' show lookColors;
+import 'groups.dart' show GroupCard, GroupTile;
+import 'home.dart' show FeedPost, NetPhoto, StatusCard, clock;
 import 'onboarding.dart' show Wordmark;
 import 'safety.dart';
 
@@ -35,9 +38,20 @@ class ProfileScreen extends StatelessWidget {
       );
     }
     final tabs = v.isMe
-        ? const ['Overview', 'Games', 'Connections']
-        : const ['Overview', 'Games'];
+        ? const [
+            'Overview',
+            'Games',
+            'Groups',
+            'Posts',
+            'Moments',
+            'Saved',
+            'Connections',
+          ]
+        : const ['Overview', 'Games', 'Groups', 'Posts', 'Moments'];
     final tab = tabs.contains(s.ptab) ? s.ptab : 'Overview';
+    final invite = v.isMe
+        ? null
+        : s.sentInvites.where((i) => i.to.id == v.id).firstOrNull;
 
     return RefreshIndicator(
       onRefresh: () => v.isMe ? s.loadMyProfile() : s.openPlayer(v.username),
@@ -136,6 +150,12 @@ class ProfileScreen extends StatelessWidget {
               ],
             ),
           ),
+          if (v.isMe)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: ThemePicker(),
+            ),
+          if (invite != null) _InviteBanner(invite, name: v.displayName),
           ChipScroller(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
             children: [
@@ -160,11 +180,16 @@ class ProfileScreen extends StatelessWidget {
                     const EmptyNote('No games on this profile yet.'),
                   for (final g in v.games) _GameRow(_line(s, g)),
                 ],
-                if (tab == 'Overview') ..._overview(t, v),
                 if (tab == 'Overview' && v.isMe) ...[
-                  const ThemePicker(),
-                  const _Settings(),
+                  const _GroupStrip(),
+                  const StatusCard(),
                 ],
+                if (tab == 'Overview') ..._overview(t, v),
+                if (tab == 'Overview' && v.isMe) const _Settings(),
+                if (tab == 'Groups') ..._groups(s, v),
+                if (tab == 'Posts') ..._posts(s),
+                if (tab == 'Moments') ..._moments(s),
+                if (tab == 'Saved') ..._saved(s),
                 if (tab == 'Connections') ..._connections(s, t),
               ],
             ),
@@ -172,6 +197,106 @@ class ProfileScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// Sample groups: mine, or none for real players other than me (D5).
+  List<Widget> _groups(AppState s, Profile v) {
+    final groups = v.isMe ? s.myGroups : s.theirGroups;
+    if (groups.isNotEmpty) {
+      return [for (final g in groups) GroupCard(g, key: ValueKey(g.id))];
+    }
+    return [
+      EmptyNote(
+        v.isMe
+            ? 'You haven’t joined any groups yet.'
+            : '${v.displayName} isn’t in any groups yet.',
+      ),
+      if (v.isMe)
+        Center(
+          child: Pill(
+            'Find groups',
+            onTap: () => s.go(Screen.communities),
+            height: 42,
+            padH: 18,
+            size: 14,
+            weight: w700,
+            shadow: 3,
+          ),
+        ),
+    ];
+  }
+
+  Widget _loadMore(AppState s) => Center(
+    child: Pill(
+      'Load more',
+      onTap: () => s.loadProfilePosts(more: true),
+      height: 42,
+      padH: 18,
+      size: 14,
+      weight: w700,
+    ),
+  );
+
+  List<Widget> _posts(AppState s) => [
+    if (s.profilePosts.isEmpty)
+      const EmptyNote('No posts yet. Share a milestone from Home.'),
+    for (final p in s.profilePosts) _MiniPost(p, key: ValueKey(p.id)),
+    if (s.profilePostsCursor != null) _loadMore(s),
+  ];
+
+  /// My bookmarks as full cards; unsaving one drops it from the list.
+  List<Widget> _saved(AppState s) {
+    final list = s.saved;
+    if (list == null) {
+      return const [
+        Padding(
+          padding: EdgeInsets.all(30),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ];
+    }
+    return [
+      if (list.isEmpty)
+        const EmptyNote(
+          'Nothing saved yet. Tap the bookmark on a post to keep it here.',
+        ),
+      for (final p in list) FeedPost(p, key: ValueKey('saved-${p.id}')),
+      if (s.savedCursor != null)
+        Center(
+          child: Pill(
+            'Load more',
+            onTap: () => s.loadSaved(more: true),
+            height: 42,
+            padH: 18,
+            size: 14,
+            weight: w700,
+          ),
+        ),
+    ];
+  }
+
+  List<Widget> _moments(AppState s) {
+    final moments = [
+      for (final p in s.profilePosts)
+        if (p.kind == PostKind.moment) p,
+    ];
+    return [
+      if (moments.isEmpty)
+        const EmptyNote(
+          'No clips yet. Moments always ship with a caption — they start conversations.',
+        )
+      else
+        GridView.count(
+          crossAxisCount: 2,
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 1,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          children: [for (final m in moments) _MomentTile(m)],
+        ),
+      if (s.profilePostsCursor != null) _loadMore(s),
+    ];
   }
 
   GameLine _line(AppState s, UserGameDto g) {
@@ -875,6 +1000,225 @@ class _GameRow extends StatelessWidget {
                 style: t.body(14, w: w800),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "SESSION INVITE SENT": my invite to this player, still waiting.
+class _InviteBanner extends StatelessWidget {
+  const _InviteBanner(this.i, {required this.name});
+  final PlayInviteDto i;
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.rt;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: t.soft,
+        border: t.border(),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(t.up('SESSION INVITE SENT'), style: t.label(9)),
+                const SizedBox(height: 3),
+                Text('${i.game.name} with $name', style: t.body(15, w: w700)),
+              ],
+            ),
+          ),
+          Text(clock(i.startsAt), style: t.digits(16)),
+        ],
+      ),
+    );
+  }
+}
+
+/// A post on a profile; tap opens it on Home with its comments.
+class _MiniPost extends StatelessWidget {
+  const _MiniPost(this.p, {super.key});
+  final PostDto p;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.app;
+    final t = context.rt;
+    final what = p.kind == PostKind.discussion ? 'answers' : 'comments';
+    return Tap(
+      onTap: () => s.openPost(p.id, comments: true),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: t.surface,
+          border: t.border(),
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: Gap(
+          8,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                GameBadge(
+                  p.game?.shortCode ?? 'GAMING',
+                  pad: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                ),
+                ValueListenableBuilder(
+                  valueListenable: s.now,
+                  builder: (context, now, _) => Text(
+                    ago(p.createdAt, now),
+                    style: t.body(12, c: t.muted),
+                  ),
+                ),
+              ],
+            ),
+            if (p.media.isNotEmpty)
+              Container(
+                height: 140,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  color: t.dark,
+                  border: t.border(),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: NetPhoto(p.media.first.url),
+              ),
+            Text(p.text, style: t.body(15, h: 1.35)),
+            Text(
+              'GG ${pad2(p.ggCount.toInt())} · ${p.commentCount} $what',
+              style: t.body(12, w: w700),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A gameplay post in the Moments grid.
+class _MomentTile extends StatelessWidget {
+  const _MomentTile(this.m);
+  final PostDto m;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.app;
+    final t = context.rt;
+    return Tap(
+      onTap: () => s.openPost(m.id, comments: true),
+      child: StripeBox(
+        child: Stack(
+          children: [
+            if (m.media.isNotEmpty)
+              Positioned.fill(child: NetPhoto(m.media.first.url)),
+            if (m.media.isNotEmpty)
+              // Keeps the caption readable over the photo.
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: .65),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    t.up(m.game?.shortCode ?? 'GAMING'),
+                    style: t.label(8, c: t.accentText),
+                  ),
+                  Text(
+                    m.text,
+                    maxLines: 4,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.body(12, h: 1.25, c: t.onDark),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Horizontal row of my groups (requests included).
+class _GroupStrip extends StatelessWidget {
+  const _GroupStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.app;
+    final t = context.rt;
+    final groups = s.myGroups;
+    if (groups.isEmpty) return const SizedBox.shrink();
+    return InkBox(
+      radius: 22,
+      padding: const EdgeInsets.fromLTRB(14, 12, 0, 12),
+      child: Gap(
+        10,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 14),
+            child: Row(
+              children: [
+                Label('GROUPS · ${groups.length}'),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => s.update(() => s.ptab = 'Groups'),
+                  child: Text(
+                    'See all',
+                    style: t.body(12, w: w700, deco: TextDecoration.underline),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ChipScroller(
+            padding: const EdgeInsets.only(right: 14),
+            gap: 8,
+            children: [
+              for (final g in groups)
+                Tap(
+                  onTap: () => s.openGroup(g.id),
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(5, 5, 12, 5),
+                    decoration: BoxDecoration(
+                      color: t.sunken,
+                      border: t.border(1.5),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GroupTile(g.short, toneOfGroup(g.tone), size: 30),
+                        const SizedBox(width: 8),
+                        Text(g.name, style: t.body(13, w: w700)),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
           ),
         ],
       ),

@@ -66,6 +66,11 @@ export const notificationType = pgEnum('notification_type', [
   'post_comment',
   'comment_reply',
   'mention',
+  'recruit_application',
+  'recruit_accepted',
+  'group_join_request',
+  'group_join_approved',
+  'group_event',
 ]);
 export const reportReason = pgEnum('report_reason', [
   'harassment',
@@ -87,6 +92,7 @@ export const adminActionKind = pgEnum('admin_action_kind', [
   'set_launch',
   'remove_post',
   'remove_comment',
+  'remove_group',
 ]);
 // docs/FEED_AND_GROUPS_API.md "Data model".
 export const postType = pgEnum('post_type', [
@@ -103,5 +109,14 @@ export const postType = pgEnum('post_type', [
   'meme',
 ]);
 export const postAudience = pgEnum('post_audience', ['everyone', 'connections']);
-/** deleted: by its author. removed: by an admin. */
+/** deleted: by its author (a group: its last member left). removed: by an admin or a group admin. */
 export const contentStatus = pgEnum('content_status', ['live', 'deleted', 'removed']);
+/** Only images can be uploaded for now; video waits (ADR-0012). */
+export const mediaKind = pgEnum('media_kind', ['image', 'video']);
+export const applicationStatus = pgEnum('application_status', ['pending', 'accepted', 'declined']);
+export const groupKind = pgEnum('group_kind', ['game', 'city', 'campus', 'squad']);
+/** The prototype's badge colours. */
+export const groupTone = pgEnum('group_tone', ['accent', 'lav', 'soft', 'grey']);
+/** Declared admin first, so ordering by role lists admins first. */
+export const groupRole = pgEnum('group_role', ['admin', 'member']);
+export const membershipStatus = pgEnum('membership_status', ['member', 'pending']);

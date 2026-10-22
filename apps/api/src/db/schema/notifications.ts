@@ -1,7 +1,8 @@
 import { sql } from 'drizzle-orm';
 import { index, pgTable, uuid } from 'drizzle-orm/pg-core';
 import { notificationType } from './enums.js';
-import { comments, posts } from './feed.js';
+import { comments, posts, recruitApplications } from './feed.js';
+import { groupEvents, groups } from './groups.js';
 import { users } from './identity.js';
 import { listings } from './listings.js';
 import { checkIns, connectionRequests, playInvites } from './relationships.js';
@@ -26,6 +27,13 @@ export const notifications = pgTable(
     checkInId: uuid('check_in_id').references(() => checkIns.id, { onDelete: 'cascade' }),
     postId: uuid('post_id').references(() => posts.id, { onDelete: 'cascade' }),
     commentId: uuid('comment_id').references(() => comments.id, { onDelete: 'cascade' }),
+    recruitApplicationId: uuid('recruit_application_id').references(() => recruitApplications.id, {
+      onDelete: 'cascade',
+    }),
+    groupId: uuid('group_id').references(() => groups.id, { onDelete: 'cascade' }),
+    groupEventId: uuid('group_event_id').references(() => groupEvents.id, {
+      onDelete: 'cascade',
+    }),
     readAt: ts('read_at'),
     /** Set once handed to push (or skipped). Null rows are the push outbox. */
     pushedAt: ts('pushed_at'),
@@ -33,6 +41,8 @@ export const notifications = pgTable(
   },
   (t) => [
     index().on(t.userId, t.id.desc()),
+    // "At most one group_event push per group per hour" looks back by group.
+    index('notifications_of_group').on(t.groupId, t.createdAt),
     index('notifications_unpushed')
       .on(t.id)
       .where(sql`${t.pushedAt} is null`),

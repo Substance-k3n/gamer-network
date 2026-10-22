@@ -33,7 +33,7 @@ const uuid = (what: string) => new ParseUUIDPipe({ exceptionFactory: () => notFo
 
 // For apps/admin. Operation ids: adminReports, adminResolveReport, adminUsers,
 // adminUser, adminBan, adminUnban, adminRemoveListing, adminRemovePost,
-// adminRemoveComment, adminSetLaunch, adminMetrics.
+// adminRemoveComment, adminRemoveGroup, adminSetLaunch, adminMetrics.
 
 @ApiTags('admin')
 @ApiBearerAuth()
@@ -49,7 +49,7 @@ export class AdminController {
     return this.admin.reports(q.status ?? 'open', q.limit, q.cursor);
   }
 
-  /** dismiss, warn, remove_listing, remove_post, remove_comment or ban. 409 report_closed if already handled. */
+  /** dismiss, warn, remove_listing, remove_post, remove_comment, remove_group or ban. 409 report_closed if already handled. */
   @Post('reports/:id/resolve')
   @HttpCode(200)
   @ApiOkResponse({ type: AdminReportDto })
@@ -133,6 +133,18 @@ export class AdminController {
     @Body() body: NoteBody,
   ): Promise<void> {
     await this.admin.removeComment(admin, id, body.note);
+  }
+
+  /** Take a group down: it, its posts and events vanish for everyone. */
+  @Post('groups/:id/remove')
+  @HttpCode(204)
+  @ApiNoContentResponse()
+  async removeGroup(
+    @CurrentUser() admin: User,
+    @Param('id', uuid('That group')) id: string,
+    @Body() body: NoteBody,
+  ): Promise<void> {
+    await this.admin.removeGroup(admin, id, body.note);
   }
 
   /** Puts a game on Find Players, or takes it off. */

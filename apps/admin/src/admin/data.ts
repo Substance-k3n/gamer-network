@@ -74,6 +74,18 @@ export const subject = (r: AdminReport) =>
     ? { kind: 'Comment', remove: 'remove_comment' as const }
     : r.postId
       ? { kind: 'Post', remove: 'remove_post' as const }
-      : r.listingId
-        ? { kind: 'Listing', remove: 'remove_listing' as const }
-        : { kind: 'Profile', remove: null };
+      : r.groupId
+        ? { kind: 'Group', remove: 'remove_group' as const }
+        : r.listingId
+          ? { kind: 'Listing', remove: 'remove_listing' as const }
+          : { kind: 'Profile', remove: null };
+
+/** The admin endpoint that takes the reported post, comment or group down directly (D34). */
+export const directRemove = (r: AdminReport) =>
+  r.commentId
+    ? `admin/comments/${r.commentId}/remove`
+    : r.postId
+      ? `admin/posts/${r.postId}/remove`
+      : r.groupId
+        ? `admin/groups/${r.groupId}/remove`
+        : null;

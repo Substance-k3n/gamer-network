@@ -4,6 +4,7 @@ import { adminActionKind, reportReason, reportStatus } from './enums.js';
 import { users } from './identity.js';
 import { games } from './catalog.js';
 import { comments, posts } from './feed.js';
+import { groups } from './groups.js';
 import { listings } from './listings.js';
 import { createdAt, id, ts } from './types.js';
 
@@ -38,6 +39,7 @@ export const reports = pgTable(
     listingId: uuid('listing_id').references(() => listings.id, { onDelete: 'set null' }),
     postId: uuid('post_id').references(() => posts.id, { onDelete: 'set null' }),
     commentId: uuid('comment_id').references(() => comments.id, { onDelete: 'set null' }),
+    groupId: uuid('group_id').references(() => groups.id, { onDelete: 'set null' }),
     reason: reportReason('reason').notNull(),
     details: text('details'),
     status: reportStatus('status').notNull().default('open'),
@@ -64,6 +66,7 @@ export const adminActions = pgTable('admin_actions', {
   reportId: uuid('report_id').references(() => reports.id),
   postId: uuid('post_id').references(() => posts.id),
   commentId: uuid('comment_id').references(() => comments.id),
+  groupId: uuid('group_id').references(() => groups.id),
   /** For set_launch: the game. */
   gameId: text('game_id').references(() => games.id),
   note: text('note').notNull().default(''),

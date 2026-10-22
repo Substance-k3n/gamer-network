@@ -50,6 +50,8 @@ export function UserDrawer({ admin }: { admin: Admin }) {
         { v: pad2(u.connections), l: 'CONNECTIONS' },
         { v: pad2(u.playedWith), l: 'PLAYED WITH' },
         { v: pad2(u.openReports), l: 'OPEN REPORTS' },
+        { v: pad2(u.postsCount), l: 'POSTS' },
+        { v: pad2(u.groupsCount), l: 'GROUPS' },
       ]
     : [];
 

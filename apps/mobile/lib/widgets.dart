@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import 'theme.dart';
@@ -14,6 +15,10 @@ enum Ic {
   search('<circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/>', 2.4),
   image(
     '<rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/>',
+    2.2,
+  ),
+  upload(
+    '<path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/>',
     2.2,
   ),
   home('<path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z"/>', 2.2),
@@ -47,7 +52,18 @@ enum Ic {
   more(
     '<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>',
     2.6,
-  );
+  ),
+  comment(
+    '<path d="M21 11.5a8.5 8.5 0 01-12.3 7.6L3.5 20.5l1.4-4.6A8.5 8.5 0 1121 11.5z"/>',
+    2,
+  ),
+  play(
+    '<circle cx="12" cy="12" r="6.5"/><path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4"/>',
+    2,
+  ),
+  bookmark('<path d="M6.5 3.5h11v17l-5.5-3.8-5.5 3.8z"/>', 2),
+  up('<path d="M12 19V5M5 12l7-7 7 7"/>', 2.6),
+  filter('<path d="M4 6h16M7 12h10M10 18h4"/>', 2.4);
 
   const Ic(this.body, this.stroke);
   final String body;
@@ -67,6 +83,20 @@ class SvgIcon extends StatelessWidget {
     width: size,
     height: size,
     theme: SvgTheme(currentColor: color ?? context.rt.text),
+  );
+}
+
+/// Solid play triangle, for clips.
+class PlayIcon extends StatelessWidget {
+  const PlayIcon({super.key, this.size = 22});
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => SvgPicture.string(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+    width: size,
+    height: size,
+    theme: SvgTheme(currentColor: context.rt.onAccent),
   );
 }
 
@@ -587,10 +617,14 @@ class Field extends StatefulWidget {
     this.minLines,
     this.onSubmitted,
     this.keyboardType,
+    this.maxLength,
   });
   final String value, hint;
   final ValueChanged<String> onChanged;
   final ValueChanged<String>? onSubmitted;
+
+  /// Most characters the field takes; extra typing is dropped.
+  final int? maxLength;
   final double size;
   final double? height;
   final bool obscure, autofocus;
@@ -634,6 +668,9 @@ class _FieldState extends State<Field> {
       maxLines: widget.maxLines,
       minLines: widget.minLines,
       keyboardType: widget.keyboardType,
+      inputFormatters: widget.maxLength == null
+          ? null
+          : [LengthLimitingTextInputFormatter(widget.maxLength)],
       keyboardAppearance: t.brightness,
       style: style,
       cursorColor: t.text,
@@ -666,9 +703,11 @@ class BoxField extends StatelessWidget {
     this.keyboardType,
     this.leading,
     this.trailing,
+    this.maxLength,
   });
   final String value, hint;
   final ValueChanged<String> onChanged;
+  final int? maxLength;
   final double height, radius, padH, size, border, shadow;
   final bool sunken, obscure, autofocus;
   final TextInputType? keyboardType;
@@ -699,6 +738,7 @@ class BoxField extends StatelessWidget {
               obscure: obscure,
               autofocus: autofocus,
               keyboardType: keyboardType,
+              maxLength: maxLength,
             ),
           ),
           if (trailing != null) ...[const SizedBox(width: 8), trailing!],
@@ -783,6 +823,59 @@ class TagPill extends StatelessWidget {
         borderRadius: BorderRadius.circular(99),
       ),
       child: Text(text, style: t.body(size, w: w600)),
+    );
+  }
+}
+
+/// Filled pill with a label-font game name.
+class GameBadge extends StatelessWidget {
+  const GameBadge(
+    this.text, {
+    super.key,
+    this.pad = const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+  });
+  final String text;
+  final EdgeInsets pad;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.rt;
+    return Container(
+      padding: pad,
+      decoration: BoxDecoration(
+        color: t.dark,
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Text(t.up(text), style: t.label(9, c: t.onDark)),
+    );
+  }
+}
+
+/// Small bordered label-font tag (post types, admin badges).
+class TypeTag extends StatelessWidget {
+  const TypeTag(
+    this.text,
+    this.bg, {
+    super.key,
+    this.size = 9,
+    this.pad = const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+  });
+  final String text;
+  final Color? bg;
+  final double size;
+  final EdgeInsets pad;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.rt;
+    return Container(
+      padding: pad,
+      decoration: BoxDecoration(
+        color: bg,
+        border: t.border(1.5),
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Text(t.up(text), style: t.label(size)),
     );
   }
 }
@@ -886,6 +979,56 @@ class _LinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_LinePainter old) => old.color != color || old.t != t;
+}
+
+/// Dark box with diagonal stripes, standing in for a clip.
+class StripeBox extends StatelessWidget {
+  const StripeBox({
+    super.key,
+    required this.child,
+    this.height,
+    this.radius = 18,
+  });
+  final Widget child;
+  final double? height;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.rt;
+    return Container(
+      height: height,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: t.dark,
+        border: t.border(),
+        borderRadius: BorderRadius.circular(radius),
+      ),
+      child: CustomPaint(
+        painter: _StripePainter(t.onDark.withValues(alpha: .06)),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _StripePainter extends CustomPainter {
+  _StripePainter(this.color);
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()
+      ..color = color
+      ..strokeWidth = 10;
+    final span = size.width + size.height;
+    for (double d = -size.height; d < span; d += 20 * math.sqrt2) {
+      canvas.drawLine(Offset(d, 0), Offset(d + size.height, size.height), p);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_StripePainter old) => old.color != color;
 }
 
 class Tilt extends StatelessWidget {

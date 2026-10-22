@@ -2,6 +2,7 @@
    active skin, the same four as apps/mobile/lib/theme.dart. */
 
 .rl[data-skin='inked'] {
+  --poll-mine: #f4b183;
   --bg: #e9e6e0;
   --blob: #d6d2ca;
   --surface: #f7f5f1;
@@ -55,6 +56,7 @@
 }
 
 .rl[data-skin='soft'] {
+  --poll-mine: #a6ebcb;
   --bg: #ededea;
   --blob: #e1e1dd;
   --surface: #f8f8f6;
@@ -108,6 +110,7 @@
 }
 
 .rl[data-skin='dot'] {
+  --poll-mine: #5a2414;
   --bg: #101010;
   --blob: #1a1a1a;
   --surface: #1b1b1b;
@@ -161,6 +164,7 @@
 }
 
 .rl[data-skin='glass'] {
+  --poll-mine: rgba(143, 240, 220, 0.38);
   --bg: #0e1128;
   --blob: rgba(255, 255, 255, 0.07);
   --surface: rgba(255, 255, 255, 0.1);
@@ -251,7 +255,10 @@
   margin: 0 auto;
   min-height: 100dvh;
   padding-bottom: calc(110px + env(safe-area-inset-bottom));
+  /* clip, not hidden: hidden would make this the scroll container of the
+     sticky top bar, which then never sticks (the window scrolls). */
   overflow-x: hidden;
+  overflow-x: clip;
 }
 .rl-page.bare {
   padding-bottom: 0;
@@ -808,4 +815,8 @@
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+.rl input::placeholder,
+.rl textarea::placeholder {
+  color: var(--faint);
 }

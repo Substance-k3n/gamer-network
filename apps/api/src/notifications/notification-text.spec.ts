@@ -1,4 +1,4 @@
-import { type NotificationFacts, notificationText } from './notification-text.js';
+import { eventWhen, type NotificationFacts, notificationText } from './notification-text.js';
 
 const facts = (over: Partial<NotificationFacts>): NotificationFacts => ({
   type: 'connection_request',
@@ -10,6 +10,10 @@ const facts = (over: Partial<NotificationFacts>): NotificationFacts => ({
   postId: null,
   commentId: null,
   others: 0,
+  groupId: null,
+  groupName: null,
+  eventTitle: null,
+  eventStartsAt: null,
   ...over,
 });
 
@@ -57,5 +61,50 @@ describe('notificationText', () => {
       text: 'Hana mentioned you in a post',
       route: '/posts/p1',
     });
+  });
+
+  it('opens the applications for an applicant, and the author for an accept', () => {
+    expect(notificationText(facts({ type: 'recruit_application', postId: 'p1' }))).toMatchObject({
+      text: 'Hana applied to your recruitment post',
+      route: '/posts/p1/applications',
+    });
+    expect(notificationText(facts({ type: 'recruit_accepted', postId: 'p1' }))).toMatchObject({
+      text: 'Hana accepted your application',
+      route: '/players/hana',
+    });
+  });
+
+  it('opens the requests for a join request, and the group for approvals and events', () => {
+    const group = { groupId: 'g1', groupName: 'Valorant Ethiopia' };
+    expect(notificationText(facts({ type: 'group_join_request', ...group }))).toMatchObject({
+      text: 'Hana wants to join Valorant Ethiopia',
+      route: '/groups/g1/members?status=pending',
+    });
+    expect(notificationText(facts({ type: 'group_join_approved', ...group }))).toMatchObject({
+      text: "You're in Valorant Ethiopia",
+      route: '/groups/g1',
+    });
+    const now = new Date('2026-10-20T09:00:00Z'); // 12:00 in Addis
+    const event = facts({
+      type: 'group_event',
+      ...group,
+      eventTitle: '5-stack customs',
+      eventStartsAt: new Date('2026-10-20T18:00:00Z'), // 21:00 in Addis
+    });
+    expect(notificationText(event, now)).toMatchObject({
+      text: 'New event in Valorant Ethiopia: 5-stack customs, tonight 21:00',
+      route: '/groups/g1',
+    });
+  });
+});
+
+describe('eventWhen', () => {
+  const now = new Date('2026-10-20T09:00:00Z'); // Tue 12:00 in Addis
+  it('says today, tonight or tomorrow in Addis time, else the date', () => {
+    expect(eventWhen(new Date('2026-10-20T11:30:00Z'), now)).toBe('today 14:30');
+    expect(eventWhen(new Date('2026-10-20T15:00:00Z'), now)).toBe('tonight 18:00');
+    expect(eventWhen(new Date('2026-10-20T21:30:00Z'), now)).toBe('tomorrow 00:30');
+    expect(eventWhen(new Date('2026-10-21T15:00:00Z'), now)).toBe('tomorrow 18:00');
+    expect(eventWhen(new Date('2026-10-25T18:00:00Z'), now)).toBe('Sun 25 Oct 21:00');
   });
 });

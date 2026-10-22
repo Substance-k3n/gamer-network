@@ -7,6 +7,7 @@ import {
   useState,
   type CSSProperties,
   type InputHTMLAttributes,
+  type SyntheticEvent,
   type ReactNode,
 } from 'react';
 import type { Tone } from './data';
@@ -44,9 +45,11 @@ const icons = {
   ],
   close: ['<path d="M6 6l12 12M18 6L6 18"/>', 2.4],
   check: ['<path d="M5 12.5l4.5 4.5L19 7.5"/>', 2.8],
-  comment: ['<path d="M4 5h16v11H9l-5 4z"/>', 2.1],
-  bookmark: ['<path d="M6 3h12v18l-6-4.5L6 21z"/>', 2.1],
-  play: ['<path d="M7 4.5v15l12-7.5z"/>', 2.2],
+  comment: ['<path d="M21 11.5a8.5 8.5 0 01-12.3 7.6L3.5 20.5l1.4-4.6A8.5 8.5 0 1121 11.5z"/>', 2],
+  bookmark: ['<path d="M6.5 3.5h11v17l-5.5-3.8-5.5 3.8z"/>', 2],
+  play: ['<circle cx="12" cy="12" r="6.5"/><path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4"/>', 2],
+  up: ['<path d="M12 19V5M5 12l7-7 7 7"/>', 2.6],
+  filter: ['<path d="M4 6h16M7 12h10M10 18h4"/>', 2.4],
   more: [
     '<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>',
     2.6,
@@ -476,6 +479,7 @@ export function CircleBtn({
   onDark,
   shadow,
   label,
+  disabled,
 }: {
   children: ReactNode;
   onClick?: () => void;
@@ -483,14 +487,21 @@ export function CircleBtn({
   onDark?: boolean;
   shadow?: number;
   label?: string;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       className={`circle ${onDark ? 'on-dark' : ''}`}
-      style={{ width: size, height: size, boxShadow: shadow ? `var(--sh${shadow})` : undefined }}
+      style={{
+        width: size,
+        height: size,
+        boxShadow: shadow ? `var(--sh${shadow})` : undefined,
+        opacity: disabled ? 0.35 : undefined,
+      }}
       onClick={onClick}
       aria-label={label}
+      disabled={disabled}
     >
       {children}
     </button>
@@ -598,6 +609,115 @@ export function useConfirm() {
 export const Rows = ({ children }: { children: ReactNode }) => (
   <div className="rows">{children}</div>
 );
+
+/**
+ * On a text field's own row (Send, Cancel): pressing there doesn't take focus
+ * from the field. A blur mid-tap would bring Home's floating buttons back
+ * under the pointer and the click would land on them instead (BUG-6, D16).
+ */
+export const keepFocus = {
+  onPointerDown: (e: SyntheticEvent) => {
+    if (!(e.target as HTMLElement).closest('input, textarea')) e.preventDefault();
+  },
+  onMouseDown: (e: SyntheticEvent) => {
+    if (!(e.target as HTMLElement).closest('input, textarea')) e.preventDefault();
+  },
+};
+
+/** Small bordered label-font tag (post types, admin badges). */
+export function TypeTag({
+  children,
+  bg,
+  size = 9,
+  pad = '3px 8px',
+}: {
+  children: ReactNode;
+  bg?: string;
+  size?: number;
+  pad?: string;
+}) {
+  return (
+    <span
+      className="label"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        padding: pad,
+        background: bg,
+        border: '1.5px solid var(--line)',
+        borderRadius: 99,
+        fontSize: `calc(${size}px + var(--label-delta))`,
+        color: 'var(--text)',
+        flex: 'none',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+/** A game's short code on the dark ink. */
+export function GameBadge({ children, pad = '4px 9px' }: { children: ReactNode; pad?: string }) {
+  return (
+    <span
+      className="label"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        padding: pad,
+        background: 'var(--dark)',
+        color: 'var(--on-dark)',
+        borderRadius: 99,
+        fontSize: 'calc(9px + var(--label-delta))',
+        flex: 'none',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+/** Dark box with faint diagonal stripes: where a clip or photo will sit. */
+export function StripeBox({
+  children,
+  height,
+  radius = 18,
+  style,
+}: {
+  children?: ReactNode;
+  height?: number;
+  radius?: number;
+  style?: CSSProperties;
+}) {
+  return (
+    <div
+      style={{
+        position: 'relative',
+        height,
+        overflow: 'hidden',
+        background:
+          'repeating-linear-gradient(135deg, color-mix(in srgb, var(--on-dark) 6%, transparent) 0 10px, transparent 10px 20px), var(--dark)',
+        color: 'var(--on-dark)',
+        border: 'var(--line-w) solid var(--line)',
+        borderRadius: radius,
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** The filled play triangle on an accent disc. */
+export function PlayIcon({ size = 22 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="var(--on-accent)" aria-hidden>
+      <path d="M8 5v14l11-7z" />
+    </svg>
+  );
+}
 
 export function Spinner() {
   return <div className="spinner" role="progressbar" aria-label="Loading" />;

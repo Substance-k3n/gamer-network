@@ -3,8 +3,34 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
-import { api, type Connection, type Me, type Page, type Profile, type UserGame } from './api';
-import { idKindLabel, pad2, platformLabel, rankLine, statusLook, tagLabel, toneFor } from './data';
+import {
+  api,
+  type Connection,
+  type Group,
+  type Me,
+  type Page,
+  type PlayerStatus,
+  type PlayInvite,
+  type Post,
+  type Profile,
+  type UserGame,
+} from './api';
+import {
+  ago,
+  clock,
+  dayLabel,
+  days,
+  idKindLabel,
+  pad2,
+  platformLabel,
+  rankLine,
+  statusLook,
+  tagLabel,
+  toneFor,
+} from './data';
+import { FeedPost } from './feed';
+import { GroupCard, GroupStrip } from './groupui';
+import { PhotoGrid } from './postparts';
 import { PlayerMenu } from './safety';
 import { skins, useApp, useLoad, type Skin } from './store';
 import {
@@ -15,12 +41,16 @@ import {
   CircleBtn,
   Dialog,
   Dot,
+  Digits,
   EmptyNote,
+  GameBadge,
   Icon,
   Label,
   PasswordField,
   Pill,
   Rows,
+  Spinner,
+  StripeBox,
   toneColor,
   useConfirm,
   Wordmark,
@@ -35,7 +65,48 @@ export function ProfileView({ p, onReload }: { p: View; onReload: () => void }) 
   const [tab, setTab] = useState('Overview');
   const [menu, setMenu] = useState(false);
   const [ask, confirm] = useConfirm();
-  const tabs = p.isMe ? ['Overview', 'Games', 'Connections'] : ['Overview', 'Games'];
+  // My groups include my pending requests (D20); someone else's only where they're a member.
+  const groupsList = useLoad(
+    async () =>
+      (
+        await api<Page<Group>>(
+          p.isMe ? 'me/groups?limit=50' : `users/${encodeURIComponent(p.username)}/groups?limit=50`,
+        )
+      ).items,
+    [p.isMe, p.username],
+  );
+  const groups = groupsList.data ?? [];
+  const groupChanged = (g: Group) => groupsList.setData(groups.map((x) => (x.id === g.id ? g : x)));
+  const tabs = p.isMe
+    ? ['Overview', 'Games', 'Groups', 'Posts', 'Moments', 'Saved', 'Connections']
+    : ['Overview', 'Games', 'Groups', 'Posts', 'Moments'];
+  const [postsMore, setPostsMore] = useState<string | null>(null);
+  const postsPath = p.isMe ? 'me/posts' : `users/${encodeURIComponent(p.username)}/posts`;
+  const posts = useLoad(async () => {
+    const pg = await api<Page<Post>>(postsPath);
+    setPostsMore(pg.nextCursor);
+    return pg.items;
+  }, [postsPath]);
+  const morePosts = async () => {
+    const pg = await run(
+      () => api<Page<Post>>(`${postsPath}?cursor=${encodeURIComponent(postsMore!)}`),
+      { busy: false },
+    );
+    if (!pg) return;
+    posts.setData([...(posts.data ?? []), ...pg.items]);
+    setPostsMore(pg.nextCursor);
+  };
+  const moments = (posts.data ?? []).filter((x) => x.kind === 'moment');
+  // An invite of mine to them that's still waiting.
+  const sent = useLoad(
+    async () =>
+      p.isMe
+        ? null
+        : ((await api<{ items: PlayInvite[] }>('play-invites?direction=outgoing')).items.find(
+            (i) => i.to.id === p.id && i.status === 'pending',
+          ) ?? null),
+    [p.id],
+  ).data;
 
   const connect = async () => {
     if (p.relationship === 'none') {
@@ -150,6 +221,32 @@ export function ProfileView({ p, onReload }: { p: View; onReload: () => void }) 
           </>
         )}
       </div>
+      {p.isMe && (
+        <div className="rl-pad" style={{ marginTop: 16 }}>
+          <ThemePicker />
+        </div>
+      )}
+      {sent && (
+        <div
+          className="row"
+          style={{
+            margin: '12px 16px 0',
+            padding: '12px 14px',
+            gap: 10,
+            background: 'var(--soft)',
+            border: 'var(--line-w) solid var(--line)',
+            borderRadius: 20,
+          }}
+        >
+          <div className="grow">
+            <Label>SESSION INVITE SENT</Label>
+            <div style={{ fontSize: 15, fontWeight: 700, marginTop: 3 }}>
+              {sent.game.name} with {p.displayName}
+            </div>
+          </div>
+          <Digits size={16}>{clock(sent.startsAt)}</Digits>
+        </div>
+      )}
       <div className="scroller" style={{ padding: '16px 16px 4px' }}>
         {tabs.map((t) => (
           <Chip key={t} on={tab === t} onClick={() => setTab(t)} h={36} padH={14} size={14}>
@@ -164,15 +261,78 @@ export function ProfileView({ p, onReload }: { p: View; onReload: () => void }) 
           ) : (
             <EmptyNote>No games on this profile yet.</EmptyNote>
           ))}
-        {tab === 'Overview' && <Overview p={p} />}
-        {tab === 'Overview' && p.isMe && (
+        {tab === 'Overview' && (
           <>
-            <ThemePicker />
-            <Settings me={me!} />
+            <GroupStrip groups={groups} onAll={() => setTab('Groups')} />
+            {p.isMe && <StatusCard />}
+            <Overview p={p} />
+            {p.isMe && <Settings me={me!} />}
           </>
         )}
+        {tab === 'Groups' &&
+          (groups.length ? (
+            groups.map((g) => <GroupCard key={g.id} g={g} onChange={groupChanged} />)
+          ) : !groupsList.loaded ? (
+            <Spinner />
+          ) : (
+            <>
+              <EmptyNote>
+                {p.isMe
+                  ? 'You haven’t joined any groups yet.'
+                  : `${p.displayName} isn’t in any groups yet.`}
+              </EmptyNote>
+              {p.isMe && (
+                <div style={{ textAlign: 'center' }}>
+                  <Pill
+                    h={42}
+                    padH={18}
+                    size={14}
+                    bold
+                    shadow={3}
+                    onClick={() => router.push('/app/groups')}
+                  >
+                    Find groups
+                  </Pill>
+                </div>
+              )}
+            </>
+          ))}
+        {tab === 'Posts' && (
+          <>
+            {posts.loaded && !posts.data?.length && (
+              <EmptyNote>No posts yet. Share a milestone from Home.</EmptyNote>
+            )}
+            {(posts.data ?? []).map((x) => (
+              <MiniPost key={x.id} p={x} />
+            ))}
+            {postsMore && (
+              <div style={{ textAlign: 'center' }}>
+                <Pill h={42} padH={18} size={14} bold onClick={morePosts}>
+                  Load more
+                </Pill>
+              </div>
+            )}
+          </>
+        )}
+        {tab === 'Moments' &&
+          (moments.length === 0 ? (
+            posts.loaded && (
+              <EmptyNote>
+                No clips yet. Moments always ship with a caption — they start conversations.
+              </EmptyNote>
+            )
+          ) : (
+            <div
+              style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}
+            >
+              {moments.map((m) => (
+                <MomentTile key={m.id} m={m} />
+              ))}
+            </div>
+          ))}
         {tab === 'Connections' && <Connections />}
       </div>
+      {tab === 'Saved' && p.isMe && <Saved />}
       {menu && (
         <PlayerMenu
           userId={p.id}
@@ -490,6 +650,202 @@ function Overview({ p }: { p: View }) {
   );
 }
 
+/** A post on a profile: game, time, text, and how it's doing. */
+function MiniPost({ p }: { p: Post }) {
+  const n = p.commentCount;
+  return (
+    <Link href={`/app/posts/${p.id}?comments=1`} style={{ display: 'block' }}>
+      <Card flat pad={14} radius={22}>
+        <div className="gap" style={{ gap: 8 }}>
+          <div className="row" style={{ justifyContent: 'space-between', gap: 8 }}>
+            {p.game ? <GameBadge pad="3px 8px">{p.game.shortCode}</GameBadge> : <span />}
+            <span className="muted" style={{ fontSize: 12 }}>
+              {ago(p.createdAt)}
+            </span>
+          </div>
+          <div
+            style={{
+              fontSize: 15,
+              lineHeight: 1.35,
+              whiteSpace: 'pre-wrap',
+              overflowWrap: 'anywhere',
+            }}
+          >
+            {p.text}
+          </div>
+          <PhotoGrid media={p.media} still />
+          <div style={{ fontSize: 12, fontWeight: 700 }}>
+            GG {pad2(p.ggCount)} · {n} {n === 1 ? 'comment' : 'comments'}
+          </div>
+        </div>
+      </Card>
+    </Link>
+  );
+}
+
+function MomentTile({ m }: { m: Post }) {
+  const photo = m.media[0]?.url;
+  return (
+    <Link href={`/app/posts/${m.id}?comments=1`} style={{ display: 'block' }}>
+      <StripeBox
+        style={{
+          aspectRatio: '1',
+          // The first photo, darkened at the edges so the caption reads.
+          ...(photo
+            ? {
+                backgroundImage: `linear-gradient(rgba(0,0,0,.45), rgba(0,0,0,0) 40%, rgba(0,0,0,.65)), url("${photo}")`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                color: '#fff',
+              }
+            : {}),
+        }}
+      >
+        <div
+          className="gap"
+          style={{ position: 'absolute', inset: 0, padding: 10, justifyContent: 'space-between' }}
+        >
+          <Label size={8} color="var(--accent-text)">
+            {m.game?.name ?? ''}
+          </Label>
+          <div
+            style={{
+              fontSize: 12,
+              lineHeight: 1.25,
+              display: '-webkit-box',
+              WebkitLineClamp: 4,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              overflowWrap: 'anywhere',
+            }}
+          >
+            {m.text}
+          </div>
+        </div>
+      </StripeBox>
+    </Link>
+  );
+}
+
+/** Your status and play days (moved here from the MVP Home). */
+function StatusCard() {
+  const { me, run, setMe } = useApp();
+  if (!me) return null;
+  const [label, tone] = statusLook(me.status, me.statusGame);
+  const opts: [PlayerStatus, string][] = [
+    ['looking', 'Looking'],
+    ['playing', 'Playing'],
+    ['available_tonight', 'Tonight'],
+    ['not_available', 'Away'],
+  ];
+  const setStatus = async (status: PlayerStatus, availableDays?: string[]) => {
+    const gameId = status === 'not_available' ? undefined : (me.games[0]?.game?.id ?? undefined);
+    const m = await run(
+      () => api<Me>('me/status', { method: 'PUT', body: { status, gameId, availableDays } }),
+      { busy: false },
+    );
+    if (m) setMe(m);
+  };
+  return (
+    <Card pad={14}>
+      <div className="gap" style={{ gap: 10 }}>
+        <div className="row" style={{ gap: 7 }}>
+          <Label>YOUR STATUS</Label>
+          <span className="grow" />
+          <Dot color={toneColor(tone)} />
+          <b className="ellipsis" style={{ fontSize: 14 }}>
+            {label}
+          </b>
+        </div>
+        <div className="wrap">
+          {opts.map(([st, t]) => (
+            <Chip key={st} on={me.status === st} onClick={() => setStatus(st)} h={34} padH={12}>
+              {t}
+            </Chip>
+          ))}
+        </div>
+        <Label>DAYS I PLAY</Label>
+        <div className="row" style={{ gap: 4 }}>
+          {days.map((d) => (
+            <span key={d} style={{ flex: 1, display: 'flex' }}>
+              <Chip
+                on={me.availableDays.includes(d)}
+                onClick={() =>
+                  setStatus(
+                    me.status,
+                    me.availableDays.includes(d)
+                      ? me.availableDays.filter((x) => x !== d)
+                      : [...me.availableDays, d],
+                  )
+                }
+                h={34}
+                padH={0}
+                size={12}
+              >
+                <span style={{ width: '100%', minWidth: 30 }}>{dayLabel[d]}</span>
+              </Chip>
+            </span>
+          ))}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+/** My bookmarked posts, most recently saved first; unsaving one drops it. */
+function Saved() {
+  const { run, putPost, dropPost } = useApp();
+  const [more, setMore] = useState<string | null>(null);
+  const { data, setData, loaded } = useLoad(async () => {
+    const pg = await api<Page<Post>>('me/saved');
+    setMore(pg.nextCursor);
+    return pg.items;
+  }, []);
+  const items = data ?? [];
+  const loadMore = async () => {
+    const pg = await run(() => api<Page<Post>>(`me/saved?cursor=${encodeURIComponent(more!)}`), {
+      busy: false,
+    });
+    if (!pg) return;
+    setData([...items, ...pg.items.filter((x) => !items.some((y) => y.id === x.id))]);
+    setMore(pg.nextCursor);
+  };
+  if (!loaded) return <Spinner />;
+  // Unsaved cards leave the list; kept underneath so a failed unsave brings one back.
+  const shown = items.filter((x) => x.saved);
+  if (!shown.length && !more)
+    return (
+      <div className="rl-pad">
+        <EmptyNote>Nothing saved yet. Tap the bookmark on a post to keep it here.</EmptyNote>
+      </div>
+    );
+  return (
+    <div style={{ borderTop: '1.5px solid var(--divider)' }}>
+      {shown.map((x) => (
+        <FeedPost
+          key={x.id}
+          p={x}
+          onChange={(n) => {
+            setData((list) => (list ?? []).map((y) => (y.id === n.id ? n : y)));
+            putPost(n);
+          }}
+          onGone={() => {
+            setData(items.filter((y) => y.id !== x.id));
+            dropPost(x.id);
+          }}
+        />
+      ))}
+      {more && (
+        <div style={{ textAlign: 'center', padding: 14 }}>
+          <Pill h={42} padH={18} size={14} bold onClick={loadMore}>
+            Load more
+          </Pill>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Connections() {
   const { run } = useApp();
   const [more, setMore] = useState<string | null>(null);
@@ -543,7 +899,7 @@ function ThemePicker() {
   return (
     <div className="gap" style={{ gap: 8 }}>
       <Label style={{ paddingLeft: 6 }}>APP THEME</Label>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
         {skins.map((s) => (
           <button
             key={s.id}
@@ -553,6 +909,7 @@ function ThemePicker() {
             onClick={() => setSkin(s.id as Skin)}
             style={{
               padding: 4,
+              minWidth: 0,
               borderRadius: 24,
               border: `2.5px solid ${skin === s.id ? 'var(--text)' : 'transparent'}`,
               background: 'transparent',

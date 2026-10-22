@@ -2,42 +2,25 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import {
-  api,
-  type CheckIn,
-  type Listing,
-  type Me,
-  type PlayInvite,
-  type PlayerStatus,
-} from './_lib/api';
-import {
-  clock,
-  countdown,
-  days,
-  dayLabel,
-  pad2,
-  partyLabel,
-  platformLabel,
-  playWhenLabel,
-  statusLook,
-  toneFor,
-} from './_lib/data';
-import { Feed } from './_lib/feed';
+import { useEffect, useRef, useState } from 'react';
+import { api, type CheckIn, type Listing, type Me, type PlayInvite } from './_lib/api';
+import { clock, countdown, partyLabel, platformLabel, playWhenLabel, toneFor } from './_lib/data';
+import { FeedPost } from './_lib/feed';
 import { EditListingSheet } from './_lib/sheets';
 import { useApp, useLoad, useNow } from './_lib/store';
-import { Avatar, Card, Chip, Digits, Dot, Icon, Label, Pill, Wordmark, toneColor } from './_lib/ui';
+import { Avatar, Card, Digits, Icon, Label, Pill, Spinner, Wordmark } from './_lib/ui';
 
 type HomeData = {
-  lookingNow: number;
   listing: Listing | null;
   checkIns: CheckIn[];
   sent: PlayInvite[];
 };
 
 /**
- * Home. With config.feedEnabled (ADR-0012): what needs an answer, your live
- * listing, then the feed. Without it, the MVP Home: status and listings.
+ * Home: the timeline (apps/mobile/lib/screens/home.dart). What needs you now
+ * (verify, invites, "did you play?", your listing) is pinned above the posts.
+ * The top bar slides away while scrolling down and returns on scroll up; past
+ * a few posts a pill jumps back to the top.
  */
 export default function Home() {
   const {
@@ -50,14 +33,15 @@ export default function Home() {
     setUnread,
     version,
     toast,
-    setSheet,
-    config,
+    feed,
+    loadPosts,
+    putPost,
+    dropPost,
   } = useApp();
-  const feedOn = !!config?.feedEnabled;
-  const { data, setData, reload } = useLoad<HomeData>(async () => {
-    const [m, stats, mine, checks, inc, sent, n] = await Promise.all([
+  const router = useRouter();
+  const { data, setData } = useLoad<HomeData>(async () => {
+    const [m, mine, checks, inc, sent, n] = await Promise.all([
       api<Me>('me'),
-      api<{ lookingNow: number }>('listings/stats'),
       api<{ listing: Listing | null }>('me/listing'),
       api<{ items: CheckIn[] }>('me/check-ins'),
       api<{ items: PlayInvite[] }>('play-invites?direction=incoming'),
@@ -67,15 +51,104 @@ export default function Home() {
     setMe(m);
     setInvites(inc.items);
     setUnread(n.count);
-    return {
-      lookingNow: stats.lookingNow,
-      listing: mine.listing,
-      checkIns: checks.items,
-      sent: sent.items,
-    };
+    return { listing: mine.listing, checkIns: checks.items, sent: sent.items };
   }, [version]);
   const [editing, setEditing] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [hideBar, setHideBar] = useState(false);
+  const [showPill, setShowPill] = useState(false);
+  const [typing, setTyping] = useState(false);
+
+  // The timeline survives moving around the app; it reloads when something
+  // changed elsewhere (a block, a new post…).
+  const stale = !feed.loaded || feed.at !== version;
+  useEffect(() => {
+    if (stale) loadPosts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [version]);
+
+  // Hide-on-scroll bar, the jump pill, and the next page near the end.
+  const lastY = useRef(0);
+  const more = useRef(() => {});
+  more.current = () => {
+    if (feed.cursor) loadPosts({ more: true });
+  };
+  useEffect(() => {
+    const onScroll = () => {
+      const y = window.scrollY;
+      const d = y - lastY.current;
+      lastY.current = y;
+      setHideBar((h) => (y < 60 ? false : d > 4 ? true : d < -4 ? false : h));
+      setShowPill(y > 520);
+      const left = document.documentElement.scrollHeight - (y + window.innerHeight);
+      if (left < 600) more.current();
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+  // While a text field has focus the floating buttons step aside, like
+  // with the keyboard on mobile (D16). They come back only once the press
+  // that took focus away is over, so they never appear under a finger or
+  // pointer mid-tap and swallow its click (BUG-6).
+  useEffect(() => {
+    const isField = (t: EventTarget | null) =>
+      t instanceof HTMLElement && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA');
+    let pressing = false;
+    let pending = false;
+    const settle = () => setTyping(isField(document.activeElement));
+    const on = (e: FocusEvent) => {
+      if (isField(e.target)) setTyping(true);
+    };
+    const off = (e: FocusEvent) => {
+      if (isField(e.relatedTarget)) return;
+      // On touch the blur comes after pointerup, with the click in the same
+      // task: a tick later is after that click either way.
+      if (pressing) pending = true;
+      else setTimeout(settle, 0);
+    };
+    const down = () => (pressing = true);
+    const up = () =>
+      // After the click this press makes.
+      setTimeout(() => {
+        pressing = false;
+        if (pending) {
+          pending = false;
+          settle();
+        }
+      }, 0);
+    document.addEventListener('focusin', on);
+    document.addEventListener('focusout', off);
+    document.addEventListener('pointerdown', down, true);
+    document.addEventListener('pointerup', up, true);
+    document.addEventListener('pointercancel', up, true);
+    return () => {
+      document.removeEventListener('focusin', on);
+      document.removeEventListener('focusout', off);
+      document.removeEventListener('pointerdown', down, true);
+      document.removeEventListener('pointerup', up, true);
+      document.removeEventListener('pointercancel', up, true);
+    };
+  }, []);
   if (!me) return null;
+
+  const options: [string, string][] = [
+    ['for_you', 'For you'],
+    ['connections', 'Connections'],
+    ['lfg', 'LFG & recruiting'],
+    ...me.games.flatMap((g): [string, string][] => (g.game ? [[g.game.id, g.game.name]] : [])),
+  ];
+  const current = options.find((o) => o[0] === feed.tab) ?? options[0]!;
+  const pick = (id: string) => {
+    setFilterOpen(false);
+    window.scrollTo(0, 0);
+    setHideBar(false);
+    loadPosts({ tab: id });
+  };
+  const toTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setHideBar(false);
+    setShowPill(false);
+  };
 
   const answerCheckIn = async (c: CheckIn, answer: 'played' | 'not_yet' | 'no') => {
     const ok = await run(
@@ -96,14 +169,6 @@ export default function Home() {
     setInvites(invites.filter((x) => x.id !== i.id));
     toast(accept ? `You’re on — ${i.game.name} with ${i.from.displayName}` : 'Invite declined');
   };
-  const setStatus = async (status: PlayerStatus, availableDays?: string[]) => {
-    const gameId = status === 'not_available' ? undefined : (me.games[0]?.game?.id ?? undefined);
-    const m = await run(
-      () => api<Me>('me/status', { method: 'PUT', body: { status, gameId, availableDays } }),
-      { busy: false },
-    );
-    if (m) setMe(m);
-  };
   const closeListing = async () => {
     if (!data?.listing) return;
     const r = await run(() =>
@@ -114,6 +179,45 @@ export default function Home() {
     toast('Listing closed');
   };
 
+  const pinned = [
+    !me.emailVerified && (
+      <Link
+        key="verify"
+        href="/app/verify"
+        className="dashed row"
+        style={{ padding: '12px 14px', gap: 10 }}
+      >
+        <span className="grow">
+          <b style={{ display: 'block', fontSize: 15 }}>Confirm your email</b>
+          <span className="muted" style={{ fontSize: 13 }}>
+            Needed to post a listing or connect. The code is in your inbox.
+          </span>
+        </span>
+        <span style={{ fontSize: 13, fontWeight: 700, textDecoration: 'underline' }}>
+          Enter code
+        </span>
+      </Link>
+    ),
+    ...invites.map((i) => <InviteCard key={i.id} i={i} onAnswer={answerInvite} />),
+    ...(data?.sent ?? []).map((i) => <SentInvite key={i.id} i={i} />),
+    ...(data?.checkIns ?? []).map((c) => <CheckInCard key={c.id} c={c} onAnswer={answerCheckIn} />),
+    data?.listing && (
+      <MyListing
+        key="listing"
+        l={data.listing}
+        onClose={closeListing}
+        onEdit={() => setEditing(true)}
+      />
+    ),
+  ].filter(Boolean);
+
+  // Faces of the last few posters on the jump pill.
+  const faces = feed.posts
+    .filter((p, i, all) => !p.mine && all.findIndex((x) => x.author.id === p.author.id) === i)
+    .slice(0, 3)
+    .map((p) => p.author);
+  const side = 'max(18px, calc(50% - 222px))';
+
   return (
     <>
       {editing && data?.listing && (
@@ -123,141 +227,201 @@ export default function Home() {
           onSaved={(l) => setData({ ...data, listing: l })}
         />
       )}
-      <TopBar unread={unread} />
-      <div className="gap rl-pad" style={{ gap: 14, paddingTop: 14 }}>
-        {!me.emailVerified && (
-          <Link href="/app/verify" className="dashed row" style={{ padding: '12px 14px', gap: 10 }}>
-            <span className="grow">
-              <b style={{ display: 'block', fontSize: 15 }}>Confirm your email</b>
-              <span className="muted" style={{ fontSize: 13 }}>
-                Needed to post a listing or connect. The code is in your inbox.
-              </span>
+      <TopBar unread={unread} hidden={hideBar} />
+      {pinned.length > 0 && (
+        <div
+          className="gap"
+          style={{
+            gap: 14,
+            padding: 16,
+            paddingTop: 14,
+            borderBottom: '1.5px solid var(--divider)',
+          }}
+        >
+          {pinned}
+        </div>
+      )}
+      {feed.posts.map((p) => (
+        <FeedPost key={p.id} p={p} onChange={putPost} onGone={() => dropPost(p.id)} />
+      ))}
+      {!feed.loaded || (stale && feed.posts.length === 0) ? (
+        <Spinner />
+      ) : (
+        feed.posts.length === 0 && (
+          <div
+            className="muted"
+            style={{ padding: '40px 28px', textAlign: 'center', fontSize: 15, lineHeight: 1.45 }}
+          >
+            {feed.tab === 'connections'
+              ? 'Nothing here yet. Connect with players from Find Players and their posts show up here.'
+              : 'No posts yet. Tap + and start the conversation.'}
+          </div>
+        )
+      )}
+
+      {showPill && (
+        <button
+          type="button"
+          className="pill accent"
+          onClick={toTop}
+          aria-label="Back to the top"
+          style={{
+            position: 'fixed',
+            top: 'calc(10px + env(safe-area-inset-top))',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            height: 42,
+            padding: '0 8px 0 14px',
+            boxShadow: 'var(--sh3)',
+            zIndex: 6,
+            animation: 'fade .22s ease',
+          }}
+        >
+          <Icon name="up" size={16} />
+          {faces.length > 0 && (
+            <span
+              style={{
+                position: 'relative',
+                width: 26 + 20 * (faces.length - 1),
+                height: 26,
+              }}
+            >
+              {faces.map((a, i) => (
+                <span key={a.id} style={{ position: 'absolute', left: 20 * i, top: 0 }}>
+                  <Avatar name={a.displayName} tone={toneFor(a.id)} url={a.avatarUrl} size={26} />
+                </span>
+              ))}
             </span>
-            <span style={{ fontSize: 13, fontWeight: 700, textDecoration: 'underline' }}>
-              Enter code
-            </span>
-          </Link>
-        )}
-        {invites.map((i) => (
-          <InviteCard key={i.id} i={i} onAnswer={answerInvite} />
-        ))}
-        {data?.sent.map((i) => (
-          <SentInvite key={i.id} i={i} />
-        ))}
-        {data?.checkIns.map((c) => (
-          <Card key={c.id} pad={14} style={{ background: 'var(--soft)' }}>
-            <div className="gap" style={{ gap: 10 }}>
-              <div className="row" style={{ gap: 10 }}>
-                <Avatar
-                  name={c.other.displayName}
-                  tone={toneFor(c.other.id)}
-                  url={c.other.avatarUrl}
-                />
-                <div className="grow">
-                  <div style={{ fontSize: 17, fontWeight: 800, letterSpacing: -0.3 }}>
-                    Did you play with {c.other.displayName}?
-                  </div>
-                  {c.game && (
-                    <div className="muted" style={{ fontSize: 12 }}>
-                      {c.game.name}
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="row" style={{ gap: 6 }}>
-                <Pill
-                  h={42}
-                  size={14}
-                  bold
-                  look="strong"
-                  expand
-                  onClick={() => answerCheckIn(c, 'played')}
-                >
-                  Yes, we played
-                </Pill>
-                <Pill
-                  h={42}
-                  padH={12}
-                  size={14}
-                  look="clear"
-                  onClick={() => answerCheckIn(c, 'not_yet')}
-                >
-                  Not yet
-                </Pill>
-                <Pill
-                  h={42}
-                  padH={12}
-                  size={14}
-                  look="clear"
-                  onClick={() => answerCheckIn(c, 'no')}
-                >
-                  No
-                </Pill>
-              </div>
+          )}
+        </button>
+      )}
+
+      {filterOpen && (
+        <>
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 8 }}
+            onClick={() => setFilterOpen(false)}
+          />
+          <div
+            className="gap"
+            role="menu"
+            style={{
+              position: 'fixed',
+              left: side,
+              bottom: 'calc(162px + env(safe-area-inset-bottom))',
+              width: 220,
+              maxHeight: 'calc(100dvh - 220px)',
+              overflowY: 'auto',
+              padding: 8,
+              background: 'var(--popover)',
+              border: 'var(--line-w) solid var(--line)',
+              borderRadius: 22,
+              boxShadow: 'var(--sh4)',
+              backdropFilter: 'blur(var(--blur))',
+              WebkitBackdropFilter: 'blur(var(--blur))',
+              zIndex: 9,
+            }}
+          >
+            <div style={{ padding: '6px 10px 4px' }}>
+              <Label>SHOW IN FEED</Label>
             </div>
-          </Card>
-        ))}
-        {!feedOn && <StatusCard me={me} onStatus={setStatus} />}
-        {feedOn ? (
-          data?.listing && (
-            <MyListing l={data.listing} onClose={closeListing} onEdit={() => setEditing(true)} />
-          )
-        ) : data?.listing ? (
-          <MyListing l={data.listing} onClose={closeListing} onEdit={() => setEditing(true)} />
-        ) : (
-          <Card dark pad={18} radius={26}>
-            <div className="gap" style={{ gap: 12 }}>
-              <Label color="var(--accent-text)">LOOKING FOR PLAYERS?</Label>
-              <div
-                className="t-display"
-                style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.6, lineHeight: 1.1 }}
-              >
-                Post what you want to play. It’s gone when you’re done.
-              </div>
-              <div>
-                <Pill
-                  h={42}
-                  padH={16}
-                  size={14}
-                  bold
-                  look="accent"
-                  onClick={() => setSheet({ kind: 'listing' })}
+            {options.map(([id, label]) => {
+              const on = feed.tab === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={on}
+                  className="row"
+                  onClick={() => pick(id)}
+                  style={{
+                    height: 40,
+                    marginTop: 2,
+                    padding: '0 12px',
+                    gap: 8,
+                    border: 0,
+                    borderRadius: 14,
+                    background: on ? 'var(--accent)' : 'transparent',
+                    color: on ? 'var(--on-accent)' : 'var(--text)',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                  }}
                 >
-                  <Icon name="plus" size={16} /> Post a listing
-                </Pill>
-              </div>
-            </div>
-          </Card>
-        )}
-        <Link href="/app/find" className="card row" style={{ padding: 14, gap: 12 }}>
-          <Digits size={28}>{pad2(data?.lookingNow ?? 0)}</Digits>
-          <span className="grow" style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.25 }}>
-            players looking right now in {me.city}
-          </span>
-          <span style={{ fontSize: 14, fontWeight: 700, textDecoration: 'underline' }}>Find →</span>
-        </Link>
-        {feedOn ? (
-          <Feed />
-        ) : (
+                  <span className="grow ellipsis">{label}</span>
+                  {on && <b style={{ fontWeight: 800 }}>✓</b>}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+      {!typing && (
+        <>
+          <div
+            style={{
+              position: 'fixed',
+              left: side,
+              bottom: 'calc(102px + env(safe-area-inset-bottom))',
+              maxWidth: 'calc(100% - 120px)',
+              zIndex: 9,
+            }}
+          >
+            <Pill
+              h={50}
+              padH={16}
+              size={14}
+              bold
+              shadow={4}
+              onClick={() => setFilterOpen(!filterOpen)}
+              style={{
+                background: 'var(--popover)',
+                backdropFilter: 'blur(var(--blur))',
+                maxWidth: '100%',
+              }}
+            >
+              <Icon name="filter" size={18} />
+              <span className="ellipsis">{current[1]}</span>
+            </Pill>
+          </div>
           <button
             type="button"
-            className="u muted"
-            style={{ fontSize: 13, alignSelf: 'center', textDecoration: 'none' }}
-            onClick={reload}
+            className="circle"
+            aria-label="New post"
+            onClick={() => router.push('/app/compose')}
+            style={{
+              position: 'fixed',
+              right: side,
+              bottom: 'calc(98px + env(safe-area-inset-bottom))',
+              width: 58,
+              height: 58,
+              background: 'var(--accent)',
+              color: 'var(--on-accent)',
+              boxShadow: 'var(--sh4)',
+              zIndex: 9,
+            }}
           >
-            Refresh
+            <Icon name="plus" size={26} />
           </button>
-        )}
-      </div>
+        </>
+      )}
     </>
   );
 }
 
-function TopBar({ unread }: { unread: number }) {
+function TopBar({ unread, hidden }: { unread: number; hidden: boolean }) {
   const { me } = useApp();
   const router = useRouter();
   return (
-    <div className="rl-topbar">
+    <div
+      className="rl-topbar"
+      style={{
+        transform: hidden ? 'translateY(-100%)' : undefined,
+        transition: 'transform .28s ease',
+      }}
+    >
       <Avatar
         name={me?.displayName ?? '?'}
         tone="accent"
@@ -338,6 +502,46 @@ function InviteCard({
   );
 }
 
+/** "Did you play with Dave?" — the product's main number, one tap. */
+function CheckInCard({
+  c,
+  onAnswer,
+}: {
+  c: CheckIn;
+  onAnswer: (c: CheckIn, a: 'played' | 'not_yet' | 'no') => void;
+}) {
+  return (
+    <Card pad={14} style={{ background: 'var(--soft)' }}>
+      <div className="gap" style={{ gap: 10 }}>
+        <div className="row" style={{ gap: 10 }}>
+          <Avatar name={c.other.displayName} tone={toneFor(c.other.id)} url={c.other.avatarUrl} />
+          <div className="grow">
+            <div style={{ fontSize: 17, fontWeight: 800, letterSpacing: -0.3 }}>
+              Did you play with {c.other.displayName}?
+            </div>
+            {c.game && (
+              <div className="muted" style={{ fontSize: 12 }}>
+                {c.game.name}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="row" style={{ gap: 6 }}>
+          <Pill h={42} size={14} bold look="strong" expand onClick={() => onAnswer(c, 'played')}>
+            Yes, we played
+          </Pill>
+          <Pill h={42} padH={12} size={14} look="clear" onClick={() => onAnswer(c, 'not_yet')}>
+            Not yet
+          </Pill>
+          <Pill h={42} padH={12} size={14} look="clear" onClick={() => onAnswer(c, 'no')}>
+            No
+          </Pill>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function SentInvite({ i }: { i: PlayInvite }) {
   const now = useNow();
   return (
@@ -355,66 +559,6 @@ function SentInvite({ i }: { i: PlayInvite }) {
       </span>
       <Digits size={12}>{countdown(i.expiresAt, now)}</Digits>
     </Link>
-  );
-}
-
-function StatusCard({
-  me,
-  onStatus,
-}: {
-  me: Me;
-  onStatus: (s: PlayerStatus, days?: string[]) => void;
-}) {
-  const [label, tone] = statusLook(me.status, me.statusGame);
-  const opts: [PlayerStatus, string][] = [
-    ['looking', 'Looking'],
-    ['playing', 'Playing'],
-    ['available_tonight', 'Tonight'],
-    ['not_available', 'Away'],
-  ];
-  return (
-    <Card pad={14}>
-      <div className="gap" style={{ gap: 10 }}>
-        <div className="row" style={{ gap: 7 }}>
-          <Label>YOUR STATUS</Label>
-          <span className="grow" />
-          <Dot color={toneColor(tone)} />
-          <b className="ellipsis" style={{ fontSize: 14 }}>
-            {label}
-          </b>
-        </div>
-        <div className="wrap">
-          {opts.map(([s, t]) => (
-            <Chip key={s} on={me.status === s} onClick={() => onStatus(s)} h={34} padH={12}>
-              {t}
-            </Chip>
-          ))}
-        </div>
-        <Label>DAYS I PLAY</Label>
-        <div className="row" style={{ gap: 4 }}>
-          {days.map((d) => (
-            <span key={d} style={{ flex: 1, display: 'flex' }}>
-              <Chip
-                on={me.availableDays.includes(d)}
-                onClick={() =>
-                  onStatus(
-                    me.status,
-                    me.availableDays.includes(d)
-                      ? me.availableDays.filter((x) => x !== d)
-                      : [...me.availableDays, d],
-                  )
-                }
-                h={34}
-                padH={0}
-                size={12}
-              >
-                <span style={{ width: '100%', minWidth: 30 }}>{dayLabel[d]}</span>
-              </Chip>
-            </span>
-          ))}
-        </div>
-      </div>
-    </Card>
   );
 }
 

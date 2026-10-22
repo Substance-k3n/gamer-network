@@ -14,7 +14,9 @@ part 'app_config_response.g.dart';
 /// * [minSupportedVersion] - Apps below this version must update (they get 426 everywhere else).
 /// * [latestVersion] - Newest released version, for a gentle \"Update available\".
 /// * [launchCity] - The one city the beta runs in.
-/// * [groupsComingSoon] - Show the Groups tab as \"coming soon\" with a waitlist.
+/// * [groupsComingSoon] - Show the Groups tab as \"coming soon\" with a waitlist. False once groups ship (the opposite of groupsEnabled).
+/// * [feedEnabled] - Show the Home feed (posts, comments, GG). On by default (FEED_ENABLED=false turns it off).
+/// * [groupsEnabled] - Show Groups for real. On by default (GROUPS_ENABLED=false turns it off).
 @BuiltValue()
 abstract class AppConfigResponse
     implements Built<AppConfigResponse, AppConfigResponseBuilder> {
@@ -30,9 +32,17 @@ abstract class AppConfigResponse
   @BuiltValueField(wireName: r'launchCity')
   String get launchCity;
 
-  /// Show the Groups tab as \"coming soon\" with a waitlist.
+  /// Show the Groups tab as \"coming soon\" with a waitlist. False once groups ship (the opposite of groupsEnabled).
   @BuiltValueField(wireName: r'groupsComingSoon')
   bool get groupsComingSoon;
+
+  /// Show the Home feed (posts, comments, GG). On by default (FEED_ENABLED=false turns it off).
+  @BuiltValueField(wireName: r'feedEnabled')
+  bool get feedEnabled;
+
+  /// Show Groups for real. On by default (GROUPS_ENABLED=false turns it off).
+  @BuiltValueField(wireName: r'groupsEnabled')
+  bool get groupsEnabled;
 
   AppConfigResponse._();
 
@@ -78,6 +88,16 @@ class _$AppConfigResponseSerializer
     yield r'groupsComingSoon';
     yield serializers.serialize(
       object.groupsComingSoon,
+      specifiedType: const FullType(bool),
+    );
+    yield r'feedEnabled';
+    yield serializers.serialize(
+      object.feedEnabled,
+      specifiedType: const FullType(bool),
+    );
+    yield r'groupsEnabled';
+    yield serializers.serialize(
+      object.groupsEnabled,
       specifiedType: const FullType(bool),
     );
   }
@@ -132,6 +152,20 @@ class _$AppConfigResponseSerializer
             specifiedType: const FullType(bool),
           ) as bool;
           result.groupsComingSoon = valueDes;
+          break;
+        case r'feedEnabled':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(bool),
+          ) as bool;
+          result.feedEnabled = valueDes;
+          break;
+        case r'groupsEnabled':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(bool),
+          ) as bool;
+          result.groupsEnabled = valueDes;
           break;
         default:
           unhandled.add(key);

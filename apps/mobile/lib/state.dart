@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 
 import 'api.dart';
 import 'data.dart';
+import 'groups_data.dart';
 import 'theme.dart';
 
 enum Screen {
@@ -24,8 +25,11 @@ enum Screen {
   ranks,
   platforms,
   home,
+  compose,
   find,
   communities,
+  group,
+  createGroup,
   notifs,
   profile,
   editProfile,
@@ -34,7 +38,7 @@ enum Screen {
   listing,
 }
 
-enum SheetKind { listing, session }
+enum SheetKind { listing, session, applications }
 
 const mainScreens = {
   Screen.home,
@@ -76,6 +80,63 @@ class SessionDraft {
   String gameId = '';
   InviteWhen when = InviteWhen.tonight;
   String key = uuid4();
+}
+
+/// A photo picked for a post, already resized on the phone.
+class PickedPhoto {
+  const PickedPhoto(this.bytes, this.type);
+  final Uint8List bytes;
+  final MediaContentType type;
+}
+
+/// Most photos a post can carry (docs/FEED_AND_GROUPS_API.md).
+const maxPhotos = 4;
+
+/// Longest recruitment roles line the API takes.
+const maxRoles = 80;
+
+/// The post being written in the composer.
+class ComposeDraft {
+  ComposeDraft({this.gameId});
+  PostType type = PostType.discussion;
+
+  /// Null is "Any game".
+  String? gameId;
+
+  /// The player picked the game (Any game included); reopening keeps it.
+  bool gameSet = false;
+  String text = '';
+  PostAudience audience = PostAudience.everyone;
+  String key = uuid4();
+
+  List<PickedPhoto> photos = [];
+
+  /// Poll options (2–4) and how long it runs.
+  List<String> poll = ['', ''];
+  PollDuration pollDur = PollDuration.n1d;
+
+  /// Recruitment: open slots (1–10) and the roles wanted (≤ [maxRoles]).
+  int slots = 1;
+  String roles = '';
+
+  List<String> get pollOptions => [
+    for (final o in poll)
+      if (o.trim().isNotEmpty) o.trim(),
+  ];
+
+  /// What Post still needs, or null when it can go.
+  String? get missing {
+    if (text.trim().isEmpty) return 'Write something first';
+    if (type == PostType.gameplay && photos.isEmpty) {
+      return 'Add at least one photo to a gameplay post';
+    }
+    if (type == PostType.poll && pollOptions.length < 2) {
+      return 'Add at least two options';
+    }
+    return null;
+  }
+
+  bool get ready => missing == null;
 }
 
 /// Gamer-profile fields shared by onboarding and Edit profile: games with
@@ -319,6 +380,26 @@ class AppState extends ChangeNotifier {
   List<PlayInviteDto> sentInvites = [];
   bool homeLoaded = false;
 
+  // Home feed: [feedTab] is a FeedFilter name or a game id.
+  List<PostDto> posts = [];
+  String? postsCursor;
+  bool postsLoaded = false, filterOpen = false;
+  String feedTab = 'for_you';
+
+  /// Comments under each open post, newest replies loaded on demand.
+  Map<String, List<CommentDto>> comments = {}, replies = {};
+  Set<String> openC = {};
+  Map<String, String> cDraft = {};
+
+  /// The comment a draft answers, per post (Reply).
+  Map<String, CommentDto> replyTo = {};
+  ComposeDraft cp = ComposeDraft();
+
+  /// Applications to my recruitment post [appsPost] (the applications sheet).
+  String? appsPost;
+  List<RecruitApplicationDto>? apps;
+  String? appsCursor;
+
   // Find Players
   List<ListingDto> listings = [];
   String? feedCursor;
@@ -348,6 +429,14 @@ class AppState extends ChangeNotifier {
   String? connCursor;
   String ptab = 'Overview';
 
+  /// The viewed profile's posts (Posts and Moments tabs).
+  List<PostDto> profilePosts = [];
+  String? profilePostsCursor;
+
+  /// My saved posts (the Saved tab on my profile), most recently saved first.
+  List<PostDto>? saved;
+  String? savedCursor;
+
   // Search
   String q = '';
   List<UserCardDto> found = [];
@@ -355,8 +444,39 @@ class AppState extends ChangeNotifier {
   // Settings
   List<UserCardDto> blocked = [];
 
-  // Groups (coming soon): joined the waitlist, remembered by the API.
-  bool get notify => me?.waitlist.contains('groups') ?? false;
+  // Groups (the API's /v1/groups). [groupsTab] is Discover or Yours.
+  List<GroupDto> groups = [];
+  String? groupsCursor;
+  bool groupsLoaded = false;
+  String groupsTab = 'Discover', groupKind = 'All', groupQuery = '';
+
+  /// My groups, pending requests included (GET /me/groups): Yours (n), my
+  /// profile's strip and Groups tab.
+  List<GroupDto> myGroups = [];
+
+  /// The viewed player's groups (someone else's profile).
+  List<GroupDto> theirGroups = [];
+
+  // The open group page.
+  String? groupId;
+  GroupDto? group;
+  Screen groupPrev = Screen.communities;
+  String groupTab = 'Feed';
+  String groupDraftPost = '';
+  List<PostDto>? groupPosts;
+  String? groupPostsCursor;
+  List<GroupMemberDto>? members, joinRequests;
+  String? membersCursor;
+  List<GroupEventDto>? events;
+  String? eventsCursor;
+
+  /// The create / edit group form.
+  GroupDraft? newGroup;
+  String groupKey = uuid4();
+  Timer? _groupSearch;
+
+  /// The last call's error, for screens that show it inline.
+  ApiError? lastError;
 
   // Drafts
   ListingDraft draft = ListingDraft();
@@ -377,6 +497,7 @@ class AppState extends ChangeNotifier {
     _poll?.cancel();
     _searchDebounce?.cancel();
     _handleDebounce?.cancel();
+    _groupSearch?.cancel();
     now.dispose();
     theme.dispose();
     super.dispose();
@@ -414,14 +535,35 @@ class AppState extends ChangeNotifier {
     return rank == null || rank.isEmpty ? game : '$rank · $game';
   }
 
+  /// (id, label) options in the feed filter menu.
+  List<(String, String)> get feedOptions => [
+    ('for_you', 'For you'),
+    ('connections', 'Connections'),
+    ('lfg', 'LFG & recruiting'),
+    for (final g in me?.games ?? BuiltList<UserGameDto>())
+      if (g.game != null) (g.game!.id, g.game!.name),
+  ];
+
+  bool get groupAdmin => group?.myRole == GroupRole.admin;
+
+  /// Groups I'm a member of (not just asked to join).
+  int get joinedCount =>
+      myGroups.where((g) => g.myStatus == MembershipStatus.member).length;
+
+  /// Group admins may remove anything posted in their group.
+  bool canModerate(PostDto p) =>
+      p.group != null && p.group!.id == group?.id && groupAdmin;
+
   // ---- calls ----
 
   /// Runs an API call: shows its error as a toast and returns null on failure.
   Future<T?> call<T>(Future<T> Function() f, {bool quiet = false}) async {
+    lastError = null;
     try {
       return await f();
     } catch (e, st) {
       final err = ApiError.from(e);
+      lastError = err;
       if (kDebugMode && err.status == 0) debugPrint('API call failed: $e\n$st');
       if (err.code == 'email_not_verified') {
         toast('Confirm your email first: we sent you a code.');
@@ -506,8 +648,12 @@ class AppState extends ChangeNotifier {
     _poll?.cancel();
     update(() {
       me = null;
-      homeLoaded = feedLoaded = false;
+      homeLoaded = feedLoaded = postsLoaded = false;
       listings = [];
+      posts = [];
+      saved = null;
+      comments = {};
+      openC = {};
       requests = [];
       notifications = [];
       invites = [];
@@ -562,11 +708,13 @@ class AppState extends ChangeNotifier {
     update(() {
       screen = s;
       sheet = null;
+      filterOpen = false;
       extra?.call();
     });
     switch (s) {
       case Screen.home:
         refreshHome();
+        if (!postsLoaded) loadPosts();
       case Screen.find:
         loadFeed();
       case Screen.notifs:
@@ -575,6 +723,9 @@ class AppState extends ChangeNotifier {
         loadMyProfile();
       case Screen.blocked:
         loadBlocked();
+      case Screen.communities:
+        loadGroups();
+        loadMyGroups();
       default:
     }
   }
@@ -593,6 +744,8 @@ class AppState extends ChangeNotifier {
       viewing = username;
       viewed = null;
       ptab = 'Overview';
+      profilePosts = [];
+      profilePostsCursor = null;
       sheet = null;
     });
     final p = await call(
@@ -601,6 +754,8 @@ class AppState extends ChangeNotifier {
     if (viewing != username) return;
     if (p == null) return back();
     update(() => viewed = Profile.of(p));
+    loadProfilePosts();
+    loadTheirGroups(username);
   }
 
   void back() => go(prev != Screen.profile ? prev : Screen.home, () {
@@ -763,7 +918,11 @@ class AppState extends ChangeNotifier {
       me = null;
       viewing = null;
       viewed = null;
-      homeLoaded = feedLoaded = false;
+      homeLoaded = feedLoaded = postsLoaded = false;
+      posts = [];
+      saved = null;
+      comments = {};
+      openC = {};
       screen = Screen.landing;
       introIdx = 2;
     });
@@ -1234,6 +1393,9 @@ class AppState extends ChangeNotifier {
 
   Future<void> loadMyProfile() async {
     await Future.wait([
+      loadProfilePosts(),
+      loadSaved(),
+      loadMyGroups(),
       call(
         () async => (await api.me.meGet()).data!,
         quiet: true,
@@ -1312,6 +1474,9 @@ class AppState extends ChangeNotifier {
     String userId,
     ReportReason reason, {
     String? listingId,
+    String? postId,
+    String? commentId,
+    String? groupId,
     String? details,
   }) async {
     final ok = await _busy(
@@ -1321,6 +1486,9 @@ class AppState extends ChangeNotifier {
           (b) => b
             ..userId = userId
             ..listingId = listingId
+            ..postId = postId
+            ..commentId = commentId
+            ..groupId = groupId
             ..reason = reason
             ..details = (details?.trim().isEmpty ?? true)
                 ? null
@@ -1401,12 +1569,24 @@ class AppState extends ChangeNotifier {
 
   /// Follows a notification's `route` (docs/API.md "Push").
   void openRoute(String route) {
-    final parts = route.split('/').where((p) => p.isNotEmpty).toList();
+    // Routes can carry a query ("/posts/<id>?comments=1").
+    final uri = Uri.parse(route);
+    final parts = uri.pathSegments.where((p) => p.isNotEmpty).toList();
     switch (parts) {
       case ['players', final username]:
         openPlayer(username);
       case ['listings', final id]:
         openListing(id);
+      case ['posts', final id]:
+        openPost(id, comments: uri.queryParameters['comments'] == '1');
+      case ['posts', final id, 'applications']:
+        openPost(id).then((_) {
+          if (screen == Screen.home && _post(id) != null) openApplications(id);
+        });
+      case ['groups', final id, 'members']:
+        openGroup(id, tab: 'Members');
+      case ['groups', final id]:
+        openGroup(id);
       case ['check-ins', _]:
         go(Screen.home);
       default:
@@ -1453,17 +1633,1023 @@ class AppState extends ChangeNotifier {
     });
   }
 
-  // ---- groups (coming soon) ----
+  // ---- home feed ----
 
-  Future<void> joinWaitlist() async {
+  Future<void> loadPosts({bool more = false}) async {
+    if (me?.onboardedAt == null) return;
+    final tab = feedTab;
+    final filter = switch (tab) {
+      'for_you' => FeedFilter.forYou,
+      'connections' => FeedFilter.connections,
+      'lfg' => FeedFilter.lfg,
+      _ => FeedFilter.game,
+    };
+    final p = await call(
+      () async => (await api.feed.feedGet(
+        filter: filter,
+        game: filter == FeedFilter.game ? tab : null,
+        cursor: more ? postsCursor : null,
+      )).data!,
+      quiet: more,
+    );
+    if (p == null || tab != feedTab) return;
+    update(() {
+      posts = more ? [...posts, ...p.items] : p.items.toList();
+      postsCursor = p.nextCursor;
+      postsLoaded = true;
+    });
+  }
+
+  void setFeedTab(String id) {
+    update(() {
+      feedTab = id;
+      filterOpen = false;
+      posts = [];
+      postsCursor = null;
+    });
+    loadPosts();
+  }
+
+  /// Replaces a post wherever it shows (feed and profile).
+  void _putPost(PostDto p) => update(() {
+    posts = [for (final x in posts) x.id == p.id ? p : x];
+    profilePosts = [for (final x in profilePosts) x.id == p.id ? p : x];
+    if (groupPosts != null) {
+      groupPosts = [for (final x in groupPosts!) x.id == p.id ? p : x];
+    }
+    if (saved != null) saved = [for (final x in saved!) x.id == p.id ? p : x];
+  });
+
+  PostDto? _post(String id) =>
+      posts.where((p) => p.id == id).firstOrNull ??
+      profilePosts.where((p) => p.id == id).firstOrNull ??
+      groupPosts?.where((p) => p.id == id).firstOrNull ??
+      saved?.where((p) => p.id == id).firstOrNull;
+
+  /// Reloads one post after a refused action (closed poll, full slots…).
+  Future<void> refreshPost(String id) async {
+    final p = await call(
+      () async => (await api.feed.postsGet(id: id)).data!,
+      quiet: true,
+    );
+    if (p != null) _putPost(p);
+  }
+
+  Future<void> toggleGG(PostDto p) async {
+    final on = !p.myGG;
+    // Show it at once; the API's count replaces the guess.
+    _putPost(
+      p.rebuild(
+        (b) => b
+          ..myGG = on
+          ..ggCount = p.ggCount + (on ? 1 : -1),
+      ),
+    );
+    final r = await call(
+      () async =>
+          (on
+                  ? await api.feed.postsGg(id: p.id)
+                  : await api.feed.postsUnGg(id: p.id))
+              .data!,
+    );
+    final now = _post(p.id);
+    if (now == null) return;
+    _putPost(
+      r == null
+          ? now.rebuild(
+              (b) => b
+                ..myGG = p.myGG
+                ..ggCount = p.ggCount,
+            )
+          : now.rebuild(
+              (b) => b
+                ..myGG = r.myGG
+                ..ggCount = r.ggCount,
+            ),
+    );
+  }
+
+  Future<void> toggleSave(PostDto p) async {
+    final on = !p.saved;
+    _putPost(p.rebuild((b) => b..saved = on));
+    final ok = await call(
+      () async =>
+          on ? api.feed.postsSave(id: p.id) : api.feed.postsUnsave(id: p.id),
+    );
+    final now = _post(p.id);
+    if (ok == null) {
+      if (now != null) _putPost(now.rebuild((b) => b..saved = p.saved));
+      return;
+    }
+    if (on) {
+      toast('Saved to your bookmarks');
+    } else if (saved != null) {
+      update(() => saved = saved!.where((x) => x.id != p.id).toList());
+    }
+  }
+
+  Future<void> loadSaved({bool more = false}) async {
+    final p = await call(
+      () async =>
+          (await api.feed.myPostsSaved(cursor: more ? savedCursor : null))
+              .data!,
+      quiet: !more,
+    );
+    if (p == null) return;
+    update(() {
+      saved = more ? [...?saved, ...p.items] : p.items.toList();
+      savedCursor = p.nextCursor;
+    });
+  }
+
+  // ---- polls & recruitment ----
+
+  /// One final vote; the API's totals replace the card's.
+  Future<void> vote(PostDto p, int position) async {
+    final poll = p.poll;
+    if (poll == null || poll.closed || poll.myVote != null || busy) return;
+    final r = await _busy(
+      () async => (await api.feed.postsVote(
+        id: p.id,
+        voteBody: VoteBody((b) => b..position = position),
+      )).data!,
+    );
+    if (r == null) return refreshPost(p.id);
+    final now = _post(p.id) ?? p;
+    _putPost(now.rebuild((b) => b..poll.replace(r)));
+  }
+
+  /// Apply to someone's recruitment post; my own opens its applications.
+  Future<void> apply(PostDto p) async {
+    final rec = p.recruit;
+    if (rec == null) return;
+    if (p.mine) return openApplications(p.id);
+    if (rec.myApplication != null || busy) return;
+    final r = await _busy(
+      () async =>
+          (await api.feed.postsApply(id: p.id, idempotencyKey: uuid4())).data!,
+    );
+    if (r == null) return refreshPost(p.id);
+    final now = _post(p.id) ?? p;
+    _putPost(now.rebuild((b) => b..recruit.replace(r)));
+    toast('Applied — ${p.author.displayName} gets a notification');
+  }
+
+  /// The recruitment on the post whose applications are open.
+  RecruitDto? get appsRecruit =>
+      appsPost == null ? null : _post(appsPost!)?.recruit;
+
+  void openApplications(String postId) {
+    update(() {
+      appsPost = postId;
+      apps = null;
+      appsCursor = null;
+      sheet = SheetKind.applications;
+    });
+    loadApplications();
+  }
+
+  Future<void> loadApplications({bool more = false}) async {
+    final id = appsPost;
+    if (id == null) return;
+    final p = await call(
+      () async => (await api.feed.postsApplications(
+        id: id,
+        cursor: more ? appsCursor : null,
+      )).data!,
+    );
+    if (p == null || appsPost != id) return;
+    update(() {
+      apps = more ? [...?apps, ...p.items] : p.items.toList();
+      appsCursor = p.nextCursor;
+    });
+  }
+
+  /// Accept or decline an application (the author may change the answer).
+  Future<void> decide(RecruitApplicationDto a, bool accept) async {
+    final r = await _busy(
+      () async =>
+          (accept
+                  ? await api.feed.recruitApplicationsAccept(id: a.id)
+                  : await api.feed.recruitApplicationsDecline(id: a.id))
+              .data!,
+    );
+    final id = appsPost;
+    if (r == null) {
+      if (id != null) refreshPost(id);
+      return;
+    }
+    update(() {
+      apps = [
+        for (final x in apps ?? const <RecruitApplicationDto>[])
+          x.id == r.id ? x.rebuild((b) => b..status = r.status) : x,
+      ];
+    });
+    toast(
+      accept
+          ? 'Accepted — ${a.user.displayName} can see your gamer ID'
+          : 'Declined',
+    );
+  }
+
+  Future<void> sharePost(PostDto p) async {
+    await Clipboard.setData(ClipboardData(text: p.shareUrl));
+    toast('Link copied — paste it in Telegram or WhatsApp');
+  }
+
+  Future<void> deletePost(PostDto p) async {
+    final ok = await _busy(() async => api.feed.postsDelete(id: p.id));
+    if (ok == null) return;
+    update(() {
+      posts = posts.where((x) => x.id != p.id).toList();
+      profilePosts = profilePosts.where((x) => x.id != p.id).toList();
+      groupPosts = groupPosts?.where((x) => x.id != p.id).toList();
+    });
+    toast('Post deleted');
+  }
+
+  /// "Play" on a post: Find Players for its game, else the poster.
+  void playFrom(PostDto p) {
+    final g = p.game;
+    if (g != null && catalog.byId(g.id).isLaunch) {
+      go(Screen.find);
+      return setGameFilter(g.id);
+    }
+    openPlayer(p.author.username);
+  }
+
+  /// A post from a link or an alert: put it on top of Home, comments open.
+  Future<void> openPost(String id, {bool comments = false}) async {
+    final p = await call(() async => (await api.feed.postsGet(id: id)).data!);
+    if (p == null) return go(Screen.home);
+    go(Screen.home, () {
+      posts = [p, ...posts.where((x) => x.id != p.id)];
+    });
+    if (comments && !openC.contains(id)) toggleComments(id);
+  }
+
+  void toggleComments(String postId) {
+    final open = !openC.contains(postId);
+    update(() => open ? openC.add(postId) : openC.remove(postId));
+    if (open) loadComments(postId);
+  }
+
+  Future<void> loadComments(String postId) async {
+    final p = _post(postId);
+    final r = await call(
+      () async => (await api.feed.commentsList(
+        id: postId,
+        sort: p?.kind == PostKind.discussion ? CommentSort.top : null,
+        limit: 50,
+      )).data!,
+      quiet: true,
+    );
+    if (r != null) update(() => comments[postId] = r.items.toList());
+  }
+
+  Future<void> loadReplies(CommentDto c) async {
+    final r = await call(
+      () async => (await api.feed.commentsReplies(id: c.id, limit: 50)).data!,
+    );
+    if (r != null) update(() => replies[c.id] = r.items.toList());
+  }
+
+  void replyToComment(String postId, CommentDto c) => update(() {
+    replyTo[postId] = c;
+    cDraft[postId] = '@${c.author.username} ';
+  });
+
+  Future<void> sendComment(String postId) async {
+    final text = (cDraft[postId] ?? '').trim();
+    if (text.isEmpty) return;
+    final parent = replyTo[postId];
+    final c = await _busy(
+      () async => (await api.feed.commentsCreate(
+        id: postId,
+        idempotencyKey: uuid4(),
+        createCommentBody: CreateCommentBody(
+          (b) => b
+            ..text = text
+            ..parentId = parent?.parentId ?? parent?.id,
+        ),
+      )).data!,
+    );
+    if (c == null) return;
+    final top = c.parentId;
+    update(() {
+      cDraft[postId] = '';
+      replyTo.remove(postId);
+      if (top == null) {
+        comments[postId] = [...?comments[postId], c];
+      } else {
+        replies[top] = [...?replies[top], c];
+        comments[postId] = [
+          for (final x in comments[postId] ?? const <CommentDto>[])
+            x.id == top ? x.rebuild((b) => b..replies = x.replies + 1) : x,
+        ];
+      }
+    });
+    final p = _post(postId);
+    if (p != null) {
+      _putPost(p.rebuild((b) => b..commentCount = p.commentCount + 1));
+    }
+  }
+
+  void _putComment(CommentDto c) => update(() {
+    for (final m in [comments, replies]) {
+      for (final k in m.keys) {
+        m[k] = [for (final x in m[k]!) x.id == c.id ? c : x];
+      }
+    }
+  });
+
+  Future<void> toggleCommentGG(CommentDto c) async {
+    final on = !c.myGG;
+    _putComment(
+      c.rebuild(
+        (b) => b
+          ..myGG = on
+          ..ggCount = c.ggCount + (on ? 1 : -1),
+      ),
+    );
+    final r = await call(
+      () async =>
+          (on
+                  ? await api.feed.commentsGg(id: c.id)
+                  : await api.feed.commentsUnGg(id: c.id))
+              .data!,
+    );
+    _putComment(
+      r == null
+          ? c
+          : c.rebuild(
+              (b) => b
+                ..myGG = r.myGG
+                ..ggCount = r.ggCount,
+            ),
+    );
+  }
+
+  Future<void> deleteComment(CommentDto c) async {
+    final ok = await _busy(() async => api.feed.commentsDelete(id: c.id));
+    if (ok == null) return;
+    update(() {
+      for (final m in [comments, replies]) {
+        for (final k in m.keys) {
+          m[k] = m[k]!.where((x) => x.id != c.id).toList();
+        }
+      }
+    });
+    toast('Comment deleted');
+    loadComments(c.postId);
+    final p = _post(c.postId);
+    if (p != null) {
+      final n = p.commentCount - 1 - (c.parentId == null ? c.replies : 0);
+      _putPost(p.rebuild((b) => b..commentCount = n < 0 ? 0 : n));
+    }
+  }
+
+  /// The profile's posts: mine (connections-only too) or theirs.
+  Future<void> loadProfilePosts({bool more = false}) async {
+    final who = viewing;
+    final p = await call(
+      () async =>
+          (who == null
+                  ? await api.feed.myPostsList(
+                      cursor: more ? profilePostsCursor : null,
+                    )
+                  : await api.feed.userPostsList(
+                      username: who,
+                      cursor: more ? profilePostsCursor : null,
+                    ))
+              .data!,
+      quiet: true,
+    );
+    if (p == null || viewing != who) return;
+    update(() {
+      profilePosts = more ? [...profilePosts, ...p.items] : p.items.toList();
+      profilePostsCursor = p.nextCursor;
+    });
+  }
+
+  // ---- compose ----
+
+  void openCompose() => update(() {
+    screen = Screen.compose;
+    sheet = null;
+    filterOpen = false;
+    if (!cp.gameSet) cp.gameId = me?.games.firstOrNull?.game?.id;
+  });
+
+  /// Picks photos from the gallery, resized to a longest side of 1600 px.
+  Future<void> pickPhotos() async {
+    if (cp.photos.length >= maxPhotos) {
+      return toast('Up to $maxPhotos photos per post');
+    }
+    List<XFile> picked;
+    try {
+      picked = await ImagePicker().pickMultiImage(
+        maxWidth: 1600,
+        maxHeight: 1600,
+        imageQuality: 85,
+      );
+    } on PlatformException {
+      return toast('Couldn’t open your gallery');
+    }
+    final photos = <PickedPhoto>[];
+    for (final x in picked) {
+      final name = x.name.toLowerCase();
+      final type = switch (x.mimeType) {
+        'image/png' => MediaContentType.imageSlashPng,
+        'image/webp' => MediaContentType.imageSlashWebp,
+        _ when name.endsWith('.png') => MediaContentType.imageSlashPng,
+        _ when name.endsWith('.webp') => MediaContentType.imageSlashWebp,
+        _ => MediaContentType.imageSlashJpeg,
+      };
+      photos.add(PickedPhoto(await x.readAsBytes(), type));
+    }
+    addPhotos(photos);
+  }
+
+  /// Adds picked photos to the draft, keeping the first [maxPhotos].
+  void addPhotos(List<PickedPhoto> photos) {
+    final room = maxPhotos - cp.photos.length;
+    if (photos.length > room) toast('Up to $maxPhotos photos per post');
+    if (room <= 0) return;
+    update(() => cp.photos = [...cp.photos, ...photos.take(room)]);
+  }
+
+  void removePhoto(int i) =>
+      update(() => cp.photos = [...cp.photos]..removeAt(i));
+
+  /// Uploads the photos (signed URLs, docs/API.md "Images"), then creates
+  /// the post. On any failure the draft stays as it was.
+  Future<void> submitPost() async {
+    final c = cp;
+    final missing = c.missing;
+    if (missing != null) return toast(missing);
+    final p = await _busy(() async {
+      final keys = <String>[];
+      for (final ph in c.photos) {
+        final u = (await api.feed.mediaUploadUrl(
+          mediaUploadBody: MediaUploadBody(
+            (b) => b
+              ..contentType = ph.type
+              ..size = ph.bytes.length,
+          ),
+        )).data!;
+        try {
+          await api.upload(u.uploadUrl, u.headers.toMap(), ph.bytes);
+        } catch (_) {
+          throw const ApiError(
+            0,
+            'upload_failed',
+            'A photo didn\'t upload. Check your connection and try again.',
+          );
+        }
+        keys.add(u.key);
+      }
+      return (await api.feed.postsCreate(
+        idempotencyKey: c.key,
+        createPostBody: CreatePostBody((b) {
+          b
+            ..type = c.type
+            ..text = c.text.trim()
+            ..gameId = c.gameId
+            ..audience = c.audience;
+          if (keys.isNotEmpty) b.media = SetBuilder(keys);
+          if (c.type == PostType.poll) {
+            b.poll = PollBodyBuilder()
+              ..options = SetBuilder(c.pollOptions)
+              ..duration = c.pollDur;
+          }
+          if (c.type == PostType.recruitment) {
+            b.recruit = RecruitBodyBuilder()
+              ..slots = c.slots
+              ..roles = c.roles.trim().isEmpty ? null : c.roles.trim();
+          }
+        }),
+      )).data!;
+    });
+    if (p == null) return;
+    final label = postTypeInfo(c.type).label;
+    update(() {
+      posts = [p, ...posts];
+      cp = ComposeDraft(gameId: me?.games.firstOrNull?.game?.id);
+    });
+    go(Screen.home);
+    toast('$label posted');
+  }
+
+  // ---- groups ----
+
+  GroupKind? get _kindFilter => groupKindLabel.entries
+      .where((e) => e.value == groupKind)
+      .firstOrNull
+      ?.key;
+
+  /// The Groups tab's list for [groupsTab], [groupKind] and [groupQuery].
+  Future<void> loadGroups({bool more = false}) async {
+    final q = groupQuery.trim();
+    final key = '$groupsTab|$groupKind|$q';
+    final p = await call(
+      () async => (await api.groups.groupsList(
+        tab: groupsTab == 'Yours' ? GroupTab.mine : GroupTab.discover,
+        kind: _kindFilter,
+        // The API takes 2–40 characters.
+        query: q.length >= 2 ? q : null,
+        cursor: more ? groupsCursor : null,
+      )).data!,
+      quiet: !more,
+    );
+    if (p == null || key != '$groupsTab|$groupKind|${groupQuery.trim()}') {
+      return;
+    }
+    update(() {
+      groups = more ? [...groups, ...p.items] : p.items.toList();
+      groupsCursor = p.nextCursor;
+      groupsLoaded = true;
+    });
+  }
+
+  void setGroupsFilter(VoidCallback fn) {
+    update(() {
+      fn();
+      groups = [];
+      groupsCursor = null;
+      groupsLoaded = false;
+    });
+    loadGroups();
+  }
+
+  /// Search as you type: waits for a pause, and for 2+ characters.
+  void setGroupQuery(String v) {
+    final before = groupQuery.trim();
+    update(() => groupQuery = v);
+    _groupSearch?.cancel();
+    final q = v.trim();
+    if (q.length < 2 && before.length < 2) return;
+    _groupSearch = Timer(
+      const Duration(milliseconds: 350),
+      () => setGroupsFilter(() {}),
+    );
+  }
+
+  Future<void> loadMyGroups() async {
+    final p = await call(
+      () async => (await api.groups.myGroupsList(limit: 50)).data!,
+      quiet: true,
+    );
+    if (p != null) update(() => myGroups = p.items.toList());
+  }
+
+  Future<void> loadTheirGroups(String username) async {
+    update(() => theirGroups = []);
+    final p = await call(
+      () async => (await api.groups.userGroupsList(
+        username: username,
+        limit: 50,
+      )).data!,
+      quiet: true,
+    );
+    if (p != null && viewing == username) {
+      update(() => theirGroups = p.items.toList());
+    }
+  }
+
+  /// Puts a fresh copy of [g] everywhere it shows.
+  void _putGroup(GroupDto g) => update(() {
+    groups = [for (final x in groups) x.id == g.id ? g : x];
+    final mine = g.myStatus != null;
+    myGroups = [
+      if (mine && !myGroups.any((x) => x.id == g.id)) g,
+      for (final x in myGroups)
+        if (x.id != g.id) x else if (mine) g,
+    ];
+    if (groupId == g.id) group = g;
+  });
+
+  void openGroup(String id, {String tab = 'Feed'}) {
+    update(() {
+      if (screen != Screen.group) groupPrev = screen;
+      screen = Screen.group;
+      if (groupId != id) {
+        group =
+            groups.where((g) => g.id == id).firstOrNull ??
+            myGroups.where((g) => g.id == id).firstOrNull;
+      }
+      groupId = id;
+      groupTab = tab;
+      groupDraftPost = '';
+      groupPosts = null;
+      members = null;
+      joinRequests = null;
+      events = null;
+      sheet = null;
+    });
+    _loadGroupPage(id);
+  }
+
+  Future<void> _loadGroupPage(String id) async {
+    final g = await call(
+      () async => (await api.groups.groupsGet(id: id)).data!,
+    );
+    if (groupId != id) return;
+    if (g == null) return closeGroup();
+    update(() => group = g);
+    _putGroup(g);
+    await Future.wait([
+      loadGroupPosts(),
+      loadMembers(),
+      loadEvents(),
+      if (g.myRole == GroupRole.admin) loadRequests(),
+    ]);
+  }
+
+  void setGroupTab(String tab) {
+    update(() => groupTab = tab);
+    final g = group;
+    if (tab == 'Members' && g?.myRole == GroupRole.admin) loadRequests();
+  }
+
+  void closeGroup() =>
+      go(groupPrev == Screen.group ? Screen.communities : groupPrev);
+
+  Future<void> loadGroupPosts({bool more = false}) async {
+    final id = groupId;
+    if (id == null || group?.myStatus != MembershipStatus.member) {
+      return update(() => groupPosts = []);
+    }
+    final p = await call(
+      () async => (await api.groups.groupsPosts(
+        id: id,
+        cursor: more ? groupPostsCursor : null,
+      )).data!,
+      quiet: true,
+    );
+    if (p == null || groupId != id) return;
+    update(() {
+      groupPosts = more ? [...?groupPosts, ...p.items] : p.items.toList();
+      groupPostsCursor = p.nextCursor;
+    });
+  }
+
+  Future<void> loadMembers({bool more = false}) async {
+    final id = groupId;
+    if (id == null) return;
+    final p = await call(
+      () async => (await api.groups.groupsMembers(
+        id: id,
+        limit: 50,
+        cursor: more ? membersCursor : null,
+      )).data!,
+      quiet: true,
+    );
+    if (p == null || groupId != id) return;
+    update(() {
+      members = more ? [...?members, ...p.items] : p.items.toList();
+      membersCursor = p.nextCursor;
+    });
+  }
+
+  /// Pending join requests (admins only).
+  Future<void> loadRequests() async {
+    final id = groupId;
+    if (id == null) return;
+    final p = await call(
+      () async => (await api.groups.groupsMembers(
+        id: id,
+        limit: 50,
+        status: MembershipStatus.pending,
+      )).data!,
+      quiet: true,
+    );
+    if (p != null && groupId == id) {
+      update(() => joinRequests = p.items.toList());
+    }
+  }
+
+  Future<void> loadEvents({bool more = false}) async {
+    final id = groupId;
+    if (id == null) return;
+    final p = await call(
+      () async => (await api.groups.groupsEvents(
+        id: id,
+        cursor: more ? eventsCursor : null,
+      )).data!,
+      quiet: true,
+    );
+    if (p == null || groupId != id) return;
+    update(() {
+      events = more ? [...?events, ...p.items] : p.items.toList();
+      eventsCursor = p.nextCursor;
+    });
+  }
+
+  /// Join, or ask to join an approval group.
+  Future<void> joinGroup(GroupDto g) async {
+    if (g.myStatus != null) return;
+    final r = await _busy(
+      () async => (await api.groups.groupsJoin(id: g.id)).data!,
+    );
+    if (r == null) return;
+    _putGroup(r);
+    if (r.myStatus == MembershipStatus.member) {
+      toast('You joined ${r.name}');
+      if (groupId == r.id) _loadGroupPage(r.id);
+    } else {
+      toast('Request sent to ${r.name} admins');
+    }
+  }
+
+  /// Leave, or take back a pending request.
+  Future<void> leaveGroup(GroupDto g) async {
+    final pending = g.myStatus == MembershipStatus.pending;
+    final ok = await _busy(() async => api.groups.groupsLeave(id: g.id));
+    if (ok == null) return;
+    toast(pending ? 'Request to ${g.name} cancelled' : 'You left ${g.name}');
+    final fresh = await call(
+      () async => (await api.groups.groupsGet(id: g.id)).data!,
+      quiet: true,
+    );
+    if (fresh != null) {
+      _putGroup(fresh);
+    } else {
+      // The last member left: the group is archived.
+      update(() {
+        groups = groups.where((x) => x.id != g.id).toList();
+        myGroups = myGroups.where((x) => x.id != g.id).toList();
+      });
+      if (screen == Screen.group && groupId == g.id) return closeGroup();
+    }
+    if (screen == Screen.group && groupId == g.id) {
+      update(() => groupPosts = []);
+      loadMembers();
+    }
+  }
+
+  /// A text post in the open group (members only).
+  Future<void> postInGroup() async {
+    final g = group;
+    final text = groupDraftPost.trim();
+    if (g == null || text.isEmpty) return;
+    final p = await _busy(
+      () async => (await api.feed.postsCreate(
+        idempotencyKey: uuid4(),
+        createPostBody: CreatePostBody(
+          (b) => b
+            ..type = PostType.discussion
+            ..text = text
+            ..groupId = g.id
+            ..audience = PostAudience.everyone,
+        ),
+      )).data!,
+    );
+    if (p == null) return;
+    update(() {
+      groupPosts = [p, ...?groupPosts];
+      groupDraftPost = '';
+    });
+  }
+
+  Future<void> approveRequest(GroupMemberDto m, bool approve) async {
+    final id = groupId;
+    if (id == null) return;
     final ok = await _busy(
-      () async => api.safety.safetyJoinWaitlist(
-        waitlistBody: WaitlistBody((b) => b..topic = 'groups'),
+      () async => approve
+          ? api.groups.groupsApprove(id: id, userId: m.user.id)
+          : api.groups.groupsDecline(id: id, userId: m.user.id),
+    );
+    if (ok == null) return;
+    update(
+      () => joinRequests = joinRequests
+          ?.where((x) => x.user.id != m.user.id)
+          .toList(),
+    );
+    toast(
+      approve
+          ? '${m.user.displayName} is in'
+          : 'Request from ${m.user.displayName} declined',
+    );
+    if (approve) {
+      loadMembers();
+      _refreshGroup();
+    }
+  }
+
+  Future<void> setMemberRole(GroupMemberDto m, GroupRole role) async {
+    final id = groupId;
+    if (id == null) return;
+    final ok = await _busy(
+      () async => api.groups.groupsSetRole(
+        id: id,
+        userId: m.user.id,
+        setGroupRoleBody: SetGroupRoleBody((b) => b..role = role),
       ),
     );
     if (ok == null) return;
-    update(() => me = me?.rebuild((b) => b.waitlist.add('groups')));
-    toast('We’ll let you know when Groups open');
+    toast(
+      role == GroupRole.admin
+          ? '${m.user.displayName} is an admin now'
+          : '${m.user.displayName} is a member now',
+    );
+    loadMembers();
+    if (m.user.id == me?.id) _refreshGroup();
+  }
+
+  Future<void> removeMember(GroupMemberDto m) async {
+    final id = groupId;
+    if (id == null) return;
+    final ok = await _busy(
+      () async => api.groups.groupsRemoveMember(id: id, userId: m.user.id),
+    );
+    if (ok == null) return;
+    update(
+      () => members = members?.where((x) => x.user.id != m.user.id).toList(),
+    );
+    toast('${m.user.displayName} removed from the group');
+    _refreshGroup();
+  }
+
+  Future<void> _refreshGroup() async {
+    final id = groupId;
+    if (id == null) return;
+    final g = await call(
+      () async => (await api.groups.groupsGet(id: id)).data!,
+      quiet: true,
+    );
+    if (g != null) _putGroup(g);
+  }
+
+  /// A new event: any member, within the next 60 days.
+  Future<bool> addGroupEvent(
+    String title,
+    DateTime startsAt,
+    String? gameId,
+  ) async {
+    final g = group;
+    if (g == null) return false;
+    final e = await _busy(
+      () async => (await api.groups.groupsCreateEvent(
+        id: g.id,
+        idempotencyKey: uuid4(),
+        createGroupEventBody: CreateGroupEventBody(
+          (b) => b
+            ..title = title
+            ..startsAt = startsAt.toUtc()
+            ..gameId = gameId,
+        ),
+      )).data!,
+    );
+    if (e == null) return false;
+    update(() {
+      events = [...?events, e]
+        ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
+    });
+    toast('Event added — members get a notification');
+    _refreshGroup();
+    return true;
+  }
+
+  void _putEvent(GroupEventDto e) => update(
+    () => events = [for (final x in events ?? const []) x.id == e.id ? e : x],
+  );
+
+  Future<void> toggleGoing(GroupEventDto e) async {
+    final r = await call(
+      () async =>
+          (e.imGoing
+                  ? await api.groups.groupEventsNotGoing(id: e.id)
+                  : await api.groups.groupEventsGoing(id: e.id))
+              .data!,
+    );
+    if (r != null) _putEvent(r);
+  }
+
+  Future<void> deleteGroupEvent(GroupEventDto e) async {
+    final ok = await _busy(() async => api.groups.groupEventsDelete(id: e.id));
+    if (ok == null) return;
+    update(() => events = events?.where((x) => x.id != e.id).toList());
+    toast('Event deleted');
+    _refreshGroup();
+  }
+
+  /// Copies the group's web link (the PWA's `/app/groups/<id>`).
+  Future<void> shareGroup(GroupDto g) async {
+    await Clipboard.setData(ClipboardData(text: g.shareUrl));
+    toast('Link copied — paste it in Telegram or WhatsApp');
+  }
+
+  void openCreateGroup() => go(Screen.createGroup, () {
+    groupKey = uuid4();
+    newGroup = GroupDraft()
+      ..gameId = me?.games.firstOrNull?.game?.id
+      ..place = me?.city ?? 'Addis Ababa';
+  });
+
+  void openEditGroup() {
+    final g = group;
+    if (g == null) return;
+    go(Screen.createGroup, () => newGroup = GroupDraft.of(g));
+  }
+
+  /// Leaves the create / edit form without saving.
+  void closeGroupForm() {
+    final editing = newGroup?.editId != null;
+    update(() => newGroup = null);
+    editing ? update(() => screen = Screen.group) : go(Screen.communities);
+  }
+
+  /// Creates the group (or saves the edit), then opens its About tab.
+  Future<void> createGroup() async {
+    final d = newGroup;
+    if (d == null) return;
+    final name = d.name.trim();
+    if (name.length < 3) {
+      return update(
+        () => d.nameError = 'Give your group a name (3+ characters)',
+      );
+    }
+    if (d.kind == GroupKind.game && d.gameId == null) {
+      return toast('Pick the game this group is for');
+    }
+    if (d.place.trim().isEmpty) return toast('Add a city, campus or country');
+    update(() => d.nameError = null);
+    final about = d.about.trim();
+    final g = await _busy(
+      () async => d.editId == null
+          ? (await api.groups.groupsCreate(
+              idempotencyKey: groupKey,
+              createGroupBody: CreateGroupBody(
+                (b) => b
+                  ..name = name
+                  ..kind = d.kind
+                  ..gameId = d.kind == GroupKind.game ? d.gameId : null
+                  ..place = d.place.trim()
+                  ..about = about.isEmpty ? null : about
+                  ..rules = ListBuilder(d.cleanRules)
+                  ..approval = d.approval
+                  ..tone = d.tone,
+              ),
+            )).data!
+          : (await api.groups.groupsUpdate(
+              id: d.editId!,
+              updateGroupBody: UpdateGroupBody(
+                (b) => b
+                  ..name = name
+                  ..place = d.place.trim()
+                  ..about = about
+                  ..rules = ListBuilder(d.cleanRules)
+                  ..approval = d.approval
+                  ..tone = d.tone,
+              ),
+            )).data!,
+    );
+    if (g == null) {
+      if (lastError?.code == 'group_name_taken') {
+        update(() => d.nameError = lastError!.message);
+      }
+      return;
+    }
+    final editing = d.editId != null;
+    update(() {
+      newGroup = null;
+      if (!editing) {
+        groups = [g, ...groups];
+        groupsTab = 'Yours';
+        groupPrev = Screen.communities;
+      }
+      myGroups = [g, ...myGroups.where((x) => x.id != g.id)];
+      groupId = g.id;
+      group = g;
+      groupTab = 'About';
+      screen = Screen.group;
+    });
+    toast(editing ? 'Group updated' : '${g.name} is live — invite your squad');
+    if (!editing) {
+      update(() {
+        groupPosts = [];
+        members = null;
+        events = [];
+        joinRequests = [];
+      });
+      loadMembers();
+    }
+  }
+
+  /// A group's badge text as the API makes it: the game's short code, or
+  /// initials of up to 4 words, or the first 4 letters.
+  String groupShort(GroupDraft d) {
+    final name = d.name.trim();
+    if (d.kind == GroupKind.game && d.gameId != null) {
+      return catalog.byId(d.gameId!).short;
+    }
+    if (name.isEmpty) return '?';
+    final words = name.split(RegExp(r'\s+')).where((w) => w.isNotEmpty);
+    return (words.length > 1
+            ? words.take(4).map((w) => w[0]).join()
+            : name.substring(0, name.length < 4 ? name.length : 4))
+        .toUpperCase();
   }
 
   // ---- edit profile ----
@@ -1625,6 +2811,12 @@ class AppState extends ChangeNotifier {
         }
       case Screen.blocked:
         goProfileTab();
+      case Screen.compose:
+        go(Screen.home);
+      case Screen.group:
+        closeGroup();
+      case Screen.createGroup:
+        closeGroupForm();
       case Screen.listing:
         go(prev == Screen.listing ? Screen.home : prev);
       case Screen.search:

@@ -134,6 +134,9 @@ Future<void> showReportDialog(
   required String userId,
   required String name,
   String? listingId,
+  String? postId,
+  String? commentId,
+  String? groupId,
 }) async {
   final s = context.app;
   ReportReason? reason;
@@ -146,7 +149,16 @@ Future<void> showReportDialog(
         final t = context.rt;
         return ThemedDialog(
           children: [
-            Text('Report $name', style: t.body(22, w: w800, ls: -.6)),
+            Text(
+              commentId != null
+                  ? 'Report comment'
+                  : postId != null
+                  ? 'Report post'
+                  : groupId != null
+                  ? 'Report group'
+                  : 'Report $name',
+              style: t.body(22, w: w800, ls: -.6),
+            ),
             Text(
               'Only our team sees reports. What’s wrong?',
               style: t.body(14, c: t.muted, h: 1.35),
@@ -211,7 +223,15 @@ Future<void> showReportDialog(
     ),
   );
   if (send == true && reason != null) {
-    await s.report(userId, reason!, listingId: listingId, details: details);
+    await s.report(
+      userId,
+      reason!,
+      listingId: listingId,
+      postId: postId,
+      commentId: commentId,
+      groupId: groupId,
+      details: details,
+    );
   }
 }
 

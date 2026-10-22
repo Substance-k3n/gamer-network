@@ -7,5 +7,6 @@ import { ConnectionsService } from './connections.service.js';
   imports: [ListingsModule],
   controllers: [ConnectionRequestsController, ConnectionsController],
   providers: [ConnectionsService],
+  exports: [ConnectionsService],
 })
 export class ConnectionsModule {}

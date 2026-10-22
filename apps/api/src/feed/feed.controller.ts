@@ -23,21 +23,39 @@ import { notFound } from '../common/app-error.js';
 import { PageQuery } from '../common/cursor.js';
 import { Idempotent } from '../idempotency/idempotency.js';
 import { CommentsService } from './comments.service.js';
-import { CommentsQuery, CreateCommentBody, CreatePostBody, FeedQuery } from './feed.body.js';
+import {
+  CommentsQuery,
+  CreateCommentBody,
+  CreatePostBody,
+  FeedQuery,
+  MediaUploadBody,
+  VoteBody,
+} from './feed.body.js';
 import {
   CommentDto,
   CommentPageDto,
   GgDto,
+  MediaUploadDto,
+  PollDto,
   PostDto,
   PostPageDto,
   PublicPostDto,
+  RecruitApplicationPageDto,
+  RecruitDecisionDto,
+  RecruitDto,
 } from './feed.dto.js';
+import { MediaService } from './media.service.js';
+import { PollsService } from './polls.service.js';
 import { PostsService } from './posts.service.js';
+import { RecruitService } from './recruit.service.js';
 
 // docs/FEED_AND_GROUPS_API.md "Endpoints". A post or comment you may not see is a 404.
 
 const postId = new ParseUUIDPipe({ exceptionFactory: () => notFound('That post') });
 const commentId = new ParseUUIDPipe({ exceptionFactory: () => notFound('That comment') });
+const applicationId = new ParseUUIDPipe({
+  exceptionFactory: () => notFound('That application'),
+});
 
 // Operation ids: feedGet.
 
@@ -55,15 +73,20 @@ export class FeedController {
   }
 }
 
-// Operation ids: postsCreate, postsGet, postsDelete, postsGg, postsUnGg, postsSave, postsUnsave.
+// Operation ids: postsCreate, postsGet, postsDelete, postsGg, postsUnGg, postsSave, postsUnsave,
+// postsVote, postsApply, postsApplications.
 
 @ApiTags('feed')
 @ApiBearerAuth()
 @Controller('posts')
 export class PostsController {
-  constructor(private readonly posts: PostsService) {}
+  constructor(
+    private readonly posts: PostsService,
+    private readonly polls: PollsService,
+    private readonly recruit: RecruitService,
+  ) {}
 
-  /** Post to Home. Photos, polls and recruitment come later (422 on those types). 10 an hour: 429 rate_limited. */
+  /** Post to Home, or to a group with groupId (members only: 403 not_member), with up to 4 photo keys (gameplay needs one), a poll or recruitment slots. 10 an hour: 429 rate_limited. */
   @Post()
   @Idempotent()
   @RequireVerifiedEmail()
@@ -72,14 +95,14 @@ export class PostsController {
     return this.posts.create(user, body);
   }
 
-  /** One post. */
+  /** One post. Group posts: members only (404 for others). */
   @Get(':id')
   @ApiOkResponse({ type: PostDto })
   get(@CurrentUser() user: User, @Param('id', postId) id: string): Promise<PostDto> {
     return this.posts.get(user, id);
   }
 
-  /** Author only (403 not_owner). */
+  /** Its author, or a group admin for a group post (403 not_owner). */
   @Delete(':id')
   @HttpCode(204)
   @ApiNoContentResponse()
@@ -115,6 +138,86 @@ export class PostsController {
   @ApiNoContentResponse()
   unsave(@CurrentUser() user: User, @Param('id', postId) id: string): Promise<void> {
     return this.posts.save(user, id, false);
+  }
+
+  /** Vote on a poll, once and final; your own is fine. 409 already_voted or poll_closed. */
+  @Post(':id/vote')
+  @HttpCode(200)
+  @ApiOkResponse({ type: PollDto })
+  vote(
+    @CurrentUser() user: User,
+    @Param('id', postId) id: string,
+    @Body() body: VoteBody,
+  ): Promise<PollDto> {
+    return this.polls.vote(user, id, body.position);
+  }
+
+  /** Apply to a recruitment post; tells its author. 409 already_applied or recruitment_full, 403 own_post. 20 a day. */
+  @Post(':id/apply')
+  @HttpCode(200)
+  @Idempotent()
+  @ApiOkResponse({ type: RecruitDto })
+  apply(@CurrentUser() user: User, @Param('id', postId) id: string): Promise<RecruitDto> {
+    return this.recruit.apply(user, id);
+  }
+
+  /** Who applied, first come first. The post's author only (403 not_owner). */
+  @Get(':id/applications')
+  @ApiOkResponse({ type: RecruitApplicationPageDto })
+  applications(
+    @CurrentUser() user: User,
+    @Param('id', postId) id: string,
+    @Query() query: PageQuery,
+  ): Promise<RecruitApplicationPageDto> {
+    return this.recruit.applications(user, id, query);
+  }
+}
+
+// Operation ids: recruitApplicationsAccept, recruitApplicationsDecline.
+
+@ApiTags('feed')
+@ApiBearerAuth()
+@Controller('recruit-applications')
+export class RecruitApplicationsController {
+  constructor(private readonly recruit: RecruitService) {}
+
+  /** The post's author takes them (403 not_owner): tells them and sends a connection request if you aren't connected. 409 recruitment_full. */
+  @Post(':id/accept')
+  @HttpCode(200)
+  @ApiOkResponse({ type: RecruitDecisionDto })
+  accept(
+    @CurrentUser() user: User,
+    @Param('id', applicationId) id: string,
+  ): Promise<RecruitDecisionDto> {
+    return this.recruit.decide(user, id, 'accepted');
+  }
+
+  /** The post's author says no (403 not_owner). Tells no one. */
+  @Post(':id/decline')
+  @HttpCode(200)
+  @ApiOkResponse({ type: RecruitDecisionDto })
+  decline(
+    @CurrentUser() user: User,
+    @Param('id', applicationId) id: string,
+  ): Promise<RecruitDecisionDto> {
+    return this.recruit.decide(user, id, 'declined');
+  }
+}
+
+// Operation ids: mediaUploadUrl.
+
+@ApiTags('feed')
+@ApiBearerAuth()
+@Controller('media')
+export class MediaController {
+  constructor(private readonly media: MediaService) {}
+
+  /** Where to upload one photo for a post (JPEG, PNG or WebP, ≤ 10 MB). Then send its key in POST /v1/posts. 30 an hour. */
+  @Post('upload-url')
+  @HttpCode(200)
+  @ApiOkResponse({ type: MediaUploadDto })
+  uploadUrl(@CurrentUser() user: User, @Body() body: MediaUploadBody): Promise<MediaUploadDto> {
+    return this.media.uploadUrl(user, body);
   }
 }
 
@@ -162,7 +265,7 @@ export class CommentsController {
     return this.comments.replies(user, id, query);
   }
 
-  /** Its author or the post's author (403 not_owner). */
+  /** Its author, the post's author or, in a group, a group admin (403 not_owner). */
   @Delete('comments/:id')
   @HttpCode(204)
   @ApiNoContentResponse()
@@ -193,7 +296,7 @@ export class CommentsController {
 export class MyPostsController {
   constructor(private readonly posts: PostsService) {}
 
-  /** Your posts, newest first, connections-only ones included. */
+  /** Your Home posts, newest first, connections-only ones included. */
   @Get('posts')
   @ApiOkResponse({ type: PostPageDto })
   list(@CurrentUser() user: User, @Query() query: PageQuery): Promise<PostPageDto> {
@@ -216,7 +319,7 @@ export class MyPostsController {
 export class UserPostsController {
   constructor(private readonly posts: PostsService) {}
 
-  /** Moments: their posts you may see, newest first. */
+  /** Moments: their Home posts you may see, newest first. */
   @Get(':username/posts')
   @ApiOkResponse({ type: PostPageDto })
   list(

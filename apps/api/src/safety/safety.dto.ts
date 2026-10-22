@@ -39,6 +39,11 @@ export class ReportBody {
   @IsUUID()
   commentId?: string;
 
+  /** When reporting a group: one they created (userId is its creator). */
+  @IsOptional()
+  @IsUUID()
+  groupId?: string;
+
   @ApiProperty({ enum: REPORT_REASONS, enumName: 'ReportReason' })
   @IsIn(REPORT_REASONS)
   reason: ReportReason;

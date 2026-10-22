@@ -64,6 +64,8 @@ src/
 ├── games/          catalog (seeded); is_launch games are the ones on Find Players
 ├── listings/       Find Players: post, feed, close, stats, public share data, expiry job
 ├── connections/    requests, accept (fills the listing, creates check-ins), my connections
+├── feed/           Home feed: posts (Home and group), comments, GG, saves, photos, polls, recruitment
+├── groups/         groups, join with approval, members and roles, events with going, profile groups
 ├── play/           play invites (15 min), check-ins ("did you play?"), check-ins-due job
 ├── notifications/  in-app list + push outbox; PushDispatcher, FCM or console
 ├── safety/         blocks, reports, waitlist, DELETE /me, 30-day account-scrub job
@@ -78,7 +80,7 @@ src/
 ## Jobs and push
 
 Timed jobs (`listing-expiry`, `check-ins-due` every minute,
-`account-scrub` hourly, `push-sweep`) run inside the API. Each run takes a
+`account-scrub` and `media-cleanup` hourly, `push-sweep`) run inside the API. Each run takes a
 Postgres advisory lock, so a second instance never doubles up.
 `JOBS_ENABLED=false` turns them off (tests run them with
 `JobRunner.runOnce`).

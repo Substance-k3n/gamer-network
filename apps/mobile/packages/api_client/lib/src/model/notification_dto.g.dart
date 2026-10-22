@@ -22,6 +22,16 @@ class _$NotificationDto extends NotificationDto {
   @override
   final String? checkInId;
   @override
+  final String? postId;
+  @override
+  final String? commentId;
+  @override
+  final String? recruitApplicationId;
+  @override
+  final String? groupId;
+  @override
+  final String? groupEventId;
+  @override
   final String title;
   @override
   final String text;
@@ -43,6 +53,11 @@ class _$NotificationDto extends NotificationDto {
       this.connectionRequestId,
       this.playInviteId,
       this.checkInId,
+      this.postId,
+      this.commentId,
+      this.recruitApplicationId,
+      this.groupId,
+      this.groupEventId,
       required this.title,
       required this.text,
       required this.route,
@@ -67,6 +82,11 @@ class _$NotificationDto extends NotificationDto {
         connectionRequestId == other.connectionRequestId &&
         playInviteId == other.playInviteId &&
         checkInId == other.checkInId &&
+        postId == other.postId &&
+        commentId == other.commentId &&
+        recruitApplicationId == other.recruitApplicationId &&
+        groupId == other.groupId &&
+        groupEventId == other.groupEventId &&
         title == other.title &&
         text == other.text &&
         route == other.route &&
@@ -84,6 +104,11 @@ class _$NotificationDto extends NotificationDto {
     _$hash = $jc(_$hash, connectionRequestId.hashCode);
     _$hash = $jc(_$hash, playInviteId.hashCode);
     _$hash = $jc(_$hash, checkInId.hashCode);
+    _$hash = $jc(_$hash, postId.hashCode);
+    _$hash = $jc(_$hash, commentId.hashCode);
+    _$hash = $jc(_$hash, recruitApplicationId.hashCode);
+    _$hash = $jc(_$hash, groupId.hashCode);
+    _$hash = $jc(_$hash, groupEventId.hashCode);
     _$hash = $jc(_$hash, title.hashCode);
     _$hash = $jc(_$hash, text.hashCode);
     _$hash = $jc(_$hash, route.hashCode);
@@ -103,6 +128,11 @@ class _$NotificationDto extends NotificationDto {
           ..add('connectionRequestId', connectionRequestId)
           ..add('playInviteId', playInviteId)
           ..add('checkInId', checkInId)
+          ..add('postId', postId)
+          ..add('commentId', commentId)
+          ..add('recruitApplicationId', recruitApplicationId)
+          ..add('groupId', groupId)
+          ..add('groupEventId', groupEventId)
           ..add('title', title)
           ..add('text', text)
           ..add('route', route)
@@ -145,6 +175,27 @@ class NotificationDtoBuilder
   String? get checkInId => _$this._checkInId;
   set checkInId(String? checkInId) => _$this._checkInId = checkInId;
 
+  String? _postId;
+  String? get postId => _$this._postId;
+  set postId(String? postId) => _$this._postId = postId;
+
+  String? _commentId;
+  String? get commentId => _$this._commentId;
+  set commentId(String? commentId) => _$this._commentId = commentId;
+
+  String? _recruitApplicationId;
+  String? get recruitApplicationId => _$this._recruitApplicationId;
+  set recruitApplicationId(String? recruitApplicationId) =>
+      _$this._recruitApplicationId = recruitApplicationId;
+
+  String? _groupId;
+  String? get groupId => _$this._groupId;
+  set groupId(String? groupId) => _$this._groupId = groupId;
+
+  String? _groupEventId;
+  String? get groupEventId => _$this._groupEventId;
+  set groupEventId(String? groupEventId) => _$this._groupEventId = groupEventId;
+
   String? _title;
   String? get title => _$this._title;
   set title(String? title) => _$this._title = title;
@@ -179,6 +230,11 @@ class NotificationDtoBuilder
       _connectionRequestId = $v.connectionRequestId;
       _playInviteId = $v.playInviteId;
       _checkInId = $v.checkInId;
+      _postId = $v.postId;
+      _commentId = $v.commentId;
+      _recruitApplicationId = $v.recruitApplicationId;
+      _groupId = $v.groupId;
+      _groupEventId = $v.groupEventId;
       _title = $v.title;
       _text = $v.text;
       _route = $v.route;
@@ -216,6 +272,11 @@ class NotificationDtoBuilder
             connectionRequestId: connectionRequestId,
             playInviteId: playInviteId,
             checkInId: checkInId,
+            postId: postId,
+            commentId: commentId,
+            recruitApplicationId: recruitApplicationId,
+            groupId: groupId,
+            groupEventId: groupEventId,
             title: BuiltValueNullFieldError.checkNotNull(
                 title, r'NotificationDto', 'title'),
             text: BuiltValueNullFieldError.checkNotNull(
