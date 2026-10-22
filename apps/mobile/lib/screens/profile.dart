@@ -8,7 +8,7 @@ import '../theme.dart';
 import '../widgets.dart';
 import 'find.dart' show lookColors;
 import 'groups.dart' show GroupCard, GroupTile;
-import 'home.dart' show StatusCard, clock;
+import 'home.dart' show FeedPost, NetPhoto, StatusCard, clock;
 import 'onboarding.dart' show Wordmark;
 import 'safety.dart';
 
@@ -44,6 +44,7 @@ class ProfileScreen extends StatelessWidget {
             'Groups',
             'Posts',
             'Moments',
+            'Saved',
             'Connections',
           ]
         : const ['Overview', 'Games', 'Groups', 'Posts', 'Moments'];
@@ -188,6 +189,7 @@ class ProfileScreen extends StatelessWidget {
                 if (tab == 'Groups') ..._groups(s, v),
                 if (tab == 'Posts') ..._posts(s),
                 if (tab == 'Moments') ..._moments(s),
+                if (tab == 'Saved') ..._saved(s),
                 if (tab == 'Connections') ..._connections(s, t),
               ],
             ),
@@ -199,7 +201,7 @@ class ProfileScreen extends StatelessWidget {
 
   /// Sample groups: mine, or none for real players other than me (D5).
   List<Widget> _groups(AppState s, Profile v) {
-    final groups = v.isMe ? s.myGroups : const <Group>[];
+    final groups = v.isMe ? s.myGroups : s.theirGroups;
     if (groups.isNotEmpty) {
       return [for (final g in groups) GroupCard(g, key: ValueKey(g.id))];
     }
@@ -241,6 +243,37 @@ class ProfileScreen extends StatelessWidget {
     for (final p in s.profilePosts) _MiniPost(p, key: ValueKey(p.id)),
     if (s.profilePostsCursor != null) _loadMore(s),
   ];
+
+  /// My bookmarks as full cards; unsaving one drops it from the list.
+  List<Widget> _saved(AppState s) {
+    final list = s.saved;
+    if (list == null) {
+      return const [
+        Padding(
+          padding: EdgeInsets.all(30),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ];
+    }
+    return [
+      if (list.isEmpty)
+        const EmptyNote(
+          'Nothing saved yet. Tap the bookmark on a post to keep it here.',
+        ),
+      for (final p in list) FeedPost(p, key: ValueKey('saved-${p.id}')),
+      if (s.savedCursor != null)
+        Center(
+          child: Pill(
+            'Load more',
+            onTap: () => s.loadSaved(more: true),
+            height: 42,
+            padH: 18,
+            size: 14,
+            weight: w700,
+          ),
+        ),
+    ];
+  }
 
   List<Widget> _moments(AppState s) {
     final moments = [
@@ -1048,6 +1081,17 @@ class _MiniPost extends StatelessWidget {
                 ),
               ],
             ),
+            if (p.media.isNotEmpty)
+              Container(
+                height: 140,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  color: t.dark,
+                  border: t.border(),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: NetPhoto(p.media.first.url),
+              ),
             Text(p.text, style: t.body(15, h: 1.35)),
             Text(
               'GG ${pad2(p.ggCount.toInt())} · ${p.commentCount} $what',
@@ -1072,31 +1116,53 @@ class _MomentTile extends StatelessWidget {
     return Tap(
       onTap: () => s.openPost(m.id, comments: true),
       child: StripeBox(
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                t.up(m.game?.shortCode ?? 'GAMING'),
-                style: t.label(8, c: t.accentText),
+        child: Stack(
+          children: [
+            if (m.media.isNotEmpty)
+              Positioned.fill(child: NetPhoto(m.media.first.url)),
+            if (m.media.isNotEmpty)
+              // Keeps the caption readable over the photo.
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: .65),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-              Text(
-                m.text,
-                maxLines: 4,
-                overflow: TextOverflow.ellipsis,
-                style: t.body(12, h: 1.25, c: t.onDark),
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    t.up(m.game?.shortCode ?? 'GAMING'),
+                    style: t.label(8, c: t.accentText),
+                  ),
+                  Text(
+                    m.text,
+                    maxLines: 4,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.body(12, h: 1.25, c: t.onDark),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-/// Horizontal row of my sample groups.
+/// Horizontal row of my groups (requests included).
 class _GroupStrip extends StatelessWidget {
   const _GroupStrip();
 
@@ -1145,7 +1211,7 @@ class _GroupStrip extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        GroupTile(g.short, g.tone, size: 30),
+                        GroupTile(g.short, toneOfGroup(g.tone), size: 30),
                         const SizedBox(width: 8),
                         Text(g.name, style: t.body(13, w: w700)),
                       ],

@@ -3,7 +3,7 @@
 `app_e2e_test.dart` drives the real app on an Android emulator against a
 local API, as one new player: sign up with the emailed code, onboard,
 write a post from Home and see it on their profile, post a listing, connect
-from a listing and from a profile, report, join a sample group, edit the
+from a listing and from a profile, report, join a group, edit the
 profile; then Dave accepts and invites them to
 play, they accept, answer the check-in, close the listing, block and
 unblock, reset the password and delete the account.

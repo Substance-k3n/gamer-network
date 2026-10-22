@@ -23,6 +23,7 @@ import 'package:api_client/src/model/admin_user_page_dto.dart';
 import 'package:api_client/src/model/age_range.dart';
 import 'package:api_client/src/model/answer_check_in_body.dart';
 import 'package:api_client/src/model/app_config_response.dart';
+import 'package:api_client/src/model/application_status.dart';
 import 'package:api_client/src/model/auth_response.dart';
 import 'package:api_client/src/model/avatar_type.dart';
 import 'package:api_client/src/model/avatar_upload_body.dart';
@@ -43,6 +44,8 @@ import 'package:api_client/src/model/connection_page_dto.dart';
 import 'package:api_client/src/model/connection_request_dto.dart';
 import 'package:api_client/src/model/connection_request_list_dto.dart';
 import 'package:api_client/src/model/create_comment_body.dart';
+import 'package:api_client/src/model/create_group_body.dart';
+import 'package:api_client/src/model/create_group_event_body.dart';
 import 'package:api_client/src/model/create_listing_body.dart';
 import 'package:api_client/src/model/create_post_body.dart';
 import 'package:api_client/src/model/day.dart';
@@ -59,6 +62,16 @@ import 'package:api_client/src/model/gaming_id_input.dart';
 import 'package:api_client/src/model/gaming_id_kind.dart';
 import 'package:api_client/src/model/gg_dto.dart';
 import 'package:api_client/src/model/google_body.dart';
+import 'package:api_client/src/model/group_dto.dart';
+import 'package:api_client/src/model/group_event_dto.dart';
+import 'package:api_client/src/model/group_event_page_dto.dart';
+import 'package:api_client/src/model/group_kind.dart';
+import 'package:api_client/src/model/group_member_dto.dart';
+import 'package:api_client/src/model/group_member_page_dto.dart';
+import 'package:api_client/src/model/group_page_dto.dart';
+import 'package:api_client/src/model/group_role.dart';
+import 'package:api_client/src/model/group_tab.dart';
+import 'package:api_client/src/model/group_tone.dart';
 import 'package:api_client/src/model/health_response.dart';
 import 'package:api_client/src/model/id_visibility.dart';
 import 'package:api_client/src/model/invite_status.dart';
@@ -70,6 +83,12 @@ import 'package:api_client/src/model/listing_status.dart';
 import 'package:api_client/src/model/login_body.dart';
 import 'package:api_client/src/model/mark_read_body.dart';
 import 'package:api_client/src/model/me_dto.dart';
+import 'package:api_client/src/model/media_content_type.dart';
+import 'package:api_client/src/model/media_dto.dart';
+import 'package:api_client/src/model/media_kind.dart';
+import 'package:api_client/src/model/media_upload_body.dart';
+import 'package:api_client/src/model/media_upload_dto.dart';
+import 'package:api_client/src/model/membership_status.dart';
 import 'package:api_client/src/model/metrics_dto.dart';
 import 'package:api_client/src/model/mode_dto.dart';
 import 'package:api_client/src/model/mode_ref_dto.dart';
@@ -86,8 +105,13 @@ import 'package:api_client/src/model/play_style.dart';
 import 'package:api_client/src/model/play_tag.dart';
 import 'package:api_client/src/model/play_when.dart';
 import 'package:api_client/src/model/player_status.dart';
+import 'package:api_client/src/model/poll_body.dart';
+import 'package:api_client/src/model/poll_dto.dart';
+import 'package:api_client/src/model/poll_duration.dart';
+import 'package:api_client/src/model/poll_option_dto.dart';
 import 'package:api_client/src/model/post_audience.dart';
 import 'package:api_client/src/model/post_dto.dart';
+import 'package:api_client/src/model/post_group_dto.dart';
 import 'package:api_client/src/model/post_kind.dart';
 import 'package:api_client/src/model/post_page_dto.dart';
 import 'package:api_client/src/model/post_type.dart';
@@ -98,6 +122,11 @@ import 'package:api_client/src/model/public_post_author_dto.dart';
 import 'package:api_client/src/model/public_post_dto.dart';
 import 'package:api_client/src/model/rank_dto.dart';
 import 'package:api_client/src/model/rank_ref_dto.dart';
+import 'package:api_client/src/model/recruit_application_dto.dart';
+import 'package:api_client/src/model/recruit_application_page_dto.dart';
+import 'package:api_client/src/model/recruit_body.dart';
+import 'package:api_client/src/model/recruit_decision_dto.dart';
+import 'package:api_client/src/model/recruit_dto.dart';
 import 'package:api_client/src/model/register_device_body.dart';
 import 'package:api_client/src/model/relationship.dart';
 import 'package:api_client/src/model/report_body.dart';
@@ -115,12 +144,14 @@ import 'package:api_client/src/model/send_request_body.dart';
 import 'package:api_client/src/model/set_avatar_body.dart';
 import 'package:api_client/src/model/set_games_body.dart';
 import 'package:api_client/src/model/set_gaming_ids_body.dart';
+import 'package:api_client/src/model/set_group_role_body.dart';
 import 'package:api_client/src/model/set_launch_body.dart';
 import 'package:api_client/src/model/set_platforms_body.dart';
 import 'package:api_client/src/model/set_status_body.dart';
 import 'package:api_client/src/model/set_tags_body.dart';
 import 'package:api_client/src/model/signup_body.dart';
 import 'package:api_client/src/model/unread_count_dto.dart';
+import 'package:api_client/src/model/update_group_body.dart';
 import 'package:api_client/src/model/update_listing_body.dart';
 import 'package:api_client/src/model/update_me_body.dart';
 import 'package:api_client/src/model/user_card_dto.dart';
@@ -130,6 +161,7 @@ import 'package:api_client/src/model/user_role.dart';
 import 'package:api_client/src/model/user_search_response.dart';
 import 'package:api_client/src/model/username_availability.dart';
 import 'package:api_client/src/model/voice.dart';
+import 'package:api_client/src/model/vote_body.dart';
 import 'package:api_client/src/model/waitlist_body.dart';
 import 'package:api_client/src/model/waitlist_count_dto.dart';
 
@@ -145,6 +177,7 @@ part 'serializers.g.dart';
   AgeRange,
   AnswerCheckInBody,
   AppConfigResponse,
+  ApplicationStatus,
   AuthResponse,
   AvatarType,
   AvatarUploadBody,
@@ -165,6 +198,8 @@ part 'serializers.g.dart';
   ConnectionRequestDto,
   ConnectionRequestListDto,
   CreateCommentBody,
+  CreateGroupBody,
+  CreateGroupEventBody,
   CreateListingBody,
   CreatePostBody,
   Day,
@@ -181,6 +216,16 @@ part 'serializers.g.dart';
   GamingIdKind,
   GgDto,
   GoogleBody,
+  GroupDto,
+  GroupEventDto,
+  GroupEventPageDto,
+  GroupKind,
+  GroupMemberDto,
+  GroupMemberPageDto,
+  GroupPageDto,
+  GroupRole,
+  GroupTab,
+  GroupTone,
   HealthResponse,
   IdVisibility,
   InviteStatus,
@@ -192,6 +237,12 @@ part 'serializers.g.dart';
   LoginBody,
   MarkReadBody,
   MeDto,
+  MediaContentType,
+  MediaDto,
+  MediaKind,
+  MediaUploadBody,
+  MediaUploadDto,
+  MembershipStatus,
   MetricsDto,
   ModeDto,
   ModeRefDto,
@@ -208,8 +259,13 @@ part 'serializers.g.dart';
   PlayTag,
   PlayWhen,
   PlayerStatus,
+  PollBody,
+  PollDto,
+  PollDuration,
+  PollOptionDto,
   PostAudience,
   PostDto,
+  PostGroupDto,
   PostKind,
   PostPageDto,
   PostType,
@@ -220,6 +276,11 @@ part 'serializers.g.dart';
   PublicPostDto,
   RankDto,
   RankRefDto,
+  RecruitApplicationDto,
+  RecruitApplicationPageDto,
+  RecruitBody,
+  RecruitDecisionDto,
+  RecruitDto,
   RegisterDeviceBody,
   Relationship,
   ReportBody,
@@ -237,12 +298,14 @@ part 'serializers.g.dart';
   SetAvatarBody,
   SetGamesBody,
   SetGamingIdsBody,
+  SetGroupRoleBody,
   SetLaunchBody,
   SetPlatformsBody,
   SetStatusBody,
   SetTagsBody,
   SignupBody,
   UnreadCountDto,
+  UpdateGroupBody,
   UpdateListingBody,
   UpdateMeBody,
   UserCardDto,
@@ -252,6 +315,7 @@ part 'serializers.g.dart';
   UserSearchResponse,
   UsernameAvailability,
   Voice,
+  VoteBody,
   WaitlistBody,
   WaitlistCountDto,
 ])
@@ -301,6 +365,10 @@ Serializers serializers = (_$serializers.toBuilder()
         () => ListBuilder<ConnectionRequestDto>(),
       )
       ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(GroupDto)]),
+        () => ListBuilder<GroupDto>(),
+      )
+      ..addBuilderFactory(
         const FullType(BuiltList, [FullType(GamingIdInput)]),
         () => ListBuilder<GamingIdInput>(),
       )
@@ -325,6 +393,18 @@ Serializers serializers = (_$serializers.toBuilder()
         () => SetBuilder<Platform>(),
       )
       ..addBuilderFactory(
+        const FullType(BuiltSet, [FullType(String)]),
+        () => SetBuilder<String>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(RecruitApplicationDto)]),
+        () => ListBuilder<RecruitApplicationDto>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(GroupMemberDto)]),
+        () => ListBuilder<GroupMemberDto>(),
+      )
+      ..addBuilderFactory(
         const FullType(BuiltList, [FullType(Day)]),
         () => ListBuilder<Day>(),
       )
@@ -341,6 +421,10 @@ Serializers serializers = (_$serializers.toBuilder()
         () => ListBuilder<UserCardDto>(),
       )
       ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(MediaDto)]),
+        () => ListBuilder<MediaDto>(),
+      )
+      ..addBuilderFactory(
         const FullType(BuiltList, [FullType(ListingDto)]),
         () => ListBuilder<ListingDto>(),
       )
@@ -351,6 +435,14 @@ Serializers serializers = (_$serializers.toBuilder()
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(Platform)]),
         () => ListBuilder<Platform>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(PollOptionDto)]),
+        () => ListBuilder<PollOptionDto>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(GroupEventDto)]),
+        () => ListBuilder<GroupEventDto>(),
       )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(PostDto)]),

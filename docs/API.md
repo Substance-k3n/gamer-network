@@ -141,7 +141,7 @@ than `/me*`, `/auth/*` and `/app/*` also need a finished onboarding.
 | Method | Path             | Purpose                                                                                                       |
 | ------ | ---------------- | ------------------------------------------------------------------------------------------------------------- |
 | GET 🔓 | `/health`        | Liveness (no `/v1`)                                                                                           |
-| GET 🔓 | `/v1/app/config` | `{ minSupportedVersion, latestVersion, launchCity, groupsComingSoon: true, feedEnabled, groupsEnabled }`      |
+| GET 🔓 | `/v1/app/config` | `{ minSupportedVersion, latestVersion, launchCity, groupsComingSoon, feedEnabled, groupsEnabled }`            |
 | GET 🔓 | `/v1/games`      | Full catalog with `ranks`, `roles`, `modes`, `platforms`, `maxParty`, `isLaunch`. Cache it; it rarely changes |
 
 ### Sign-in
@@ -275,7 +275,7 @@ Show due check-ins as a card on Home: "Did you play with Dave?"
 | POST   | `/v1/notifications/read`         | `{ ids: [...] }` or `{ all: true }` → `204`                      |
 | PUT    | `/v1/me/devices`                 | `{ fcmToken, platform: android\|ios\|web, appVersion? }` → `204` |
 
-`Notification { id, type, actor: UserCard | null, listingId, connectionRequestId, playInviteId, checkInId, postId, commentId, recruitApplicationId, title, text, route, readAt, createdAt }`.
+`Notification { id, type, actor: UserCard | null, listingId, connectionRequestId, playInviteId, checkInId, postId, commentId, recruitApplicationId, groupId, groupEventId, title, text, route, readAt, createdAt }`.
 `text` is ready to show ("Hana wants to play PUBG Mobile with you");
 `route` is where tapping it goes. Notifications from people you can no
 longer see (blocked, banned) are left out.
@@ -286,7 +286,10 @@ the person registered, with `notification: { title, body: text }` and
 `/alerts`, `/players/<username>`, `/listings/<id>`, `/check-ins/<id>`,
 `/posts/<id>` (`?comments=1` to open its comments),
 `/posts/<id>/applications` (`recruit_application`; `recruit_accepted`
-opens the author's profile). `post_gg` is never
+opens the author's profile), `/groups/<id>/members?status=pending`
+(`group_join_request`, to the group's admins) and `/groups/<id>`
+(`group_join_approved`, `group_event`). At most one `group_event` per
+group is pushed an hour; the others only reach Alerts. `post_gg` is never
 pushed, and stays one unread row per post ("Meron and 2 others reacted
 GG to your post").
 Register the device (`PUT /v1/me/devices`) on every launch and when the
@@ -295,54 +298,58 @@ pushes. A token moves to whoever signed in on the phone last.
 
 ### Safety
 
-| Method | Path                  | Body → Response                                                                           |
-| ------ | --------------------- | ----------------------------------------------------------------------------------------- |
-| POST   | `/v1/blocks`          | `{ userId }` → `204`. Safe to repeat                                                      |
-| DELETE | `/v1/blocks/{userId}` | `204`, or `404` if you hadn't blocked them                                                |
-| GET    | `/v1/me/blocks`       | `{ items: UserCard[] }` for Settings → Blocked users                                      |
-| POST   | `/v1/reports`         | `{ userId, listingId? \| postId? \| commentId?, reason, details? }` → `204`. To the queue |
-| DELETE | `/v1/me`              | `{ password }` (when `hasPassword`) → `204`. `401 wrong_password`. Signs out everywhere   |
+| Method | Path                  | Body → Response                                                                                                               |
+| ------ | --------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/v1/blocks`          | `{ userId }` → `204`. Safe to repeat                                                                                          |
+| DELETE | `/v1/blocks/{userId}` | `204`, or `404` if you hadn't blocked them                                                                                    |
+| GET    | `/v1/me/blocks`       | `{ items: UserCard[] }` for Settings → Blocked users                                                                          |
+| POST   | `/v1/reports`         | `{ userId, listingId? \| postId? \| commentId? \| groupId?, reason, details? }` → `204`. For a group, `userId` is its creator |
+| DELETE | `/v1/me`              | `{ password }` (when `hasPassword`) → `204`. `401 wrong_password`. Signs out everywhere                                       |
 
 Every profile and listing card needs "Block" and "Report" in its menu
 (ADR-0005, Play policy). Blocking hides you from each other everywhere,
 ends the connection and withdraws pending requests and invites both
 ways. Deleting an account closes the live listing, withdraws everything
-pending and removes connections at once; personal data is erased 30
-days later and the email can then sign up again.
+pending and removes connections at once, archives groups where they
+were the only member and takes them out of the rest (the longest-standing
+member becomes admin if they were the only one); personal data is erased
+30 days later and the email can then sign up again.
 
-### Home feed (ADR-0012, phases 1–3)
+### Home feed (ADR-0012, phases 1–5)
 
-Shown only when `feedEnabled` in `/v1/app/config`. The full plan, with
-later phases (video, groups), is
+`feedEnabled` in `/v1/app/config` (on unless `FEED_ENABLED=false`). The
+full plan, with what's left (video), is
 [FEED_AND_GROUPS_API.md](FEED_AND_GROUPS_API.md). Hidden posts and
 comments are `404`: deleted, removed, by someone banned or blocked
-either way, or connections-only and you aren't connected.
+either way, connections-only and you aren't connected, or in a group
+you aren't a member of. Group posts never appear on Home, Moments,
+`/v1/me/posts` or the share page.
 
-| Method | Path                                    | Body → Response                                                                                                                                         |
-| ------ | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `/v1/feed?filter=&game=&cursor=&limit=` | `Page<Post>`, newest first. `filter`: `for_you` (default), `connections`, `lfg`, `game` (needs `game`). `limit` 1–30                                    |
-| POST   | `/v1/posts`                             | **Idempotent.** `{ type, text, gameId?, audience?, media?, poll?, recruit? }` → `201 Post`. Verified email. 10 an hour (`429 rate_limited`)             |
-| GET    | `/v1/posts/{id}`                        | `Post`                                                                                                                                                  |
-| DELETE | `/v1/posts/{id}`                        | Author only (`403 not_owner`) → `204`                                                                                                                   |
-| PUT    | `/v1/posts/{id}/gg`                     | `{ ggCount, myGG: true }`. Safe to repeat. `DELETE` takes it back                                                                                       |
-| PUT    | `/v1/posts/{id}/save`                   | `204`. `DELETE` unsaves                                                                                                                                 |
-| GET    | `/v1/me/saved`                          | `Page<Post>`, most recently saved first                                                                                                                 |
-| GET    | `/v1/me/posts`                          | `Page<Post>`, yours                                                                                                                                     |
-| GET    | `/v1/users/{username}/posts`            | `Page<Post>`: their Moments you may see                                                                                                                 |
-| POST   | `/v1/media/upload-url`                  | `{ contentType: image/jpeg\|png\|webp, size ≤ 10 MB }` → `{ uploadUrl, headers, key, expiresAt }`. Video is `422`. 30 an hour                           |
-| POST   | `/v1/posts/{id}/vote`                   | `{ position }` → `Poll`. `409 already_voted`, `409 poll_closed`, `422` for a position that isn't an option. Your own poll is fine                       |
-| POST   | `/v1/posts/{id}/apply`                  | **Idempotent.** → `Recruit`. `409 already_applied`, `403 own_post`, `409 recruitment_full`. Tells the author. 20 a day                                  |
-| GET    | `/v1/posts/{id}/applications?cursor=`   | Author only (`403 not_owner`) → `Page<{ id, user: UserCard, status, createdAt }>`, first come first                                                     |
-| POST   | `/v1/recruit-applications/{id}/accept`  | Author only → `{ id, status: "accepted" }`. Tells the applicant and sends them a connection request if you aren't connected. `409 recruitment_full`     |
-| POST   | `/v1/recruit-applications/{id}/decline` | Author only → `{ id, status: "declined" }`. Tells no one                                                                                                |
-| GET    | `/v1/posts/{id}/comments?sort=`         | `Page<Comment>` of top-level comments, oldest first; `sort=top` by GG                                                                                   |
-| POST   | `/v1/posts/{id}/comments`               | **Idempotent.** `{ text, parentId? }` → `201 Comment`. Verified email. 60 an hour                                                                       |
-| GET    | `/v1/comments/{id}/replies`             | `Page<Comment>`, oldest first                                                                                                                           |
-| DELETE | `/v1/comments/{id}`                     | Its author or the post's author → `204`. Its replies go with it                                                                                         |
-| PUT    | `/v1/comments/{id}/gg`                  | `{ ggCount, myGG: true }`. `DELETE` takes it back                                                                                                       |
-| GET 🔓 | `/v1/public/posts/{id}`                 | For the share page `/p/<id>`: `{ id, type, text (300 chars), author: { displayName, username, avatarUrl }, game, media (first image only), createdAt }` |
+| Method | Path                                    | Body → Response                                                                                                                                                                                                                        |
+| ------ | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/v1/feed?filter=&game=&cursor=&limit=` | `Page<Post>`, newest first. `filter`: `for_you` (default), `connections`, `lfg`, `game` (needs `game`). `limit` 1–30                                                                                                                   |
+| POST   | `/v1/posts`                             | **Idempotent.** `{ type, text, gameId?, audience?, groupId?, media?, poll?, recruit? }` → `201 Post`. Verified email. 10 an hour (`429 rate_limited`). `groupId`: members only (`403 not_member`), and `audience=connections` is `422` |
+| GET    | `/v1/posts/{id}`                        | `Post`. Group posts: members only                                                                                                                                                                                                      |
+| DELETE | `/v1/posts/{id}`                        | Its author, or a group admin for a group post (`removed`) → `204`. Others `403 not_owner`                                                                                                                                              |
+| PUT    | `/v1/posts/{id}/gg`                     | `{ ggCount, myGG: true }`. Safe to repeat. `DELETE` takes it back                                                                                                                                                                      |
+| PUT    | `/v1/posts/{id}/save`                   | `204`. `DELETE` unsaves                                                                                                                                                                                                                |
+| GET    | `/v1/me/saved`                          | `Page<Post>`, most recently saved first                                                                                                                                                                                                |
+| GET    | `/v1/me/posts`                          | `Page<Post>`, yours                                                                                                                                                                                                                    |
+| GET    | `/v1/users/{username}/posts`            | `Page<Post>`: their Moments you may see                                                                                                                                                                                                |
+| POST   | `/v1/media/upload-url`                  | `{ contentType: image/jpeg\|png\|webp, size ≤ 10 MB }` → `{ uploadUrl, headers, key, expiresAt }`. Video is `422`. 30 an hour                                                                                                          |
+| POST   | `/v1/posts/{id}/vote`                   | `{ position }` → `Poll`. `409 already_voted`, `409 poll_closed`, `422` for a position that isn't an option. Your own poll is fine                                                                                                      |
+| POST   | `/v1/posts/{id}/apply`                  | **Idempotent.** → `Recruit`. `409 already_applied`, `403 own_post`, `409 recruitment_full`. Tells the author. 20 a day                                                                                                                 |
+| GET    | `/v1/posts/{id}/applications?cursor=`   | Author only (`403 not_owner`) → `Page<{ id, user: UserCard, status, createdAt }>`, first come first                                                                                                                                    |
+| POST   | `/v1/recruit-applications/{id}/accept`  | Author only → `{ id, status: "accepted" }`. Tells the applicant and sends them a connection request if you aren't connected. `409 recruitment_full`                                                                                    |
+| POST   | `/v1/recruit-applications/{id}/decline` | Author only → `{ id, status: "declined" }`. Tells no one                                                                                                                                                                               |
+| GET    | `/v1/posts/{id}/comments?sort=`         | `Page<Comment>` of top-level comments, oldest first; `sort=top` by GG                                                                                                                                                                  |
+| POST   | `/v1/posts/{id}/comments`               | **Idempotent.** `{ text, parentId? }` → `201 Comment`. Verified email. 60 an hour                                                                                                                                                      |
+| GET    | `/v1/comments/{id}/replies`             | `Page<Comment>`, oldest first                                                                                                                                                                                                          |
+| DELETE | `/v1/comments/{id}`                     | Its author, the post's author or, in a group, a group admin → `204`. Its replies go with it                                                                                                                                            |
+| PUT    | `/v1/comments/{id}/gg`                  | `{ ggCount, myGG: true }`. `DELETE` takes it back                                                                                                                                                                                      |
+| GET 🔓 | `/v1/public/posts/{id}`                 | For the share page `/p/<id>`: `{ id, type, text (300 chars), author: { displayName, username, avatarUrl }, game, media (first image only), createdAt }`                                                                                |
 
-`Post { id, type, kind, author: UserCard, game, text, audience, media: Media[], poll: Poll | null, recruit: Recruit | null, topComment, ggCount, commentCount, myGG, saved, mine, shareUrl, createdAt }`.
+`Post { id, type, kind, author: UserCard, group: { id, name, short, tone } | null, game, text, audience, media: Media[], poll: Poll | null, recruit: Recruit | null, topComment, ggCount, commentCount, myGG, saved, mine, shareUrl, createdAt }`.
 Draw by `kind` (`text`, `discussion`, `moment`, `poll`, `recruit`),
 label by `type`. Counts leave out banned and deleted people.
 
@@ -377,11 +384,45 @@ they can see it (5 at most).
 **Play** on a post uses what exists: `POST /v1/play-invites` when
 connected, otherwise `POST /v1/connection-requests`.
 
-### Groups (coming soon)
+### Groups (ADR-0012, phases 4–5)
 
-| Method | Path           | Body → Response                             |
-| ------ | -------------- | ------------------------------------------- |
-| POST   | `/v1/waitlist` | `{ topic: "groups" }` → `204` ("Notify me") |
+`groupsEnabled` in `/v1/app/config` (on unless `GROUPS_ENABLED=false`;
+`groupsComingSoon` is its opposite). A hidden group is `404`: archived
+(its last member left), removed by an admin, or while its creator is
+banned and alone in it. Admin-only actions answer `403 not_group_admin`.
+
+| Method | Path                                       | Body → Response                                                                                                                                                               |
+| ------ | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/v1/groups?tab=&kind=&query=&cursor=`     | `Page<Group>`. `discover` (default): most members first, then newest. `mine`: yours and your requests, latest activity first. `query` (2+ chars) matches name, game and place |
+| GET    | `/v1/groups/{id}`                          | `Group`                                                                                                                                                                       |
+| POST   | `/v1/groups`                               | **Idempotent.** `{ name, kind, gameId?, place, short?, about?, rules?, tone?, approval? }` → `201 Group`; you're admin. `409 group_name_taken`. Verified email. 3 a day       |
+| PATCH  | `/v1/groups/{id}`                          | Admins: any create field but `kind` → `Group`                                                                                                                                 |
+| POST   | `/v1/groups/{id}/join`                     | → `Group` with `myStatus` `member`, or `pending` on approval groups (admins are told). `409 already_member`. 30 a day                                                         |
+| DELETE | `/v1/groups/{id}/membership`               | Leave or cancel your request → `204`. `409 last_admin` when you're the only admin and others remain. The last member leaving archives it                                      |
+| GET    | `/v1/groups/{id}/members?status=&cursor=`  | `Page<{ user: UserCard, role, status, joinedAt }>`, admins first. `status=pending` (the requests): admins only                                                                |
+| POST   | `/v1/groups/{id}/members/{userId}/approve` | Admins → `204`; tells them (`group_join_approved`)                                                                                                                            |
+| POST   | `/v1/groups/{id}/members/{userId}/decline` | Admins → `204`, without telling them                                                                                                                                          |
+| PUT    | `/v1/groups/{id}/members/{userId}/role`    | Admins: `{ role: admin\|member }` → `204`. `409 last_admin` for the only admin                                                                                                |
+| DELETE | `/v1/groups/{id}/members/{userId}`         | Admins remove a member (or a request) → `204`                                                                                                                                 |
+| GET    | `/v1/groups/{id}/posts?cursor=`            | `Page<Post>`, newest first. Members only (`403 not_member`). Post there with `POST /v1/posts` and `groupId`                                                                   |
+| GET    | `/v1/groups/{id}/events?cursor=`           | `Page<GroupEvent>`, until an hour after they start, soonest first. Anyone who can see the group                                                                               |
+| POST   | `/v1/groups/{id}/events`                   | **Idempotent.** Members: `{ title, startsAt, gameId? }` → `201 GroupEvent`. `startsAt` in the next 60 days. Tells the other members (`group_event`)                           |
+| DELETE | `/v1/group-events/{id}`                    | Its creator or an admin → `204`; else `403 not_owner`                                                                                                                         |
+| PUT    | `/v1/group-events/{id}/going`              | Members → `GroupEvent`. `DELETE` → not going                                                                                                                                  |
+| GET    | `/v1/me/groups?kind=&cursor=`              | `Page<Group>`: yours and your requests (`myStatus: pending`), latest activity first, for the profile                                                                          |
+| GET    | `/v1/users/{username}/groups?cursor=`      | `Page<Group>`: the groups they're a member of, latest joined first                                                                                                            |
+| POST   | `/v1/waitlist`                             | `{ topic: "groups" }` → `204` (the old "Notify me")                                                                                                                           |
+
+`Group { id, name, short, kind: game|city|campus|squad, game, place, about, rules, tone: accent|lav|soft|grey, approval, memberCount, membersPreview: UserCard[] (≤ 3, your connections first), nextEvent: GroupEvent | null, myRole: admin|member|null, myStatus: member|pending|null, createdAt }`.
+`short` is the badge (2–5 uppercase letters or digits), made from the
+name when not given. Names are 3–40 characters and unique among live
+groups, ignoring case; a game group needs `gameId`; up to 10 rules of
+140 characters.
+
+`GroupEvent { id, groupId, title, startsAt, game, goingCount, goingPreview: UserCard[] (≤ 3), imGoing, createdBy: UserCard }`.
+
+Blocks hide the other person's group posts, comments, events and
+membership rows both ways; the membership itself stays.
 
 ### Admin (web only, `role = admin`)
 
@@ -391,19 +432,20 @@ gamer profile. Make an account an admin with
 `pnpm --filter @app/api admin:grant <email>` (`--revoke` to undo). Every
 action writes an `admin_actions` row.
 
-| Method | Path                             | Purpose                                                                                                                                                         |
-| ------ | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `/v1/admin/reports?status=open`  | Reports queue with reporter, target and `excerpt` (a reported post or comment). `open` oldest first, others newest first; `limit`/`cursor`                      |
-| POST   | `/v1/admin/reports/{id}/resolve` | `{ action: "dismiss" \| "warn" \| "remove_listing" \| "remove_post" \| "remove_comment" \| "ban", note }` → report. Reporter is told unless dismissed           |
-| GET    | `/v1/admin/users?query=&state=`  | Search by username, name or email prefix; `state` = `active` \| `banned` \| `deleted`                                                                           |
-| GET    | `/v1/admin/users/{id}`           | The player drawer: account, main game, last seen, connections, played with, open reports                                                                        |
-| POST   | `/v1/admin/users/{id}/ban`       | `{ reason }`. Signs them out everywhere and removes their live listing                                                                                          |
-| POST   | `/v1/admin/users/{id}/unban`     | `{ note? }`                                                                                                                                                     |
-| POST   | `/v1/admin/listings/{id}/remove` | `{ note? }` → `204`                                                                                                                                             |
-| POST   | `/v1/admin/posts/{id}/remove`    | `{ note? }` → `204`                                                                                                                                             |
-| POST   | `/v1/admin/comments/{id}/remove` | `{ note? }` → `204`, with its replies                                                                                                                           |
-| PATCH  | `/v1/admin/games/{id}`           | `{ isLaunch }` → `204`. Puts a game on Find Players or takes it off                                                                                             |
-| GET    | `/v1/admin/metrics?from=&to=`    | `{ listings, listingsWithRequest, listingsPlayed, playedRate, weeklyActive, waitlist: [{ topic, count }] }`, default the last 30 days; the waitlist is all time |
+| Method | Path                             | Purpose                                                                                                                                                                                                                              |
+| ------ | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| GET    | `/v1/admin/reports?status=open`  | Reports queue with reporter, target, `excerpt` (300 chars of a reported post or comment, or of a group's about), `groupName` and `image` (a reported post's first image). `open` oldest first, others newest first; `limit`/`cursor` |
+| POST   | `/v1/admin/reports/{id}/resolve` | `{ action: "dismiss" \| "warn" \| "remove_listing" \| "remove_post" \| "remove_comment" \| "remove_group" \| "ban", note }` → report. Reporter is told unless dismissed                                                              |
+| GET    | `/v1/admin/users?query=&state=`  | Search by username, name or email prefix; `state` = `active` \| `banned` \| `deleted`                                                                                                                                                |
+| GET    | `/v1/admin/users/{id}`           | The player drawer: account, main game, last seen, connections, played with, open reports, `postsCount` (live) and `groupsCount` (live groups they're in)                                                                             |
+| POST   | `/v1/admin/users/{id}/ban`       | `{ reason }`. Signs them out everywhere and removes their live listing                                                                                                                                                               |
+| POST   | `/v1/admin/users/{id}/unban`     | `{ note? }`                                                                                                                                                                                                                          |
+| POST   | `/v1/admin/listings/{id}/remove` | `{ note? }` → `204`                                                                                                                                                                                                                  |
+| POST   | `/v1/admin/posts/{id}/remove`    | `{ note? }` → `204`                                                                                                                                                                                                                  |
+| POST   | `/v1/admin/comments/{id}/remove` | `{ note? }` → `204`, with its replies                                                                                                                                                                                                |
+| POST   | `/v1/admin/groups/{id}/remove`   | `{ note? }` → `204`. The group, its posts and events vanish                                                                                                                                                                          |
+| PATCH  | `/v1/admin/games/{id}`           | `{ isLaunch }` → `204`. Puts a game on Find Players or takes it off                                                                                                                                                                  |
+| GET    | `/v1/admin/metrics?from=&to=`    | `{ listings, listingsWithRequest, listingsPlayed, playedRate, weeklyActive, waitlist: [{ topic, count }] }`, default the last 30 days; the waitlist is all time                                                                      |
 
 ## Screen → endpoint map (prototype "rally")
 

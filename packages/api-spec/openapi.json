@@ -1900,7 +1900,7 @@
             "bearer": []
           }
         ],
-        "summary": "Post to Home, with up to 4 photo keys (gameplay needs one), a poll or recruitment slots. 10 an hour: 429 rate_limited.",
+        "summary": "Post to Home, or to a group with groupId (members only: 403 not_member), with up to 4 photo keys (gameplay needs one), a poll or recruitment slots. 10 an hour: 429 rate_limited.",
         "tags": [
           "feed"
         ]
@@ -1946,7 +1946,7 @@
             "bearer": []
           }
         ],
-        "summary": "One post.",
+        "summary": "One post. Group posts: members only (404 for others).",
         "tags": [
           "feed"
         ]
@@ -1983,7 +1983,7 @@
             "bearer": []
           }
         ],
-        "summary": "Author only (403 not_owner).",
+        "summary": "Its author, or a group admin for a group post (403 not_owner).",
         "tags": [
           "feed"
         ]
@@ -2677,7 +2677,7 @@
             "bearer": []
           }
         ],
-        "summary": "Its author or the post's author (403 not_owner).",
+        "summary": "Its author, the post's author or, in a group, a group admin (403 not_owner).",
         "tags": [
           "feed"
         ]
@@ -2873,7 +2873,7 @@
             "bearer": []
           }
         ],
-        "summary": "Your posts, newest first, connections-only ones included.",
+        "summary": "Your Home posts, newest first, connections-only ones included.",
         "tags": [
           "feed"
         ]
@@ -2999,7 +2999,7 @@
             "bearer": []
           }
         ],
-        "summary": "Moments: their posts you may see, newest first.",
+        "summary": "Moments: their Home posts you may see, newest first.",
         "tags": [
           "feed"
         ]
@@ -3373,6 +3373,1069 @@
         "summary": "Remove a connection, for both players.",
         "tags": [
           "connections"
+        ]
+      }
+    },
+    "/v1/groups": {
+      "get": {
+        "operationId": "groupsList",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1–50, default 20.",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "tab",
+            "required": false,
+            "in": "query",
+            "description": "discover (default): live groups, most members first. mine: yours and your requests, most recent activity first.",
+            "schema": {
+              "$ref": "#/components/schemas/GroupTab"
+            }
+          },
+          {
+            "name": "kind",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/GroupKind"
+            }
+          },
+          {
+            "name": "query",
+            "required": false,
+            "in": "query",
+            "description": "2+ characters: matches the name, the game and the place.",
+            "schema": {
+              "minLength": 2,
+              "maxLength": 40,
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "`nextCursor` from the previous page.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupPageDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Discover (most members first) or Yours (yours and your requests, latest activity first); kind and a 2+ character search.",
+        "tags": [
+          "groups"
+        ]
+      },
+      "post": {
+        "operationId": "groupsCreate",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "A UUID per create. A retry with the same key returns the first answer.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGroupBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Start a group; you're its admin. 409 group_name_taken. 3 a day: 429 rate_limited.",
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/v1/groups/{id}": {
+      "get": {
+        "operationId": "groupsGet",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One group.",
+        "tags": [
+          "groups"
+        ]
+      },
+      "patch": {
+        "operationId": "groupsUpdate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGroupBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Admins (403 not_group_admin): change any of the create fields but kind. 409 group_name_taken.",
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/v1/groups/{id}/join": {
+      "post": {
+        "operationId": "groupsJoin",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Join, or ask to on approval groups (myStatus pending; its admins are told). 409 already_member. 30 a day.",
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/v1/groups/{id}/membership": {
+      "delete": {
+        "operationId": "groupsLeave",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Leave, or cancel your request. 409 last_admin when you're its only admin and others remain.",
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/v1/groups/{id}/members": {
+      "get": {
+        "operationId": "groupsMembers",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1–50, default 20.",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "member (default), or pending: the join requests, for admins only.",
+            "schema": {
+              "$ref": "#/components/schemas/MembershipStatus"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "`nextCursor` from the previous page.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupMemberPageDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Members, admins first; status=pending lists the requests, for admins only (403 not_group_admin).",
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/v1/groups/{id}/members/{userId}/approve": {
+      "post": {
+        "operationId": "groupsApprove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Admins let a request in; tells them.",
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/v1/groups/{id}/members/{userId}/decline": {
+      "post": {
+        "operationId": "groupsDecline",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Admins turn a request down, without telling them.",
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/v1/groups/{id}/members/{userId}/role": {
+      "put": {
+        "operationId": "groupsSetRole",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetGroupRoleBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Admins make a member admin, or back. 409 last_admin for the only admin.",
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/v1/groups/{id}/members/{userId}": {
+      "delete": {
+        "operationId": "groupsRemoveMember",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Admins remove a member (or drop a request).",
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/v1/groups/{id}/posts": {
+      "get": {
+        "operationId": "groupsPosts",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1–50, default 20.",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "`nextCursor` from the previous page.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostPageDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The group's posts, newest first. Members only (403 not_member). Post here with POST /v1/posts and groupId.",
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/v1/groups/{id}/events": {
+      "get": {
+        "operationId": "groupsEvents",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1–50, default 20.",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "`nextCursor` from the previous page.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupEventPageDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Upcoming events (until an hour after they start), soonest first. Anyone may see them.",
+        "tags": [
+          "groups"
+        ]
+      },
+      "post": {
+        "operationId": "groupsCreateEvent",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "A UUID per create. A retry with the same key returns the first answer.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGroupEventBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupEventDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Members add one (403 not_member), starting within the next 60 days. Tells the other members.",
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/v1/group-events/{id}": {
+      "delete": {
+        "operationId": "groupEventsDelete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Its creator or a group admin (403 not_owner).",
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/v1/group-events/{id}/going": {
+      "put": {
+        "operationId": "groupEventsGoing",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupEventDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "I'm in. Members only (403 not_member). Repeating it is fine.",
+        "tags": [
+          "groups"
+        ]
+      },
+      "delete": {
+        "operationId": "groupEventsNotGoing",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupEventDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Not going any more.",
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/v1/me/groups": {
+      "get": {
+        "operationId": "myGroupsList",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1–50, default 20.",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "kind",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/GroupKind"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "`nextCursor` from the previous page.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupPageDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Your groups and your pending requests (myStatus pending), latest activity first: the profile's Groups.",
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/v1/users/{username}/groups": {
+      "get": {
+        "operationId": "userGroupsList",
+        "parameters": [
+          {
+            "name": "username",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1–50, default 20.",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "`nextCursor` from the previous page.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupPageDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The groups they're a member of, latest joined first (profile).",
+        "tags": [
+          "groups"
         ]
       }
     },
@@ -3978,7 +5041,7 @@
             "bearer": []
           }
         ],
-        "summary": "dismiss, warn, remove_listing, remove_post, remove_comment or ban. 409 report_closed if already handled.",
+        "summary": "dismiss, warn, remove_listing, remove_post, remove_comment, remove_group or ban. 409 report_closed if already handled.",
         "tags": [
           "admin"
         ]
@@ -4367,6 +5430,55 @@
         ]
       }
     },
+    "/v1/admin/groups/{id}/remove": {
+      "post": {
+        "operationId": "adminRemoveGroup",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take a group down: it, its posts and events vanish for everyone.",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/v1/admin/games/{id}": {
       "patch": {
         "operationId": "adminSetLaunch",
@@ -4507,7 +5619,10 @@
           "comment_reply",
           "mention",
           "recruit_application",
-          "recruit_accepted"
+          "recruit_accepted",
+          "group_join_request",
+          "group_join_approved",
+          "group_event"
         ]
       },
       "PlayerStatus": {
@@ -4739,6 +5854,16 @@
             "nullable": true,
             "description": "recruit_application and recruit_accepted: the application (its post is postId)."
           },
+          "groupId": {
+            "type": "string",
+            "nullable": true,
+            "description": "The group it is about (group_join_request, group_join_approved, group_event)."
+          },
+          "groupEventId": {
+            "type": "string",
+            "nullable": true,
+            "description": "group_event: the event (its group is groupId)."
+          },
           "title": {
             "type": "string",
             "description": "Push title."
@@ -4772,6 +5897,8 @@
           "postId",
           "commentId",
           "recruitApplicationId",
+          "groupId",
+          "groupEventId",
           "title",
           "text",
           "route",
@@ -5426,15 +6553,15 @@
           },
           "groupsComingSoon": {
             "type": "boolean",
-            "description": "Show the Groups tab as \"coming soon\" with a waitlist."
+            "description": "Show the Groups tab as \"coming soon\" with a waitlist. False once groups ship (the opposite of groupsEnabled)."
           },
           "feedEnabled": {
             "type": "boolean",
-            "description": "Show the Home feed (posts, comments, GG). Off: today's Home."
+            "description": "Show the Home feed (posts, comments, GG). On by default (FEED_ENABLED=false turns it off)."
           },
           "groupsEnabled": {
             "type": "boolean",
-            "description": "Show Groups for real. Off until groups ship; then groupsComingSoon goes away."
+            "description": "Show Groups for real. On by default (GROUPS_ENABLED=false turns it off)."
           }
         },
         "required": [
@@ -6510,6 +7637,43 @@
           "connections"
         ]
       },
+      "GroupTone": {
+        "type": "string",
+        "enum": [
+          "accent",
+          "lav",
+          "soft",
+          "grey"
+        ]
+      },
+      "PostGroupDto": {
+        "type": "object",
+        "properties": {
+          "tone": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GroupTone"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "short": {
+            "type": "string",
+            "description": "The badge, e.g. \"VAL\"."
+          }
+        },
+        "required": [
+          "tone",
+          "id",
+          "name",
+          "short"
+        ]
+      },
       "MediaKind": {
         "type": "string",
         "enum": [
@@ -6748,6 +7912,16 @@
               }
             ]
           },
+          "group": {
+            "nullable": true,
+            "description": "Null on Home posts.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PostGroupDto"
+              }
+            ]
+          },
           "game": {
             "nullable": true,
             "description": "Null: \"Any game\".",
@@ -6829,6 +8003,7 @@
           "audience",
           "id",
           "author",
+          "group",
           "game",
           "text",
           "media",
@@ -6948,6 +8123,11 @@
             "type": "string",
             "nullable": true,
             "description": "One of GET /v1/games. Null or left out: \"Any game\"."
+          },
+          "groupId": {
+            "type": "string",
+            "description": "Post in this group instead of Home: members only (403 not_member). Group posts are for everyone in the group, so audience=connections is refused.",
+            "format": "uuid"
           },
           "media": {
             "description": "Up to 4 keys from POST /v1/media/upload-url, uploaded by you and not used yet. Required on gameplay.",
@@ -7387,6 +8567,482 @@
           "nextCursor"
         ]
       },
+      "GroupTab": {
+        "type": "string",
+        "enum": [
+          "discover",
+          "mine"
+        ]
+      },
+      "GroupKind": {
+        "type": "string",
+        "enum": [
+          "game",
+          "city",
+          "campus",
+          "squad"
+        ]
+      },
+      "GroupRole": {
+        "type": "string",
+        "enum": [
+          "admin",
+          "member"
+        ],
+        "description": "Null when you aren't a member (or are still pending)."
+      },
+      "MembershipStatus": {
+        "type": "string",
+        "enum": [
+          "member",
+          "pending"
+        ],
+        "description": "pending: you asked to join and wait for an admin. Null: not in it."
+      },
+      "GroupEventDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "description": "1–80 characters."
+          },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "game": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GameRefDto"
+              }
+            ]
+          },
+          "goingCount": {
+            "type": "number",
+            "description": "People going, leaving out anyone no longer live."
+          },
+          "goingPreview": {
+            "description": "Up to 3 of them, for the avatars.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserCardDto"
+            }
+          },
+          "imGoing": {
+            "type": "boolean"
+          },
+          "createdBy": {
+            "description": "Its creator or a group admin can delete it.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserCardDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "groupId",
+          "title",
+          "startsAt",
+          "game",
+          "goingCount",
+          "goingPreview",
+          "imGoing",
+          "createdBy"
+        ]
+      },
+      "GroupDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GroupKind"
+              }
+            ]
+          },
+          "tone": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GroupTone"
+              }
+            ]
+          },
+          "myRole": {
+            "nullable": true,
+            "description": "Null when you aren't a member (or are still pending).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GroupRole"
+              }
+            ]
+          },
+          "myStatus": {
+            "nullable": true,
+            "description": "pending: you asked to join and wait for an admin. Null: not in it.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MembershipStatus"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "short": {
+            "type": "string",
+            "description": "The badge, e.g. \"VAL\": 2–5 uppercase letters or digits."
+          },
+          "game": {
+            "nullable": true,
+            "description": "Set on game groups; may be set on others.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GameRefDto"
+              }
+            ]
+          },
+          "place": {
+            "type": "string",
+            "description": "City, campus or country."
+          },
+          "about": {
+            "type": "string"
+          },
+          "rules": {
+            "description": "Up to 10, up to 140 characters each.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "approval": {
+            "type": "boolean",
+            "description": "New members wait for an admin."
+          },
+          "memberCount": {
+            "type": "number"
+          },
+          "membersPreview": {
+            "description": "Up to 3 members, your connections first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserCardDto"
+            }
+          },
+          "nextEvent": {
+            "nullable": true,
+            "description": "The soonest upcoming event, or null.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GroupEventDto"
+              }
+            ]
+          },
+          "createdBy": {
+            "description": "Who created the group. Report the group with `userId = createdBy.id`.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserCardDto"
+              }
+            ]
+          },
+          "shareUrl": {
+            "type": "string",
+            "description": "`https://<web origin>/app/groups/<id>`."
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "\"since Mar 2025\"."
+          }
+        },
+        "required": [
+          "kind",
+          "tone",
+          "myRole",
+          "myStatus",
+          "id",
+          "name",
+          "short",
+          "game",
+          "place",
+          "about",
+          "rules",
+          "approval",
+          "memberCount",
+          "membersPreview",
+          "nextEvent",
+          "createdBy",
+          "shareUrl",
+          "createdAt"
+        ]
+      },
+      "GroupPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "CreateGroupBody": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GroupKind"
+              }
+            ]
+          },
+          "tone": {
+            "default": "accent",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GroupTone"
+              }
+            ]
+          },
+          "name": {
+            "type": "string",
+            "description": "3–40 characters, trimmed. Unique, ignoring case (409 group_name_taken).",
+            "minLength": 3,
+            "maxLength": 40
+          },
+          "short": {
+            "type": "string",
+            "description": "The badge: 2–5 letters or digits, stored uppercase. Left out: made from the name.",
+            "pattern": "^[A-Z0-9]{2,5}$"
+          },
+          "gameId": {
+            "type": "string",
+            "nullable": true,
+            "description": "One of GET /v1/games. Required on game groups."
+          },
+          "place": {
+            "type": "string",
+            "description": "City, campus or country: 1–60 characters, trimmed.",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "about": {
+            "type": "string",
+            "description": "Up to 500 characters, trimmed.",
+            "maxLength": 500
+          },
+          "rules": {
+            "description": "Up to 10 rules, 1–140 characters each, trimmed.",
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 140,
+              "minLength": 1
+            }
+          },
+          "approval": {
+            "type": "boolean",
+            "description": "New members wait for an admin. Default false."
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "place"
+        ]
+      },
+      "UpdateGroupBody": {
+        "type": "object",
+        "properties": {
+          "tone": {
+            "default": "accent",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GroupTone"
+              }
+            ]
+          },
+          "name": {
+            "type": "string",
+            "description": "3–40 characters, trimmed. Unique, ignoring case (409 group_name_taken).",
+            "minLength": 3,
+            "maxLength": 40
+          },
+          "short": {
+            "type": "string",
+            "description": "The badge: 2–5 letters or digits, stored uppercase. Left out: made from the name.",
+            "pattern": "^[A-Z0-9]{2,5}$"
+          },
+          "gameId": {
+            "type": "string",
+            "nullable": true,
+            "description": "One of GET /v1/games. Required on game groups."
+          },
+          "place": {
+            "type": "string",
+            "description": "City, campus or country: 1–60 characters, trimmed.",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "about": {
+            "type": "string",
+            "description": "Up to 500 characters, trimmed.",
+            "maxLength": 500
+          },
+          "rules": {
+            "description": "Up to 10 rules, 1–140 characters each, trimmed.",
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 140,
+              "minLength": 1
+            }
+          },
+          "approval": {
+            "type": "boolean",
+            "description": "New members wait for an admin. Default false."
+          }
+        }
+      },
+      "GroupMemberDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GroupRole"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MembershipStatus"
+              }
+            ]
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserCardDto"
+          },
+          "joinedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "Null while pending."
+          }
+        },
+        "required": [
+          "role",
+          "status",
+          "user",
+          "joinedAt"
+        ]
+      },
+      "GroupMemberPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupMemberDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "SetGroupRoleBody": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GroupRole"
+              }
+            ]
+          }
+        },
+        "required": [
+          "role"
+        ]
+      },
+      "GroupEventPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupEventDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "CreateGroupEventBody": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "1–80 characters, trimmed.",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "startsAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Within the next 60 days."
+          },
+          "gameId": {
+            "type": "string",
+            "nullable": true,
+            "description": "One of GET /v1/games, or left out."
+          }
+        },
+        "required": [
+          "title",
+          "startsAt"
+        ]
+      },
       "InviteWhen": {
         "type": "string",
         "enum": [
@@ -7655,6 +9311,11 @@
             "description": "When reporting a comment: one of their comments.",
             "format": "uuid"
           },
+          "groupId": {
+            "type": "string",
+            "description": "When reporting a group: one they created (userId is its creator).",
+            "format": "uuid"
+          },
           "details": {
             "type": "string",
             "nullable": true,
@@ -7762,6 +9423,14 @@
           "openReports": {
             "type": "number",
             "description": "Reports against them still open."
+          },
+          "postsCount": {
+            "type": "number",
+            "description": "Their live posts, on Home and in groups."
+          },
+          "groupsCount": {
+            "type": "number",
+            "description": "Live groups they're a member of."
           }
         },
         "required": [
@@ -7778,7 +9447,9 @@
           "lastSeenAt",
           "connections",
           "playedWith",
-          "openReports"
+          "openReports",
+          "postsCount",
+          "groupsCount"
         ]
       },
       "AdminReportDto": {
@@ -7819,10 +9490,29 @@
             "type": "string",
             "nullable": true
           },
+          "groupId": {
+            "type": "string",
+            "nullable": true
+          },
           "excerpt": {
             "type": "string",
             "nullable": true,
-            "description": "What was reported: the first 300 characters of the post or comment."
+            "description": "What was reported: the first 300 characters of the post or comment, or of the group's about."
+          },
+          "groupName": {
+            "type": "string",
+            "nullable": true,
+            "description": "A reported group's name."
+          },
+          "image": {
+            "nullable": true,
+            "description": "A reported post's first image.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MediaDto"
+              }
+            ]
           },
           "details": {
             "type": "string",
@@ -7851,7 +9541,10 @@
           "listingId",
           "postId",
           "commentId",
+          "groupId",
           "excerpt",
+          "groupName",
+          "image",
           "details",
           "createdAt",
           "resolvedAt",
@@ -7885,15 +9578,16 @@
           "remove_listing",
           "remove_post",
           "remove_comment",
+          "remove_group",
           "ban"
         ],
-        "description": "dismiss: no action. warn, remove_listing, remove_post, remove_comment (the reported one), ban (the target)."
+        "description": "dismiss: no action. warn, remove_listing, remove_post, remove_comment, remove_group (the reported one), ban (the target)."
       },
       "ResolveReportBody": {
         "type": "object",
         "properties": {
           "action": {
-            "description": "dismiss: no action. warn, remove_listing, remove_post, remove_comment (the reported one), ban (the target).",
+            "description": "dismiss: no action. warn, remove_listing, remove_post, remove_comment, remove_group (the reported one), ban (the target).",
             "allOf": [
               {
                 "$ref": "#/components/schemas/ResolveAction"

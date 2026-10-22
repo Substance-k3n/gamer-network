@@ -136,6 +136,7 @@ Future<void> showReportDialog(
   String? listingId,
   String? postId,
   String? commentId,
+  String? groupId,
 }) async {
   final s = context.app;
   ReportReason? reason;
@@ -153,6 +154,8 @@ Future<void> showReportDialog(
                   ? 'Report comment'
                   : postId != null
                   ? 'Report post'
+                  : groupId != null
+                  ? 'Report group'
                   : 'Report $name',
               style: t.body(22, w: w800, ls: -.6),
             ),
@@ -226,6 +229,7 @@ Future<void> showReportDialog(
       listingId: listingId,
       postId: postId,
       commentId: commentId,
+      groupId: groupId,
       details: details,
     );
   }

@@ -86,7 +86,7 @@ export class PostsController {
     private readonly recruit: RecruitService,
   ) {}
 
-  /** Post to Home, with up to 4 photo keys (gameplay needs one), a poll or recruitment slots. 10 an hour: 429 rate_limited. */
+  /** Post to Home, or to a group with groupId (members only: 403 not_member), with up to 4 photo keys (gameplay needs one), a poll or recruitment slots. 10 an hour: 429 rate_limited. */
   @Post()
   @Idempotent()
   @RequireVerifiedEmail()
@@ -95,14 +95,14 @@ export class PostsController {
     return this.posts.create(user, body);
   }
 
-  /** One post. */
+  /** One post. Group posts: members only (404 for others). */
   @Get(':id')
   @ApiOkResponse({ type: PostDto })
   get(@CurrentUser() user: User, @Param('id', postId) id: string): Promise<PostDto> {
     return this.posts.get(user, id);
   }
 
-  /** Author only (403 not_owner). */
+  /** Its author, or a group admin for a group post (403 not_owner). */
   @Delete(':id')
   @HttpCode(204)
   @ApiNoContentResponse()
@@ -265,7 +265,7 @@ export class CommentsController {
     return this.comments.replies(user, id, query);
   }
 
-  /** Its author or the post's author (403 not_owner). */
+  /** Its author, the post's author or, in a group, a group admin (403 not_owner). */
   @Delete('comments/:id')
   @HttpCode(204)
   @ApiNoContentResponse()
@@ -296,7 +296,7 @@ export class CommentsController {
 export class MyPostsController {
   constructor(private readonly posts: PostsService) {}
 
-  /** Your posts, newest first, connections-only ones included. */
+  /** Your Home posts, newest first, connections-only ones included. */
   @Get('posts')
   @ApiOkResponse({ type: PostPageDto })
   list(@CurrentUser() user: User, @Query() query: PageQuery): Promise<PostPageDto> {
@@ -319,7 +319,7 @@ export class MyPostsController {
 export class UserPostsController {
   constructor(private readonly posts: PostsService) {}
 
-  /** Moments: their posts you may see, newest first. */
+  /** Moments: their Home posts you may see, newest first. */
   @Get(':username/posts')
   @ApiOkResponse({ type: PostPageDto })
   list(

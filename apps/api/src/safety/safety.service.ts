@@ -10,6 +10,7 @@ import {
   comments,
   connectionRequests,
   connections,
+  groups,
   listings,
   playInvites,
   posts,
@@ -17,6 +18,7 @@ import {
   users,
   waitlist,
 } from '../db/schema/index.js';
+import { departGroups } from '../groups/membership.js';
 import { ProfileService } from '../me/profile.service.js';
 import type { UserCardDto } from '../me/profile.dto.js';
 import type { ReportBody } from './safety.dto.js';
@@ -120,7 +122,7 @@ export class SafetyService {
       new AppError(HttpStatus.UNPROCESSABLE_ENTITY, 'validation_failed', 'Wrong item.', {
         [field]: message,
       });
-    if ([body.listingId, body.postId, body.commentId].filter(Boolean).length > 1) {
+    if ([body.listingId, body.postId, body.commentId, body.groupId].filter(Boolean).length > 1) {
       throw wrong('postId', 'Report one thing at a time');
     }
     if (body.postId) {
@@ -137,12 +139,19 @@ export class SafetyService {
         throw wrong('commentId', "Not one of this player's comments");
       }
     }
+    if (body.groupId) {
+      const group = await this.db.query.groups.findFirst({ where: eq(groups.id, body.groupId) });
+      if (!group || group.createdBy !== target.id) {
+        throw wrong('groupId', 'Not a group this player created');
+      }
+    }
     await this.db.insert(reports).values({
       reporterId: me.id,
       targetUserId: target.id,
       listingId: body.listingId ?? null,
       postId: body.postId ?? null,
       commentId: body.commentId ?? null,
+      groupId: body.groupId ?? null,
       reason: body.reason,
       details: body.details ?? null,
     });
@@ -208,6 +217,8 @@ export class SafetyService {
         .update(comments)
         .set({ status: 'deleted' })
         .where(and(eq(comments.authorId, me.id), eq(comments.status, 'live')));
+      // Groups where they were the only member are archived; they leave the rest.
+      await departGroups(tx, me.id);
     });
     await this.sessions.revokeAll(me.id);
   }

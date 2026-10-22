@@ -89,7 +89,7 @@ export const postTypes: { id: PostType; label: string; tone: Tone; placeholder: 
     id: 'gameplay',
     label: 'Gameplay',
     tone: 'accent',
-    placeholder: 'Add a caption for your clip or screenshot…',
+    placeholder: 'Add a caption for your screenshots…',
   },
   {
     id: 'recruitment',
@@ -121,10 +121,6 @@ export const postTypes: { id: PostType; label: string; tone: Tone; placeholder: 
   { id: 'event', label: 'Event', tone: 'lav', placeholder: 'What’s happening, where and when?' },
   { id: 'meme', label: 'Meme', tone: 'soft', placeholder: 'Caption it…' },
 ];
-
-/** The types the API takes today; photos, polls and recruitment come with its later phases. */
-const notYet: PostType[] = ['gameplay', 'recruitment', 'poll'];
-export const postable = postTypes.filter((t) => !notYet.includes(t.id));
 
 export const postTypeInfo = (t: PostType) => postTypes.find((p) => p.id === t) ?? postTypes[0]!;
 

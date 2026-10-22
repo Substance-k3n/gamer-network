@@ -197,6 +197,7 @@ class Api {
   NotificationsApi get notifications => client.getNotificationsApi();
   SafetyApi get safety => client.getSafetyApi();
   FeedApi get feed => client.getFeedApi();
+  GroupsApi get groups => client.getGroupsApi();
 
   /// Uploads bytes to a signed storage URL (avatars, docs/API.md "Images").
   Future<void> upload(

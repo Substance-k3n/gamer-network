@@ -42,7 +42,7 @@ including its Home feed and Groups, without the feature flags
 | 🎯 **Play together** | Invite a connection to play now, in 30 minutes or tonight; the next day, “Did you play?” in one tap. |
 | 🏠 **Home feed** | Posts from players and connections (filter by connections, LFG or one of your games), GG, save, share and comments with replies. Invites, check-ins and your live listing are pinned on top. |
 | ✍️ **Compose** | Discussion, milestone, question, looking for players, tip, review, event or meme; for one of your games or any; for everyone or connections. |
-| 👥 **Groups** | Discover, join, post, events and create a group, on sample data that stays on the phone until the API has groups. |
+| 👥 **Groups** | Discover and search groups, join or ask to join, group posts, members and requests, events, create and edit a group. |
 | 🔔 **Alerts** | Connection requests and activity in one place. |
 | 🖼️ **Profile** | Photo, bio, games and ranks, status and play days, groups, posts and moments, play style and gaming IDs, edited in place. |
 | 🛡️ **Safety** | Block and report on every profile and listing, Blocked users and Delete account in Settings. |
@@ -103,7 +103,7 @@ lib/
 ├── api.dart           # Dio + generated client: token, version headers, errors
 ├── state.dart         # AppState: navigation, drafts, every API call
 ├── data.dart          # game catalog, labels for the API's enums, Profile, post types
-├── groups_data.dart   # sample groups and members (no groups API yet)
+├── groups_data.dart   # group labels and the create / edit form
 ├── shell.dart         # screen switcher, header, bottom nav, sheets
 ├── theme.dart         # RallyTheme + the four skins
 ├── widgets.dart       # shared UI kit (Pill, cards, backgrounds…)

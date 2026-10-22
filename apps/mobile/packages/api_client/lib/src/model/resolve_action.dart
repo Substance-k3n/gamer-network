@@ -9,7 +9,7 @@ import 'package:built_value/serializer.dart';
 
 part 'resolve_action.g.dart';
 
-/// dismiss: no action. warn, remove_listing, remove_post, remove_comment (the reported one), ban (the target).
+/// dismiss: no action. warn, remove_listing, remove_post, remove_comment, remove_group (the reported one), ban (the target).
 class ResolveAction extends EnumClass {
   @BuiltValueEnumConst(wireName: r'dismiss')
   static const ResolveAction dismiss = _$dismiss;
@@ -21,6 +21,8 @@ class ResolveAction extends EnumClass {
   static const ResolveAction removePost = _$removePost;
   @BuiltValueEnumConst(wireName: r'remove_comment')
   static const ResolveAction removeComment = _$removeComment;
+  @BuiltValueEnumConst(wireName: r'remove_group')
+  static const ResolveAction removeGroup = _$removeGroup;
   @BuiltValueEnumConst(wireName: r'ban')
   static const ResolveAction ban = _$ban;
 

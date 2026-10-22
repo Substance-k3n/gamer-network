@@ -27,6 +27,8 @@ import {
   connectionRequests,
   connections,
   games,
+  groupMembers,
+  groups,
   listings,
   posts,
   reports,
@@ -35,6 +37,7 @@ import {
   users,
   waitlist,
 } from '../db/schema/index.js';
+import { MediaService } from '../feed/media.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import type {
   AdminReportDto,
@@ -69,12 +72,13 @@ export class AdminService {
     @Inject(DB) private readonly db: Db,
     private readonly sessionsService: SessionsService,
     private readonly notifier: NotificationsService,
+    private readonly media: MediaService,
   ) {}
 
   private async adminUsers(rows: UserRow[]): Promise<AdminUserDto[]> {
     if (rows.length === 0) return [];
     const ids = rows.map((u) => u.id);
-    const [mains, seen, conns, played, open] = await Promise.all([
+    const [mains, seen, conns, played, open, postCounts, groupCounts] = await Promise.all([
       this.db
         .select({
           userId: userGames.userId,
@@ -102,7 +106,26 @@ export class AdminService {
         .from(reports)
         .where(and(inArray(reports.targetUserId, ids), eq(reports.status, 'open')))
         .groupBy(reports.targetUserId),
+      this.db
+        .select({ userId: posts.authorId, n: sql<number>`count(*)::int` })
+        .from(posts)
+        .where(and(inArray(posts.authorId, ids), eq(posts.status, 'live')))
+        .groupBy(posts.authorId),
+      this.db
+        .select({ userId: groupMembers.userId, n: sql<number>`count(*)::int` })
+        .from(groupMembers)
+        .innerJoin(groups, eq(groups.id, groupMembers.groupId))
+        .where(
+          and(
+            inArray(groupMembers.userId, ids),
+            eq(groupMembers.status, 'member'),
+            eq(groups.status, 'live'),
+          ),
+        )
+        .groupBy(groupMembers.userId),
     ]);
+    const postsOf = new Map(postCounts.map((p) => [p.userId, p.n]));
+    const groupsOf = new Map(groupCounts.map((g) => [g.userId, g.n]));
     const main = new Map(mains.map((m) => [m.userId, m.name]));
     const lastSeen = new Map(seen.map((s) => [s.userId, s.at]));
     const connCount = new Map<string, number>();
@@ -127,6 +150,8 @@ export class AdminService {
       connections: connCount.get(u.id) ?? 0,
       playedWith: playedWith.get(u.id) ?? 0,
       openReports: openReports.get(u.id) ?? 0,
+      postsCount: postsOf.get(u.id) ?? 0,
+      groupsCount: groupsOf.get(u.id) ?? 0,
     }));
   }
 
@@ -175,7 +200,8 @@ export class AdminService {
     const byId = new Map((await this.adminUsers(people)).map((u) => [u.id, u]));
     const postIds = rows.flatMap((r) => (r.postId ? [r.postId] : []));
     const commentIds = rows.flatMap((r) => (r.commentId ? [r.commentId] : []));
-    const [postTexts, commentTexts] = await Promise.all([
+    const groupIds = rows.flatMap((r) => (r.groupId ? [r.groupId] : []));
+    const [postTexts, commentTexts, groupRows, images] = await Promise.all([
       postIds.length
         ? this.db
             .select({ id: posts.id, text: posts.text })
@@ -188,8 +214,16 @@ export class AdminService {
             .from(comments)
             .where(inArray(comments.id, commentIds))
         : [],
+      groupIds.length
+        ? this.db
+            .select({ id: groups.id, name: groups.name, about: groups.about })
+            .from(groups)
+            .where(inArray(groups.id, groupIds))
+        : [],
+      this.media.forPosts(postIds, true),
     ]);
     const text = new Map([...postTexts, ...commentTexts].map((t) => [t.id, t.text]));
+    const groupOf = new Map(groupRows.map((g) => [g.id, g]));
     return rows.map((r) => ({
       id: r.id,
       reporter: byId.get(r.reporterId)!,
@@ -197,7 +231,14 @@ export class AdminService {
       listingId: r.listingId,
       postId: r.postId,
       commentId: r.commentId,
-      excerpt: text.get(r.commentId ?? r.postId ?? '')?.slice(0, 300) ?? null,
+      groupId: r.groupId,
+      excerpt:
+        (r.groupId
+          ? groupOf.get(r.groupId)?.about
+          : text.get(r.commentId ?? r.postId ?? '')
+        )?.slice(0, 300) ?? null,
+      groupName: (r.groupId && groupOf.get(r.groupId)?.name) || null,
+      image: (r.postId && !r.commentId && images.get(r.postId)?.[0]) || null,
       reason: r.reason,
       details: r.details,
       status: r.status,
@@ -358,6 +399,28 @@ export class AdminService {
     else await this.db.transaction(run);
   }
 
+  /** Takes a group down: it, its posts and its events are hidden everywhere, logged. */
+  async removeGroup(admin: User, groupId: string, note = '', tx?: Tx, reportId?: string) {
+    const run = async (t: Tx) => {
+      const [row] = await t
+        .update(groups)
+        .set({ status: 'removed' })
+        .where(eq(groups.id, groupId))
+        .returning({ createdBy: groups.createdBy });
+      if (!row) throw notFound('That group');
+      await this.log(t, {
+        adminId: admin.id,
+        kind: 'remove_group',
+        groupId,
+        targetUserId: row.createdBy,
+        reportId,
+        note,
+      });
+    };
+    if (tx) await run(tx);
+    else await this.db.transaction(run);
+  }
+
   /** Closes a report with an action; the reporter hears back unless it was dismissed. */
   async resolve(admin: User, reportId: string, action: ResolveAction, note: string) {
     let banned: string | undefined;
@@ -415,6 +478,10 @@ export class AdminService {
         case 'remove_comment':
           if (!report.commentId) throw notAbout('a comment');
           await this.removeComment(admin, report.commentId, note, tx, reportId);
+          break;
+        case 'remove_group':
+          if (!report.groupId) throw notAbout('a group');
+          await this.removeGroup(admin, report.groupId, note, tx, reportId);
           break;
         case 'ban':
           await this.banIn(tx, admin, report.targetUserId, note || report.reason, reportId);

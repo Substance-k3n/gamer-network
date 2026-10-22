@@ -2,9 +2,10 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { gameMatches, type Tone } from '../../_lib/data';
-import { GroupTile } from '../../_lib/groupui';
-import { createGroup, groupKinds, groupShort, type GroupDraft } from '../../_lib/groups';
+import { api, ApiError, uuid, type Group, type GroupKind, type GroupTone } from '../../_lib/api';
+import { gameMatches } from '../../_lib/data';
+import { GroupTile, NameError, RulesEditor, ToneSwatches } from '../../_lib/groupui';
+import { groupKinds, kindLabel, setGroupsView } from '../../_lib/groups';
 import { SheetTitle } from '../../_lib/sheets';
 import { useApp } from '../../_lib/store';
 import {
@@ -18,36 +19,94 @@ import {
   Segmented,
   Sheet,
   TextArea,
-  toneColor,
 } from '../../_lib/ui';
 
-/** New group (sample data): name, type, game, place, about, who can join, colour. */
+type Draft = {
+  name: string;
+  place: string;
+  about: string;
+  kind: GroupKind;
+  gameId?: string;
+  approval: boolean;
+  tone: GroupTone;
+  rules: string[];
+};
+
+/** The badge the API makes from a name: initials of up to 4 words, or a word's first 4 letters. */
+function shortOf(name: string) {
+  const words = name
+    .toUpperCase()
+    .split(/\s+/)
+    .map((w) => w.replace(/[^A-Z0-9]/g, ''))
+    .filter(Boolean);
+  if (!words.length) return '?';
+  return words.length > 1
+    ? words
+        .slice(0, 4)
+        .map((w) => w[0])
+        .join('')
+    : words[0]!.slice(0, 4);
+}
+
+/**
+ * New group (POST /groups): name, type, game, place, about, rules, who can
+ * join, colour. A taken name is said on its field.
+ */
 export default function NewGroup() {
-  const { me, game, toast, back } = useApp();
+  const { me, game, run, toast, back, busy } = useApp();
   const router = useRouter();
   const myGames = (me?.games ?? []).flatMap((g) => (g.game ? [g.game.id] : []));
-  const [d, setD] = useState<GroupDraft>(() => ({
+  const [d, setD] = useState<Draft>(() => ({
     name: '',
     place: me?.city ?? 'Addis Ababa',
     about: '',
-    kind: 'Game',
+    kind: 'game',
     gameId: myGames[0],
     approval: false,
     tone: 'accent',
+    rules: [],
   }));
+  const [nameError, setNameError] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
-  const set = (p: Partial<GroupDraft>) => setD({ ...d, ...p });
-  const ready = d.name.trim().length >= 3 && (d.kind !== 'Game' || !!d.gameId);
+  const [key] = useState(uuid);
+  const set = (p: Partial<Draft>) => setD({ ...d, ...p });
+  const ready = d.name.trim().length >= 3 && (d.kind !== 'game' || !!d.gameId);
   const gameIds = [...myGames, ...(d.gameId && !myGames.includes(d.gameId) ? [d.gameId] : [])];
-  const short = groupShort(d, (id) => game(id).shortCode);
+  const short = shortOf(d.name);
   const placeHint =
-    d.kind === 'Campus' ? 'Addis Ababa University' : d.kind === 'Game' ? 'Ethiopia' : 'Addis Ababa';
+    d.kind === 'campus' ? 'Addis Ababa University' : d.kind === 'game' ? 'Ethiopia' : 'Addis Ababa';
 
-  const create = () => {
-    if (d.name.trim().length < 3) return toast('Give your group a name (3+ characters)');
-    if (d.kind === 'Game' && !d.gameId) return toast('Pick the game this group is for');
+  const create = async () => {
+    if (d.name.trim().length < 3) return setNameError('Give your group a name (3+ characters)');
+    if (d.kind === 'game' && !d.gameId) return toast('Pick the game this group is for');
     if (!d.place.trim()) return toast('Add a city, campus or country');
-    const g = createGroup(d, short);
+    const g = await run(async () => {
+      try {
+        return await api<Group>('groups', {
+          method: 'POST',
+          key,
+          body: {
+            name: d.name.trim(),
+            kind: d.kind,
+            ...(d.kind === 'game' ? { gameId: d.gameId } : {}),
+            place: d.place.trim(),
+            about: d.about.trim(),
+            rules: d.rules.map((r) => r.trim()).filter(Boolean),
+            approval: d.approval,
+            tone: d.tone,
+          },
+        });
+      } catch (e) {
+        // A taken name is said on the field.
+        if (e instanceof ApiError && e.code === 'group_name_taken') {
+          setNameError(e.message);
+          return null;
+        }
+        throw e;
+      }
+    });
+    if (!g) return;
+    setGroupsView({ tab: 'mine' });
     // The new page replaces this form, so back goes to the Groups tab.
     router.replace(`/app/groups/${g.id}?tab=About`);
     toast(`${g.name} is live — invite your squad`);
@@ -95,6 +154,7 @@ export default function NewGroup() {
           look={ready ? 'accent' : 'quiet'}
           shadow={3}
           onClick={create}
+          disabled={busy}
         >
           Create
         </Pill>
@@ -111,7 +171,7 @@ export default function NewGroup() {
                 {d.name.trim() || 'Your group'}
               </div>
               <div className="muted ellipsis" style={{ fontSize: 13 }}>
-                {d.kind === 'Game' && d.gameId ? game(d.gameId).name : d.kind} ·{' '}
+                {d.kind === 'game' && d.gameId ? game(d.gameId).name : kindLabel[d.kind]} ·{' '}
                 {d.place.trim() || placeHint}
               </div>
             </div>
@@ -119,23 +179,30 @@ export default function NewGroup() {
         </Card>
         {labeled(
           'NAME',
-          <Field
-            value={d.name}
-            onChange={(name) => set({ name: name.slice(0, 60) })}
-            placeholder="e.g. Valorant Addis Duo Queue"
-            h={50}
-            aria-label="Group name"
-          />,
+          <>
+            <Field
+              value={d.name}
+              onChange={(name) => {
+                set({ name: name.slice(0, 40) });
+                setNameError(null);
+              }}
+              placeholder="e.g. Valorant Addis Duo Queue"
+              h={50}
+              maxLength={40}
+              aria-label="Group name"
+            />
+            {nameError && <NameError text={nameError} />}
+          </>,
         )}
         {labeled(
           'TYPE',
           <Segmented
-            options={groupKinds.map((k) => ({ id: k, label: k }))}
+            options={groupKinds.map((k) => ({ id: k, label: kindLabel[k] }))}
             value={d.kind}
             onChange={(kind) => set({ kind })}
           />,
         )}
-        {d.kind === 'Game' &&
+        {d.kind === 'game' &&
           labeled(
             'GAME',
             <div className="scroller">
@@ -150,13 +217,14 @@ export default function NewGroup() {
             </div>,
           )}
         {labeled(
-          d.kind === 'Campus' ? 'CAMPUS' : 'CITY OR COUNTRY',
+          d.kind === 'campus' ? 'CAMPUS' : 'CITY OR COUNTRY',
           <Field
             value={d.place}
             onChange={(place) => set({ place: place.slice(0, 60) })}
             placeholder={placeHint}
             h={50}
-            aria-label={d.kind === 'Campus' ? 'Campus' : 'City or country'}
+            maxLength={60}
+            aria-label={d.kind === 'campus' ? 'Campus' : 'City or country'}
           />,
         )}
         {labeled(
@@ -168,6 +236,7 @@ export default function NewGroup() {
             rows={3}
           />,
         )}
+        {labeled('RULES', <RulesEditor rules={d.rules} onChange={(rules) => set({ rules })} />)}
         {labeled(
           'WHO CAN JOIN',
           <Segmented
@@ -179,41 +248,7 @@ export default function NewGroup() {
             onChange={(v) => set({ approval: v === 'Approval' })}
           />,
         )}
-        {labeled(
-          'COLOUR',
-          <div className="row" style={{ gap: 10 }}>
-            {(['accent', 'lav', 'soft', 'grey'] as Tone[]).map((t) => (
-              <button
-                key={t}
-                type="button"
-                aria-pressed={d.tone === t}
-                aria-label={`${t} colour`}
-                onClick={() => set({ tone: t })}
-                style={{
-                  width: 44,
-                  height: 44,
-                  padding: 4,
-                  borderRadius: '50%',
-                  border: `2.5px solid ${d.tone === t ? 'var(--text)' : 'transparent'}`,
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  transition: 'border-color .15s',
-                }}
-              >
-                <i
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    height: '100%',
-                    borderRadius: '50%',
-                    background: toneColor(t),
-                    border: '1.5px solid var(--line)',
-                  }}
-                />
-              </button>
-            ))}
-          </div>,
-        )}
+        {labeled('COLOUR', <ToneSwatches tone={d.tone} onChange={(tone) => set({ tone })} />)}
         <div className="muted" style={{ fontSize: 13 }}>
           You’ll be the admin. You can post events and approve members.
         </div>
@@ -222,7 +257,7 @@ export default function NewGroup() {
   );
 }
 
-/** "Other game": one game from the catalog, or one typed in. */
+/** "Other game": one game from the catalog (a group's game must be one). */
 function PickGame({
   selected,
   onPick,
@@ -232,10 +267,9 @@ function PickGame({
   onPick: (id: string) => void;
   onClose: () => void;
 }) {
-  const { games, addCustomGame } = useApp();
+  const { games } = useApp();
   const [q, setQ] = useState('');
   const shown = games.filter((g) => gameMatches(g, q));
-  const exact = games.some((g) => g.name.toLowerCase() === q.trim().toLowerCase());
   return (
     <Sheet onClose={onClose}>
       <SheetTitle onClose={onClose}>Pick the game</SheetTitle>
@@ -250,14 +284,6 @@ function PickGame({
           autoFocus
         />
         <div className="rows" style={{ maxHeight: '50dvh', overflowY: 'auto' }}>
-          {q.trim() && !exact && (
-            <button type="button" className="r" onClick={() => onPick(addCustomGame(q.trim()))}>
-              <Icon name="plus" size={16} />
-              <span className="grow" style={{ fontSize: 14, fontWeight: 600 }}>
-                Add “{q.trim()}” as your own game
-              </span>
-            </button>
-          )}
           {shown.map((g) => (
             <button
               key={g.id}

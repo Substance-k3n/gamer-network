@@ -16,6 +16,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(AgeRange.serializer)
       ..add(AnswerCheckInBody.serializer)
       ..add(AppConfigResponse.serializer)
+      ..add(ApplicationStatus.serializer)
       ..add(AuthResponse.serializer)
       ..add(AvatarType.serializer)
       ..add(AvatarUploadBody.serializer)
@@ -36,6 +37,8 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(ConnectionRequestDto.serializer)
       ..add(ConnectionRequestListDto.serializer)
       ..add(CreateCommentBody.serializer)
+      ..add(CreateGroupBody.serializer)
+      ..add(CreateGroupEventBody.serializer)
       ..add(CreateListingBody.serializer)
       ..add(CreateListingBodyDurationHoursEnum.serializer)
       ..add(CreatePostBody.serializer)
@@ -53,6 +56,16 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(GamingIdKind.serializer)
       ..add(GgDto.serializer)
       ..add(GoogleBody.serializer)
+      ..add(GroupDto.serializer)
+      ..add(GroupEventDto.serializer)
+      ..add(GroupEventPageDto.serializer)
+      ..add(GroupKind.serializer)
+      ..add(GroupMemberDto.serializer)
+      ..add(GroupMemberPageDto.serializer)
+      ..add(GroupPageDto.serializer)
+      ..add(GroupRole.serializer)
+      ..add(GroupTab.serializer)
+      ..add(GroupTone.serializer)
       ..add(HealthResponse.serializer)
       ..add(HealthResponseDatabaseEnum.serializer)
       ..add(HealthResponseStatusEnum.serializer)
@@ -67,6 +80,12 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(LoginBody.serializer)
       ..add(MarkReadBody.serializer)
       ..add(MeDto.serializer)
+      ..add(MediaContentType.serializer)
+      ..add(MediaDto.serializer)
+      ..add(MediaKind.serializer)
+      ..add(MediaUploadBody.serializer)
+      ..add(MediaUploadDto.serializer)
+      ..add(MembershipStatus.serializer)
       ..add(MetricsDto.serializer)
       ..add(ModeDto.serializer)
       ..add(ModeRefDto.serializer)
@@ -83,8 +102,13 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(PlayTag.serializer)
       ..add(PlayWhen.serializer)
       ..add(PlayerStatus.serializer)
+      ..add(PollBody.serializer)
+      ..add(PollDto.serializer)
+      ..add(PollDuration.serializer)
+      ..add(PollOptionDto.serializer)
       ..add(PostAudience.serializer)
       ..add(PostDto.serializer)
+      ..add(PostGroupDto.serializer)
       ..add(PostKind.serializer)
       ..add(PostPageDto.serializer)
       ..add(PostType.serializer)
@@ -95,6 +119,11 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(PublicPostDto.serializer)
       ..add(RankDto.serializer)
       ..add(RankRefDto.serializer)
+      ..add(RecruitApplicationDto.serializer)
+      ..add(RecruitApplicationPageDto.serializer)
+      ..add(RecruitBody.serializer)
+      ..add(RecruitDecisionDto.serializer)
+      ..add(RecruitDto.serializer)
       ..add(RegisterDeviceBody.serializer)
       ..add(Relationship.serializer)
       ..add(ReportBody.serializer)
@@ -112,12 +141,14 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(SetAvatarBody.serializer)
       ..add(SetGamesBody.serializer)
       ..add(SetGamingIdsBody.serializer)
+      ..add(SetGroupRoleBody.serializer)
       ..add(SetLaunchBody.serializer)
       ..add(SetPlatformsBody.serializer)
       ..add(SetStatusBody.serializer)
       ..add(SetTagsBody.serializer)
       ..add(SignupBody.serializer)
       ..add(UnreadCountDto.serializer)
+      ..add(UpdateGroupBody.serializer)
       ..add(UpdateListingBody.serializer)
       ..add(UpdateMeBody.serializer)
       ..add(UserCardDto.serializer)
@@ -128,6 +159,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(UsernameAvailability.serializer)
       ..add(UsernameAvailabilityReasonEnum.serializer)
       ..add(Voice.serializer)
+      ..add(VoteBody.serializer)
       ..add(WaitlistBody.serializer)
       ..add(WaitlistCountDto.serializer)
       ..addBuilderFactory(
@@ -186,8 +218,23 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(BuiltList, const [const FullType(GamingIdInput)]),
           () => ListBuilder<GamingIdInput>())
       ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(GroupDto)]),
+          () => ListBuilder<GroupDto>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(GroupEventDto)]),
+          () => ListBuilder<GroupEventDto>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(GroupMemberDto)]),
+          () => ListBuilder<GroupMemberDto>())
+      ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(ListingDto)]),
           () => ListBuilder<ListingDto>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(MediaDto)]),
+          () => ListBuilder<MediaDto>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(MediaDto)]),
+          () => ListBuilder<MediaDto>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(NotificationDto)]),
           () => ListBuilder<NotificationDto>())
@@ -207,11 +254,33 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(BuiltList, const [const FullType(PlayInviteDto)]),
           () => ListBuilder<PlayInviteDto>())
       ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(PollOptionDto)]),
+          () => ListBuilder<PollOptionDto>())
+      ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(PostDto)]),
           () => ListBuilder<PostDto>())
       ..addBuilderFactory(
+          const FullType(
+              BuiltList, const [const FullType(RecruitApplicationDto)]),
+          () => ListBuilder<RecruitApplicationDto>())
+      ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(String)]),
           () => ListBuilder<String>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(String)]),
+          () => ListBuilder<String>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(String)]),
+          () => ListBuilder<String>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(String)]),
+          () => ListBuilder<String>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(UserCardDto)]),
+          () => ListBuilder<UserCardDto>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(UserCardDto)]),
+          () => ListBuilder<UserCardDto>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(UserCardDto)]),
           () => ListBuilder<UserCardDto>())
@@ -232,6 +301,10 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(
               BuiltMap, const [const FullType(String), const FullType(String)]),
           () => MapBuilder<String, String>())
+      ..addBuilderFactory(
+          const FullType(
+              BuiltMap, const [const FullType(String), const FullType(String)]),
+          () => MapBuilder<String, String>())
       ..addBuilderFactory(const FullType(BuiltSet, const [const FullType(Day)]),
           () => SetBuilder<Day>())
       ..addBuilderFactory(
@@ -239,7 +312,13 @@ Serializers _$serializers = (Serializers().toBuilder()
           () => SetBuilder<Platform>())
       ..addBuilderFactory(
           const FullType(BuiltSet, const [const FullType(PlayTag)]),
-          () => SetBuilder<PlayTag>()))
+          () => SetBuilder<PlayTag>())
+      ..addBuilderFactory(
+          const FullType(BuiltSet, const [const FullType(String)]),
+          () => SetBuilder<String>())
+      ..addBuilderFactory(
+          const FullType(BuiltSet, const [const FullType(String)]),
+          () => SetBuilder<String>()))
     .build();
 
 // ignore_for_file: deprecated_member_use_from_same_package,type=lint
