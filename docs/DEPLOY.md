@@ -3,8 +3,8 @@
 The API runs on Render's free tier (ADR-0008), described by
 `render.yaml` at the repo root, with Postgres on Neon's free tier
 (ADR-0010). `main` deploys it: merging a release is the API's deploy.
-The web app and the admin run on Cloudflare Workers' free plan
-(ADR-0014) and deploy with `wrangler` (§4).
+The web app runs on Cloudflare Workers' free plan and deploys with
+`wrangler`; the admin isn't deployed during the trial (ADR-0014, §4).
 
 **Free-tier limits, know them before the beta:**
 
@@ -22,12 +22,9 @@ Moving off any limit is a plan change on that service in the dashboard.
 | Render service | What it does                                                        |
 | -------------- | ------------------------------------------------------------------- |
 | `gn-api`       | NestJS API. Runs the migrations and seeds the game catalog on start |
-| `gn-web`       | Moving to Cloudflare (§4); delete once the Worker is checked        |
-| `gn-admin`     | Moving to Cloudflare (§4); delete once the Worker is checked        |
 | Neon `gn`      | Postgres 17, outside Render (ADR-0010)                              |
 
-`gn-web` and `gn-admin` call the API on its public URL (free services
-can't be reached over Render's private network).
+The web Worker calls the API on its public URL.
 Avatars go straight from the phone to an S3 bucket, Backblaze B2 for now
 (API.md "Images", ADR-0009).
 
@@ -64,9 +61,10 @@ Avatars go straight from the phone to an S3 bucket, Backblaze B2 for now
    GitHub repo, branch `main`. Render reads `render.yaml` and asks for
    every value marked `sync: false`. The URLs come from the service
    names, so fill them in as:
-   - `PUBLIC_WEB_URL` (on `gn-api` and `gn-web`): `https://gn-web.onrender.com`
-   - `WEB_ORIGINS`: `https://gn-web.onrender.com,https://gn-admin.onrender.com`
-   - `API_URL` (on `gn-web` and `gn-admin`): `https://gn-api-c763.onrender.com`
+   - `PUBLIC_WEB_URL`: `https://gn-web.rally-et.workers.dev`
+   - `WEB_ORIGINS`: `https://gn-web.rally-et.workers.dev` (add the admin's
+     Worker URL when it's deployed)
+   - The web Worker's `API_URL` (§4): `https://gn-api-c763.onrender.com`
 
    `gn-api.onrender.com` was taken, so Render named the API
    `gn-api-c763`; that bare name never answers. Use the URL on the
@@ -90,8 +88,7 @@ Avatars go straight from the phone to an S3 bucket, Backblaze B2 for now
      pnpm --filter @app/api admin:grant <email>
    ```
 
-   Sign in at
-   `https://gn-admin.onrender.com`.
+   Sign in on the admin once it's deployed (§4).
 
 6. **Uptime check.** Add `https://gn-api-c763.onrender.com/health` to a
    free monitor (cron-job.org, UptimeRobot) every 10 minutes, with email
@@ -105,11 +102,12 @@ Avatars go straight from the phone to an S3 bucket, Backblaze B2 for now
 
 ## 2. Updating
 
-Release `dev` → `main` (`release/YYYY-MM-DD`). Render builds the three
-images and switches over only once the new API answers `/health`. The
+Release `dev` → `main` (`release/YYYY-MM-DD`). Render builds the API
+image and switches over only once the new API answers `/health`. The
 API migrates before it starts listening, so a failed migration fails the
 deploy and the old version keeps running. Roll back from the service's
-Events page ("Rollback").
+Events page ("Rollback"). The web Worker doesn't follow `main`: deploy it
+from the merged `main` with `pnpm --filter @app/web deploy:cf` (§4).
 
 **Check the new code is really live**, not just that the server
 answers: the deploy in the service's Events page should show the merge
@@ -131,10 +129,10 @@ pg_dump -Fc "<neon connection string>" -f gn-$(date +%Y%m%d).dump
 ADR-0014. Each app is a Worker built with OpenNext; its settings are in
 `apps/<app>/wrangler.jsonc`, secrets live only in Cloudflare.
 
-| Worker     | URL                                     |
-| ---------- | --------------------------------------- |
-| `gn-web`   | `https://gn-web.rally-et.workers.dev`   |
-| `gn-admin` | `https://gn-admin.rally-et.workers.dev` |
+| Worker     | URL                                   |
+| ---------- | ------------------------------------- |
+| `gn-web`   | `https://gn-web.rally-et.workers.dev` |
+| `gn-admin` | Not deployed during the trial         |
 
 Deploy from a checkout of `main` (`npx wrangler login` once):
 
@@ -146,7 +144,12 @@ Secrets, set once per Worker from its folder:
 `npx wrangler secret put CONTACT_EMAIL` (and later
 `ANDROID_CERT_SHA256`, `PLAY_STORE_URL`). With the web on Workers,
 `gn-api` needs `PUBLIC_WEB_URL=https://gn-web.rally-et.workers.dev` and
-both Worker URLs in `WEB_ORIGINS`.
+that URL in `WEB_ORIGINS`.
+
+**The admin**, when moderation needs it: it builds the same way (about
+1.0 MB). Copy `open-next.config.ts` and `wrangler.jsonc` from
+`apps/web`, name it `gn-admin`, set its `API_URL`, deploy, and add
+`https://gn-admin.rally-et.workers.dev` to `WEB_ORIGINS`.
 
 The free plan caps a Worker at 3 MB compressed; `wrangler` prints the
 size on every deploy (web is about 2.0 MB).
