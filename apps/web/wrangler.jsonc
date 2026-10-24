@@ -1,0 +1,17 @@
+// gn-web on Cloudflare Workers (ADR-0014). Deploy: pnpm deploy:cf.
+// CONTACT_EMAIL is a secret (`wrangler secret put CONTACT_EMAIL`), so it
+// stays out of the repo; ANDROID_CERT_SHA256 and PLAY_STORE_URL join it
+// when the app is signed and listed.
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "gn-web",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "vars": {
+    "API_URL": "https://gn-api-c763.onrender.com",
+    "PUBLIC_WEB_URL": "https://gn-web.rally-et.workers.dev",
+    "ANDROID_PACKAGE": "com.example.rally",
+  },
+}

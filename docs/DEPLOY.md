@@ -1,9 +1,10 @@
 # Deploying
 
-Production runs on Render's free tier (ADR-0008), described by
+The API runs on Render's free tier (ADR-0008), described by
 `render.yaml` at the repo root, with Postgres on Neon's free tier
-(ADR-0010). `main` deploys itself: merging a release
-is the deploy.
+(ADR-0010). `main` deploys it: merging a release is the API's deploy.
+The web app and the admin run on Cloudflare Workers' free plan
+(ADR-0014) and deploy with `wrangler` (§4).
 
 **Free-tier limits, know them before the beta:**
 
@@ -21,8 +22,8 @@ Moving off any limit is a plan change on that service in the dashboard.
 | Render service | What it does                                                        |
 | -------------- | ------------------------------------------------------------------- |
 | `gn-api`       | NestJS API. Runs the migrations and seeds the game catalog on start |
-| `gn-web`       | Share pages, privacy policy, App Links                              |
-| `gn-admin`     | Moderation dashboard                                                |
+| `gn-web`       | Moving to Cloudflare (§4); delete once the Worker is checked        |
+| `gn-admin`     | Moving to Cloudflare (§4); delete once the Worker is checked        |
 | Neon `gn`      | Postgres 17, outside Render (ADR-0010)                              |
 
 `gn-web` and `gn-admin` call the API on its public URL (free services
@@ -124,6 +125,31 @@ dumps, at least weekly. Restore with `pg_restore --clean --if-exists
 ```sh
 pg_dump -Fc "<neon connection string>" -f gn-$(date +%Y%m%d).dump
 ```
+
+## 4. Web and admin on Cloudflare Workers
+
+ADR-0014. Each app is a Worker built with OpenNext; its settings are in
+`apps/<app>/wrangler.jsonc`, secrets live only in Cloudflare.
+
+| Worker     | URL                                     |
+| ---------- | --------------------------------------- |
+| `gn-web`   | `https://gn-web.rally-et.workers.dev`   |
+| `gn-admin` | `https://gn-admin.rally-et.workers.dev` |
+
+Deploy from a checkout of `main` (`npx wrangler login` once):
+
+```sh
+pnpm --filter @app/web deploy:cf
+```
+
+Secrets, set once per Worker from its folder:
+`npx wrangler secret put CONTACT_EMAIL` (and later
+`ANDROID_CERT_SHA256`, `PLAY_STORE_URL`). With the web on Workers,
+`gn-api` needs `PUBLIC_WEB_URL=https://gn-web.rally-et.workers.dev` and
+both Worker URLs in `WEB_ORIGINS`.
+
+The free plan caps a Worker at 3 MB compressed; `wrangler` prints the
+size on every deploy (web is about 2.0 MB).
 
 ## Running the production images yourself
 

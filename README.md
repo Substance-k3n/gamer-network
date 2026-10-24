@@ -48,7 +48,8 @@ calls:
 7. [ADR-0007](docs/decisions/0007-email-password-and-google.md) Sign in with email + password or Google.
 8. [ADR-0011](docs/decisions/0011-nextjs-pwa-for-players.md) (proposed) Players also get a Next.js PWA in `apps/web`: Flutter web took 18 s to first frame on 4G.
 9. [ADR-0012](docs/decisions/0012-feed-and-groups-in-the-mvp.md) The prototype's feed, groups and Moments join the MVP, built in phases behind `feedEnabled`/`groupsEnabled`.
-10. [ADR-0013](docs/decisions/0013-apps-show-the-prototype-screens-without-flags.md) (proposed) The apps show the prototype's feed, groups (on sample data) and profile now, without the flags.
+10. [ADR-0014](docs/decisions/0014-web-and-admin-on-cloudflare-workers.md) Web and admin on Cloudflare Workers' free plan; only the API stays on Render, kept awake.
+11. [ADR-0013](docs/decisions/0013-apps-show-the-prototype-screens-without-flags.md) (proposed) The apps show the prototype's feed, groups (on sample data) and profile now, without the flags.
 
 ## Docs
 
