@@ -65,17 +65,19 @@ Avatars go straight from the phone to an S3 bucket, Backblaze B2 for now
    names, so fill them in as:
    - `PUBLIC_WEB_URL` (on `gn-api` and `gn-web`): `https://gn-web.onrender.com`
    - `WEB_ORIGINS`: `https://gn-web.onrender.com,https://gn-admin.onrender.com`
-   - `API_URL` (on `gn-web` and `gn-admin`): `https://gn-api.onrender.com`
+   - `API_URL` (on `gn-web` and `gn-admin`): `https://gn-api-c763.onrender.com`
 
-   If Render gives a service a different `onrender.com` name, or you add
-   your own domains later (service → Settings → Custom Domains), change
-   these to match and redeploy.
+   `gn-api.onrender.com` was taken, so Render named the API
+   `gn-api-c763`; that bare name never answers. Use the URL on the
+   service's page in the dashboard, not one guessed from its name. If
+   that changes, or you add your own domains later (service → Settings →
+   Custom Domains), change these to match and redeploy.
 
 4. **Check it.**
 
    ```sh
-   curl https://gn-api.onrender.com/health        # {"status":"ok","database":"ok"}
-   curl https://gn-api.onrender.com/openapi.json  # the contract, for the app
+   curl https://gn-api-c763.onrender.com/health        # {"status":"ok","database":"ok"}
+   curl https://gn-api-c763.onrender.com/openapi.json  # the contract, for the app
    ```
 
 5. **Admin account.** Sign up in the app (or with `POST /v1/auth/signup`).
@@ -90,9 +92,15 @@ Avatars go straight from the phone to an S3 bucket, Backblaze B2 for now
    Sign in at
    `https://gn-admin.onrender.com`.
 
-6. **Uptime check.** Add `https://gn-api.onrender.com/health` to a free
-   monitor (UptimeRobot, Better Stack) with email alerts. It answers 503
-   when the database is down.
+6. **Uptime check.** Add `https://gn-api-c763.onrender.com/health` to a
+   free monitor (cron-job.org, UptimeRobot) every 10 minutes, with email
+   alerts on failure. It answers 503 when the database is down. Ping
+   `/health`, not `/`: the API answers 404 there, and cron-job.org turns
+   off a job after repeated failures. The ping also keeps the free
+   instance (asleep after 15 minutes idle) and Neon awake. Keep only one
+   free service awake all month: the account's 750 free instance hours
+   cover one, and running out suspends every free service until the
+   month ends.
 
 ## 2. Updating
 

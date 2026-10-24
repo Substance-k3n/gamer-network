@@ -87,7 +87,7 @@ services:
       - key: PORT
         value: '3000'
       # Free services can't be reached privately: the API's public URL,
-      # https://gn-api.onrender.com
+      # https://gn-api-c763.onrender.com
       - key: API_URL
         sync: false
       - key: PUBLIC_WEB_URL
@@ -113,6 +113,6 @@ services:
       - key: PORT
         value: '3001'
       # Free services can't be reached privately: the API's public URL,
-      # https://gn-api.onrender.com
+      # https://gn-api-c763.onrender.com
       - key: API_URL
         sync: false
