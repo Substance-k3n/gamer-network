@@ -151,6 +151,12 @@ The admin has no secrets: its only setting is `API_URL`, in its
 `wrangler.jsonc`. Its pages call its own `/api/*` routes, which forward
 to the API from the Worker, so `WEB_ORIGINS` doesn't change for it.
 
+**Local settings stay out of the Worker.** OpenNext copies every `.env*`
+file in the app, for every mode, into the Worker it uploads. `deploy:cf`
+empties that copy before uploading (`infra/cloudflare/drop-local-env.mjs`),
+so a Worker only gets its `wrangler.jsonc` vars and secrets. Deploy with
+`deploy:cf`, not `opennextjs-cloudflare deploy` on its own.
+
 The free plan caps a Worker at 3 MB compressed; `wrangler` prints the
 size on every deploy (web is about 2.0 MB, the admin about 1.0 MB).
 
