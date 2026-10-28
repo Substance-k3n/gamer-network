@@ -38,6 +38,13 @@ export const env = {
   get latestAppVersion() {
     return process.env.LATEST_APP_VERSION ?? '1.0.0';
   },
+  /** Seeds the admin account on start when both are set (db/seed.ts). */
+  get adminEmail() {
+    return process.env.ADMIN_EMAIL ?? '';
+  },
+  get adminPassword() {
+    return process.env.ADMIN_PASSWORD ?? '';
+  },
   get launchCity() {
     return process.env.LAUNCH_CITY ?? 'Addis Ababa';
   },
