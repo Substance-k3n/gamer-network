@@ -79,16 +79,20 @@ Avatars go straight from the phone to an S3 bucket, Backblaze B2 for now
    curl https://gn-api-c763.onrender.com/openapi.json  # the contract, for the app
    ```
 
-5. **Admin account.** Sign up in the app (or with `POST /v1/auth/signup`).
-   Free services have no Shell, so grant it from your laptop with Neon's
-   connection string:
+5. **Admin account.** Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` (12+
+   characters) on `gn-api`. Every start makes that account an admin with
+   that password, creating it if needed; the log says
+   `admin rally.admin ready`. Sign in with it at
+   `https://gn-admin.rally-et.workers.dev` (§4). To reset the password,
+   change `ADMIN_PASSWORD` and redeploy.
+
+   More admins: sign them up in the app, then grant them from your laptop
+   with Neon's connection string (free services have no Shell):
 
    ```sh
    DATABASE_URL='<neon connection string>' \
      pnpm --filter @app/api admin:grant <email>
    ```
-
-   Sign in at `https://gn-admin.rally-et.workers.dev` (§4).
 
 6. **Uptime check.** Add `https://gn-api-c763.onrender.com/health` to a
    free monitor (cron-job.org, UptimeRobot) every 10 minutes, with email
