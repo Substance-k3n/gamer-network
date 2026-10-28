@@ -9,6 +9,9 @@ cp .env.example .env.local      # API_URL
 pnpm --filter @app/admin dev    # http://localhost:3001
 ```
 
+Deployed on Cloudflare Workers as `gn-admin` (ADR-0014):
+`pnpm --filter @app/admin deploy:cf`, see docs/DEPLOY.md §4.
+
 Wired to the API ("Admin" in [docs/API.md](../../docs/API.md)); only
 admins can sign in. The browser never holds the API token: `/api/session`
 signs in through `POST /v1/auth/login` and keeps the token in an httpOnly

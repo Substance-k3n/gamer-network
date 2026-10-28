@@ -1,0 +1,13 @@
+// gn-admin on Cloudflare Workers (ADR-0014). Deploy: pnpm deploy:cf.
+// The admin's own URL goes in the API's WEB_ORIGINS.
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "gn-admin",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "vars": {
+    "API_URL": "https://gn-api-c763.onrender.com",
+  },
+}

@@ -4,8 +4,8 @@
 #
 #   gn-api    the apps call this; /health, /openapi.json
 #
-# The web app runs on Cloudflare Workers, and the admin isn't deployed
-# for the trial (ADR-0014, docs/DEPLOY.md §4).
+# The web app and the admin run on Cloudflare Workers (ADR-0014,
+# docs/DEPLOY.md §4).
 #
 # Postgres is on Neon, not Render (ADR-0010): DATABASE_URL is asked for.
 #
@@ -35,7 +35,8 @@ services:
         value: production
       - key: PORT
         value: '3300'
-      # https://gn-web.rally-et.workers.dev (add the admin's URL when it's deployed)
+      # https://gn-web.rally-et.workers.dev (the admin calls the API from its
+      # Worker, so it doesn't need to be here)
       - key: WEB_ORIGINS
         sync: false
       # https://gn-web.rally-et.workers.dev: share links point here
