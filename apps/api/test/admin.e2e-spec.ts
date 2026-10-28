@@ -3,6 +3,7 @@ import { and, eq } from 'drizzle-orm';
 import request from 'supertest';
 import { App } from 'supertest/types.js';
 import { createDb } from '../src/db/db.js';
+import { seedAdmin } from '../src/db/seed.js';
 import {
   adminActions,
   checkIns,
@@ -91,6 +92,46 @@ describe('access', () => {
     expect((await p.get('/v1/admin/reports').expect(403)).body.error.code).toBe('admin_only');
     const admin = await player({ admin: true, live: false });
     await admin.get('/v1/admin/reports').expect(200);
+  });
+});
+
+describe('admin seed', () => {
+  const login = (email: string, password: string) =>
+    http().post('/v1/auth/login').send({ email, password });
+
+  it('makes a signed-in admin, and a changed password replaces the old one', async () => {
+    const email = `seed_${uniq()}@example.com`;
+    try {
+      expect(await seedAdmin(conn.db, email, 'first-admin-pass')).toBe('rally.admin');
+      const first = await login(email, 'first-admin-pass').expect(200);
+      await http()
+        .get('/v1/admin/reports')
+        .set({ Authorization: `Bearer ${first.body.token}` })
+        .expect(200);
+
+      await seedAdmin(conn.db, email, 'second-admin-pass');
+      await login(email, 'first-admin-pass').expect(401);
+      await login(email, 'second-admin-pass').expect(200);
+    } finally {
+      await conn.db.delete(users).where(eq(users.email, email));
+    }
+  });
+
+  it('turns an existing player into the admin, keeping their username', async () => {
+    const p = await player();
+    const [{ email }] = await conn.db
+      .select({ email: users.email })
+      .from(users)
+      .where(eq(users.id, p.id));
+    expect(await seedAdmin(conn.db, email, 'seeded-admin-pass')).toBe(p.username);
+    const [row] = await conn.db.select().from(users).where(eq(users.id, p.id));
+    expect(row!.role).toBe('admin');
+  });
+
+  it('refuses a short password', async () => {
+    await expect(seedAdmin(conn.db, `s_${uniq()}@example.com`, 'short')).rejects.toThrow(
+      '12 characters',
+    );
   });
 });
 

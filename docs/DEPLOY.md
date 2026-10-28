@@ -1,9 +1,10 @@
 # Deploying
 
-Production runs on Render's free tier (ADR-0008), described by
+The API runs on Render's free tier (ADR-0008), described by
 `render.yaml` at the repo root, with Postgres on Neon's free tier
-(ADR-0010). `main` deploys itself: merging a release
-is the deploy.
+(ADR-0010). `main` deploys it: merging a release is the API's deploy.
+The web app and the admin run on Cloudflare Workers' free plan and
+deploy with `wrangler` (ADR-0014, §4).
 
 **Free-tier limits, know them before the beta:**
 
@@ -21,12 +22,9 @@ Moving off any limit is a plan change on that service in the dashboard.
 | Render service | What it does                                                        |
 | -------------- | ------------------------------------------------------------------- |
 | `gn-api`       | NestJS API. Runs the migrations and seeds the game catalog on start |
-| `gn-web`       | Share pages, privacy policy, App Links                              |
-| `gn-admin`     | Moderation dashboard                                                |
 | Neon `gn`      | Postgres 17, outside Render (ADR-0010)                              |
 
-`gn-web` and `gn-admin` call the API on its public URL (free services
-can't be reached over Render's private network).
+The web Worker calls the API on its public URL.
 Avatars go straight from the phone to an S3 bucket, Backblaze B2 for now
 (API.md "Images", ADR-0009).
 
@@ -63,44 +61,57 @@ Avatars go straight from the phone to an S3 bucket, Backblaze B2 for now
    GitHub repo, branch `main`. Render reads `render.yaml` and asks for
    every value marked `sync: false`. The URLs come from the service
    names, so fill them in as:
-   - `PUBLIC_WEB_URL` (on `gn-api` and `gn-web`): `https://gn-web.onrender.com`
-   - `WEB_ORIGINS`: `https://gn-web.onrender.com,https://gn-admin.onrender.com`
-   - `API_URL` (on `gn-web` and `gn-admin`): `https://gn-api.onrender.com`
+   - `PUBLIC_WEB_URL`: `https://gn-web.rally-et.workers.dev`
+   - `WEB_ORIGINS`: `https://gn-web.rally-et.workers.dev`. The admin
+     calls the API from its Worker, not the browser, so it isn't listed.
+   - The Workers' `API_URL` (§4): `https://gn-api-c763.onrender.com`
 
-   If Render gives a service a different `onrender.com` name, or you add
-   your own domains later (service → Settings → Custom Domains), change
-   these to match and redeploy.
+   `gn-api.onrender.com` was taken, so Render named the API
+   `gn-api-c763`; that bare name never answers. Use the URL on the
+   service's page in the dashboard, not one guessed from its name. If
+   that changes, or you add your own domains later (service → Settings →
+   Custom Domains), change these to match and redeploy.
 
 4. **Check it.**
 
    ```sh
-   curl https://gn-api.onrender.com/health        # {"status":"ok","database":"ok"}
-   curl https://gn-api.onrender.com/openapi.json  # the contract, for the app
+   curl https://gn-api-c763.onrender.com/health        # {"status":"ok","database":"ok"}
+   curl https://gn-api-c763.onrender.com/openapi.json  # the contract, for the app
    ```
 
-5. **Admin account.** Sign up in the app (or with `POST /v1/auth/signup`).
-   Free services have no Shell, so grant it from your laptop with Neon's
-   connection string:
+5. **Admin account.** Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` (12+
+   characters) on `gn-api`. Every start makes that account an admin with
+   that password, creating it if needed; the log says
+   `admin rally.admin ready`. Sign in with it at
+   `https://gn-admin.rally-et.workers.dev` (§4). To reset the password,
+   change `ADMIN_PASSWORD` and redeploy.
+
+   More admins: sign them up in the app, then grant them from your laptop
+   with Neon's connection string (free services have no Shell):
 
    ```sh
    DATABASE_URL='<neon connection string>' \
      pnpm --filter @app/api admin:grant <email>
    ```
 
-   Sign in at
-   `https://gn-admin.onrender.com`.
-
-6. **Uptime check.** Add `https://gn-api.onrender.com/health` to a free
-   monitor (UptimeRobot, Better Stack) with email alerts. It answers 503
-   when the database is down.
+6. **Uptime check.** Add `https://gn-api-c763.onrender.com/health` to a
+   free monitor (cron-job.org, UptimeRobot) every 10 minutes, with email
+   alerts on failure. It answers 503 when the database is down. Ping
+   `/health`, not `/`: the API answers 404 there, and cron-job.org turns
+   off a job after repeated failures. The ping also keeps the free
+   instance (asleep after 15 minutes idle) and Neon awake. Keep only one
+   free service awake all month: the account's 750 free instance hours
+   cover one, and running out suspends every free service until the
+   month ends.
 
 ## 2. Updating
 
-Release `dev` → `main` (`release/YYYY-MM-DD`). Render builds the three
-images and switches over only once the new API answers `/health`. The
+Release `dev` → `main` (`release/YYYY-MM-DD`). Render builds the API
+image and switches over only once the new API answers `/health`. The
 API migrates before it starts listening, so a failed migration fails the
 deploy and the old version keeps running. Roll back from the service's
-Events page ("Rollback").
+Events page ("Rollback"). The web Worker doesn't follow `main`: deploy it
+from the merged `main` with `pnpm --filter @app/web deploy:cf` (§4).
 
 **Check the new code is really live**, not just that the server
 answers: the deploy in the service's Events page should show the merge
@@ -116,6 +127,42 @@ dumps, at least weekly. Restore with `pg_restore --clean --if-exists
 ```sh
 pg_dump -Fc "<neon connection string>" -f gn-$(date +%Y%m%d).dump
 ```
+
+## 4. Web and admin on Cloudflare Workers
+
+ADR-0014. Each app is a Worker built with OpenNext; its settings are in
+`apps/<app>/wrangler.jsonc`, secrets live only in Cloudflare.
+
+| Worker     | URL                                     |
+| ---------- | --------------------------------------- |
+| `gn-web`   | `https://gn-web.rally-et.workers.dev`   |
+| `gn-admin` | `https://gn-admin.rally-et.workers.dev` |
+
+Deploy from a checkout of `main` (`npx wrangler login` once):
+
+```sh
+pnpm --filter @app/web deploy:cf
+pnpm --filter @app/admin deploy:cf
+```
+
+Secrets, set once per Worker from its folder:
+`npx wrangler secret put CONTACT_EMAIL` (and later
+`ANDROID_CERT_SHA256`, `PLAY_STORE_URL`). With the web on Workers,
+`gn-api` needs `PUBLIC_WEB_URL=https://gn-web.rally-et.workers.dev` and
+that URL in `WEB_ORIGINS`.
+
+The admin has no secrets: its only setting is `API_URL`, in its
+`wrangler.jsonc`. Its pages call its own `/api/*` routes, which forward
+to the API from the Worker, so `WEB_ORIGINS` doesn't change for it.
+
+**Local settings stay out of the Worker.** OpenNext copies every `.env*`
+file in the app, for every mode, into the Worker it uploads. `deploy:cf`
+empties that copy before uploading (`infra/cloudflare/drop-local-env.mjs`),
+so a Worker only gets its `wrangler.jsonc` vars and secrets. Deploy with
+`deploy:cf`, not `opennextjs-cloudflare deploy` on its own.
+
+The free plan caps a Worker at 3 MB compressed; `wrangler` prints the
+size on every deploy (web is about 2.0 MB, the admin about 1.0 MB).
 
 ## Running the production images yourself
 

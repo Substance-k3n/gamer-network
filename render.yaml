@@ -2,15 +2,16 @@
 # this repo. Values marked `sync: false` are asked for once, on creation.
 # Deploys follow `main`: merging a release deploys it.
 #
-#   gn-api    the app and the admin call this; /health, /openapi.json
-#   gn-web    share pages, privacy policy, App Links
-#   gn-admin  moderation dashboard
+#   gn-api    the apps call this; /health, /openapi.json
+#
+# The web app and the admin run on Cloudflare Workers (ADR-0014,
+# docs/DEPLOY.md §4).
 #
 # Postgres is on Neon, not Render (ADR-0010): DATABASE_URL is asked for.
 #
-# Everything is on Render's free tier: services sleep after 15 minutes
-# idle (the next request wakes them in about a minute). Moving up is a
-# plan change per service in the dashboard (ADR-0008).
+# Render's free tier: the API sleeps after 15 minutes idle (the next
+# request wakes it in about a minute), so a cron pings /health every 10
+# minutes. Moving up is a plan change in the dashboard (ADR-0008).
 
 services:
   - type: web
@@ -34,14 +35,21 @@ services:
         value: production
       - key: PORT
         value: '3300'
-      # https://<gn-web host>,https://<gn-admin host>
+      # https://gn-web.rally-et.workers.dev (the admin calls the API from its
+      # Worker, so it doesn't need to be here)
       - key: WEB_ORIGINS
         sync: false
-      # https://<gn-web host>: share links point here
+      # https://gn-web.rally-et.workers.dev: share links point here
       - key: PUBLIC_WEB_URL
         sync: false
       - key: LAUNCH_CITY
         value: Addis Ababa
+      # The admin's sign-in, made or updated on every start (db/seed.ts).
+      # Changing the password and redeploying resets it.
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
       # Home feed and Groups in the apps (ADR-0012). "false" to switch either off.
       - key: FEED_ENABLED
         value: 'true'
@@ -73,46 +81,4 @@ services:
       - key: S3_BUCKET
         value: gn-media
       - key: MEDIA_PUBLIC_URL
-        sync: false
-
-  - type: web
-    name: gn-web
-    runtime: docker
-    plan: free
-    region: frankfurt
-    branch: main
-    dockerContext: .
-    dockerfilePath: apps/web/Dockerfile
-    envVars:
-      - key: PORT
-        value: '3000'
-      # Free services can't be reached privately: the API's public URL,
-      # https://gn-api.onrender.com
-      - key: API_URL
-        sync: false
-      - key: PUBLIC_WEB_URL
-        sync: false
-      - key: ANDROID_PACKAGE
-        value: com.example.rally
-      - key: ANDROID_CERT_SHA256
-        sync: false
-      - key: PLAY_STORE_URL
-        sync: false
-      - key: CONTACT_EMAIL
-        sync: false
-
-  - type: web
-    name: gn-admin
-    runtime: docker
-    plan: free
-    region: frankfurt
-    branch: main
-    dockerContext: .
-    dockerfilePath: apps/admin/Dockerfile
-    envVars:
-      - key: PORT
-        value: '3001'
-      # Free services can't be reached privately: the API's public URL,
-      # https://gn-api.onrender.com
-      - key: API_URL
         sync: false
