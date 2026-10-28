@@ -32,3 +32,8 @@ coverage/
 
 # production database dumps
 infra/docker/prod/backups/
+
+# Cloudflare Workers builds (OpenNext, wrangler) and local secrets
+.open-next/
+.wrangler/
+.dev.vars
