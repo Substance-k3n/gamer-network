@@ -8,7 +8,7 @@
     "build": "pnpm api-types && next build",
     "start": "next start --port 3000",
     "typecheck": "pnpm api-types && tsc --noEmit",
-    "deploy:cf": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
+    "deploy:cf": "opennextjs-cloudflare build && node ../../infra/cloudflare/drop-local-env.mjs && opennextjs-cloudflare deploy"
   },
   "dependencies": {
     "next": "16.4.2",
