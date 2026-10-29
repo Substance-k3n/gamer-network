@@ -2,12 +2,28 @@ import { useEffect, useState } from 'react';
 import { api, query, type AdminReport, type Page, type ResolveAction } from '../api';
 import { ago, directRemove, REASON, SEV_ORDER, severity, STATE_LABEL, subject } from '../data';
 import type { Admin } from '../state';
-import { Chip, btnPrimary, btnSecondary } from '../ui';
-import { ACC, C1, DOTO, LINE, MUT, PANEL, SEV, TX, card, grot, label, mono, pill } from '../tokens';
+import { Chip, ConfirmModal, btnDanger, btnPrimary, btnSecondary } from '../ui';
+import {
+  ACCTX,
+  C1,
+  DASH,
+  DOTO,
+  LINE,
+  MUT,
+  SEV,
+  SOFT,
+  SUNK,
+  TX,
+  card,
+  grot,
+  label,
+  mono,
+  pill,
+} from '../tokens';
 
 const stLabel = (r: AdminReport) =>
-  r.status === 'open' ? 'OPEN' : r.status === 'dismissed' ? 'DISMISSED' : 'ACTIONED';
-const stFg = (r: AdminReport) => (r.status === 'open' ? ACC : MUT);
+  r.status === 'open' ? 'Open' : r.status === 'dismissed' ? 'Dismissed' : 'Actioned';
+const stFg = (r: AdminReport) => (r.status === 'open' ? ACCTX : MUT);
 
 const DONE: Record<ResolveAction, string> = {
   dismiss: 'Dismissed',
@@ -36,6 +52,7 @@ export function Reports({ admin }: { admin: Admin }) {
   const [closed, setClosed] = useState<AdminReport[]>([]);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  const [banning, setBanning] = useState<AdminReport | null>(null);
 
   useEffect(() => {
     if (s.repStatus === 'closed') loadClosed().then(setClosed).catch(fail);
@@ -48,6 +65,15 @@ export function Reports({ admin }: { admin: Admin }) {
     .sort((a, b) => SEV_ORDER[severity(a)] - SEV_ORDER[severity(b)]);
   const rep = list.find((r) => r.id === s.repSel) ?? list[0];
   const openCount = s.openMore ? `${s.openReports.length}+` : s.openReports.length;
+
+  /** Banning asks first; the note is the ban reason, so it is required before the question. */
+  const askToBan = (r: AdminReport) => {
+    if (!(notes[r.id] ?? '').trim()) {
+      toast('Write the reason in the note first. It is kept with the ban.');
+      return;
+    }
+    setBanning(r);
+  };
 
   const resolve = async (r: AdminReport, action: ResolveAction) => {
     const note = (notes[r.id] ?? '').trim();
@@ -151,8 +177,8 @@ export function Reports({ admin }: { admin: Admin }) {
                   alignItems: 'center',
                   padding: 12,
                   borderRadius: 16,
-                  background: sel ? '#232323' : 'transparent',
-                  border: `1px solid ${sel ? ACC : 'transparent'}`,
+                  background: sel ? SOFT : 'transparent',
+                  border: `1px solid ${sel ? ACCTX : 'transparent'}`,
                   cursor: 'pointer',
                 }}
               >
@@ -216,13 +242,13 @@ export function Reports({ admin }: { admin: Admin }) {
               <span style={{ flex: 1 }} />
               <span style={{ font: mono(700, 11), color: stFg(rep) }}>{stLabel(rep)}</span>
             </div>
-            <div style={{ fontFamily: DOTO, fontWeight: 900, fontSize: 28, lineHeight: 1.05 }}>
+            <div style={{ fontFamily: DOTO, fontWeight: 800, fontSize: 28, lineHeight: 1.05 }}>
               {REASON[rep.reason]}
             </div>
             <div
               style={{
-                background: PANEL,
-                border: '1px dashed #444444',
+                background: SUNK,
+                border: `1px dashed ${DASH}`,
                 borderRadius: 16,
                 padding: 14,
                 display: 'flex',
@@ -232,9 +258,7 @@ export function Reports({ admin }: { admin: Admin }) {
             >
               {(rep.excerpt !== null || rep.groupName || rep.image) && (
                 <>
-                  <div style={{ ...label, letterSpacing: '.04em' }}>
-                    WHAT WAS REPORTED · {subject(rep).kind.toUpperCase()}
-                  </div>
+                  <div style={{ ...label }}>What was reported · {subject(rep).kind}</div>
                   {rep.groupName && (
                     <div style={{ fontWeight: 700, fontSize: 17 }}>{rep.groupName}</div>
                   )}
@@ -265,7 +289,7 @@ export function Reports({ admin }: { admin: Admin }) {
                   </div>
                 </>
               )}
-              <div style={{ ...label, letterSpacing: '.04em' }}>WHAT THE REPORTER WROTE</div>
+              <div style={{ ...label }}>What the reporter wrote</div>
               <div style={{ fontSize: 15, lineHeight: 1.45, textWrap: 'pretty' }}>
                 {rep.details ? `“${rep.details}”` : <span style={{ color: MUT }}>No details.</span>}
               </div>
@@ -273,8 +297,8 @@ export function Reports({ admin }: { admin: Admin }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               {(
                 [
-                  ['REPORTED USER', rep.target],
-                  ['REPORTED BY', rep.reporter],
+                  ['Reported user', rep.target],
+                  ['Reported by', rep.reporter],
                 ] as const
               ).map(([title, u]) => (
                 <div
@@ -311,7 +335,7 @@ export function Reports({ admin }: { admin: Admin }) {
             {rep.status === 'open' ? (
               <>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <div style={label}>NOTE · KEPT IN THE AUDIT LOG; THE BAN REASON WHEN BANNING</div>
+                  <div style={label}>Note, kept in the audit log; the ban reason when banning</div>
                   <textarea
                     rows={2}
                     maxLength={500}
@@ -321,7 +345,7 @@ export function Reports({ admin }: { admin: Admin }) {
                     style={{
                       border: `1px solid ${LINE}`,
                       borderRadius: 14,
-                      background: PANEL,
+                      background: SUNK,
                       color: TX,
                       padding: '10px 12px',
                       fontSize: 14,
@@ -363,8 +387,8 @@ export function Reports({ admin }: { admin: Admin }) {
                   <button
                     type="button"
                     disabled={busy}
-                    onClick={() => resolve(rep, 'ban')}
-                    style={subject(rep).remove ? btnSecondary : btnPrimary}
+                    onClick={() => askToBan(rep)}
+                    style={btnDanger}
                   >
                     Ban user
                   </button>
@@ -391,7 +415,7 @@ export function Reports({ admin }: { admin: Admin }) {
                 }}
               >
                 <span>
-                  {stLabel(rep) === 'DISMISSED' ? 'Dismissed' : 'Actioned'}
+                  {stLabel(rep)}
                   {rep.resolvedAt ? ` ${ago(rep.resolvedAt)}` : ''}
                 </span>
                 {rep.resolutionNote && (
@@ -402,6 +426,19 @@ export function Reports({ admin }: { admin: Admin }) {
           </div>
         )}
       </div>
+      {banning && (
+        <ConfirmModal
+          title={`Ban @${banning.target.username}?`}
+          body="They are signed out everywhere now and can't sign in until restored. The report is closed as actioned."
+          confirm="Ban player"
+          onConfirm={() => {
+            const r = banning;
+            setBanning(null);
+            resolve(r, 'ban');
+          }}
+          onClose={() => setBanning(null)}
+        />
+      )}
     </>
   );
 }
