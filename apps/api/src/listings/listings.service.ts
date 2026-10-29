@@ -8,12 +8,13 @@ import {
   gt,
   gte,
   inArray,
+  isNull,
   lt,
   lte,
   ne,
   or,
-  type SQL,
   sql,
+  type SQL,
 } from 'drizzle-orm';
 import { endOfTonight } from '../common/addis-time.js';
 import { AppError, notFound } from '../common/app-error.js';
@@ -153,7 +154,9 @@ export class ListingsService {
   }
 
   async create(owner: User, body: CreateListingBody): Promise<ListingDto> {
-    const game = await this.db.query.games.findFirst({ where: eq(games.id, body.gameId) });
+    const game = await this.db.query.games.findFirst({
+      where: and(eq(games.id, body.gameId), isNull(games.deletedAt)),
+    });
     if (!game) throw invalid({ gameId: 'Unknown game' });
     if (!game.isLaunch) throw invalid({ gameId: "This game isn't on Find Players yet" });
 

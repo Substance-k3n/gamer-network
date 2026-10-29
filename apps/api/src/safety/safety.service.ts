@@ -177,6 +177,15 @@ export class SafetyService {
     } else if (password) {
       await burnPasswordCheck(password);
     }
+    await this.closeAccount(me.id);
+  }
+
+  /**
+   * Deletes an account without asking for its password: theirs after the
+   * check above, or an admin's call. Same steps either way.
+   */
+  async closeAccount(userId: string): Promise<void> {
+    const me = { id: userId };
     const now = new Date();
     await this.db.transaction(async (tx) => {
       await tx

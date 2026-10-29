@@ -8,6 +8,6 @@ import { SafetyService } from './safety.service.js';
   imports: [AuthModule],
   controllers: [SafetyController, AccountController],
   providers: [SafetyService, AccountScrubJob],
-  exports: [AccountScrubJob],
+  exports: [AccountScrubJob, SafetyService],
 })
 export class SafetyModule {}

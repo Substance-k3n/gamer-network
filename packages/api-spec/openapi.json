@@ -5052,13 +5052,24 @@
         "operationId": "adminUsers",
         "parameters": [
           {
-            "name": "limit",
+            "name": "page",
             "required": false,
             "in": "query",
-            "description": "1–50, default 20.",
+            "description": "1 = first page.",
             "schema": {
               "minimum": 1,
-              "maximum": 50,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "description": "Rows per page, 1–100, default 20.",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
               "default": 20,
               "type": "number"
             }
@@ -5081,15 +5092,6 @@
               "maxLength": 60,
               "type": "string"
             }
-          },
-          {
-            "name": "cursor",
-            "required": false,
-            "in": "query",
-            "description": "`nextCursor` from the previous page.",
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "responses": {
@@ -5098,7 +5100,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdminUserPageDto"
+                  "$ref": "#/components/schemas/AdminUserNumberPageDto"
                 }
               }
             }
@@ -5119,13 +5121,149 @@
             "bearer": []
           }
         ],
-        "summary": "Search and page through players.",
+        "summary": "Search and page through players, newest first.",
+        "tags": [
+          "admin"
+        ]
+      },
+      "post": {
+        "operationId": "adminCreateUser",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "An account with a verified email; they finish onboarding in the app. 409 email_taken or username_taken.",
         "tags": [
           "admin"
         ]
       }
     },
     "/v1/admin/users/{id}": {
+      "patch": {
+        "operationId": "adminUpdateUser",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Edit details or role. 409 email_taken, username_taken, or own_role (an admin demoting themself).",
+        "tags": [
+          "admin"
+        ]
+      },
+      "delete": {
+        "operationId": "adminDeleteUser",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Deletes the account like DELETE /me: signed out now, erased in 30 days. 409 own_account.",
+        "tags": [
+          "admin"
+        ]
+      },
       "get": {
         "operationId": "adminUser",
         "parameters": [
@@ -5479,9 +5617,182 @@
         ]
       }
     },
+    "/v1/admin/games": {
+      "get": {
+        "operationId": "adminGames",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1 = first page.",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "description": "Rows per page, 1–100, default 20.",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "state",
+            "required": false,
+            "in": "query",
+            "description": "live (default): the catalog players see; deleted: the ones taken out.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "live",
+                "deleted"
+              ]
+            }
+          },
+          {
+            "name": "query",
+            "required": false,
+            "in": "query",
+            "description": "Name, short code or id.",
+            "schema": {
+              "maxLength": 60,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminGamePageDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The catalog with player counts, by page. Deleted games with state=deleted.",
+        "tags": [
+          "admin"
+        ]
+      },
+      "post": {
+        "operationId": "adminCreateGame",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGameBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminGameDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Adds a game to the catalog. 409 game_exists if the id is used (deleted games too).",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/v1/admin/games/{id}": {
+      "get": {
+        "operationId": "adminGame",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminGameDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One game with its ranks and counts, deleted or not.",
+        "tags": [
+          "admin"
+        ]
+      },
       "patch": {
-        "operationId": "adminSetLaunch",
+        "operationId": "adminUpdateGame",
         "parameters": [
           {
             "name": "id",
@@ -5497,11 +5808,55 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SetLaunchBody"
+                "$ref": "#/components/schemas/UpdateGameBody"
               }
             }
           }
         },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminGameDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Edit a game; `isLaunch` alone puts it on Find Players or takes it off.",
+        "tags": [
+          "admin"
+        ]
+      },
+      "delete": {
+        "operationId": "adminDeleteGame",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "204": {
             "description": ""
@@ -5522,7 +5877,179 @@
             "bearer": []
           }
         ],
-        "summary": "Puts a game on Find Players, or takes it off.",
+        "summary": "Takes it out of the catalog and off every profile; its live listings close.",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/games/{id}/ranks": {
+      "post": {
+        "operationId": "adminCreateRank",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRankBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminGameDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Adds a rank; without `tier` it goes on top.",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/games/{id}/ranks/{rankId}": {
+      "patch": {
+        "operationId": "adminUpdateRank",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "rankId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRankBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminGameDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rename a rank, or move it: a taken tier swaps the two.",
+        "tags": [
+          "admin"
+        ]
+      },
+      "delete": {
+        "operationId": "adminDeleteRank",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "rankId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminGameDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any error: see docs/API.md for the codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Players and listings with it keep the game without a rank.",
         "tags": [
           "admin"
         ]
@@ -9377,6 +9904,20 @@
               }
             ]
           },
+          "role": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserRole"
+              }
+            ]
+          },
+          "ageRange": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgeRange"
+              }
+            ]
+          },
           "id": {
             "type": "string"
           },
@@ -9435,6 +9976,8 @@
         },
         "required": [
           "state",
+          "role",
+          "ageRange",
           "id",
           "username",
           "displayName",
@@ -9604,7 +10147,7 @@
           "note"
         ]
       },
-      "AdminUserPageDto": {
+      "AdminUserNumberPageDto": {
         "type": "object",
         "properties": {
           "items": {
@@ -9613,15 +10156,98 @@
               "$ref": "#/components/schemas/AdminUserDto"
             }
           },
-          "nextCursor": {
-            "type": "string",
-            "nullable": true
+          "total": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "pageSize": {
+            "type": "number"
           }
         },
         "required": [
           "items",
-          "nextCursor"
+          "total",
+          "page",
+          "pageSize"
         ]
+      },
+      "CreateUserBody": {
+        "type": "object",
+        "properties": {
+          "ageRange": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgeRange"
+              }
+            ]
+          },
+          "role": {
+            "default": "player",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserRole"
+              }
+            ]
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email"
+          },
+          "username": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 30
+          },
+          "password": {
+            "type": "string",
+            "description": "They can change it after signing in.",
+            "minLength": 8,
+            "maxLength": 72
+          }
+        },
+        "required": [
+          "ageRange",
+          "email",
+          "username",
+          "displayName",
+          "password"
+        ]
+      },
+      "UpdateUserBody": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserRole"
+              }
+            ]
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email"
+          },
+          "username": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 30
+          },
+          "city": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          }
+        }
       },
       "BanBody": {
         "type": "object",
@@ -9646,17 +10272,229 @@
           }
         }
       },
-      "SetLaunchBody": {
+      "AdminGameDto": {
         "type": "object",
         "properties": {
+          "platforms": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Platform"
+            }
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "shortCode": {
+            "type": "string"
+          },
+          "hasRanks": {
+            "type": "boolean"
+          },
+          "maxParty": {
+            "type": "number"
+          },
           "isLaunch": {
-            "type": "boolean",
-            "description": "Launch games are the ones Find Players offers."
+            "type": "boolean"
+          },
+          "sort": {
+            "type": "number",
+            "description": "Catalog order, lowest first."
+          },
+          "ranks": {
+            "description": "Lowest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RankDto"
+            }
+          },
+          "players": {
+            "type": "number",
+            "description": "Players with it on their profile."
+          },
+          "liveListings": {
+            "type": "number",
+            "description": "Open or full listings for it right now."
+          },
+          "deletedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "Set when an admin deleted it."
           }
         },
         "required": [
+          "platforms",
+          "id",
+          "name",
+          "shortCode",
+          "hasRanks",
+          "maxParty",
+          "isLaunch",
+          "sort",
+          "ranks",
+          "players",
+          "liveListings",
+          "deletedAt"
+        ]
+      },
+      "AdminGamePageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminGameDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "pageSize": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ]
+      },
+      "CreateGameBody": {
+        "type": "object",
+        "properties": {
+          "platforms": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/Platform"
+            }
+          },
+          "id": {
+            "type": "string",
+            "description": "The id apps and links use, e.g. \"val\": 2–20 lowercase letters or digits. Can't change later.",
+            "pattern": "^[a-z0-9]{2,20}$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "shortCode": {
+            "type": "string",
+            "description": "Tile label, e.g. \"VAL\".",
+            "minLength": 1,
+            "maxLength": 6
+          },
+          "hasRanks": {
+            "type": "boolean",
+            "description": "False when the ladder is play-style levels rather than ranks."
+          },
+          "maxParty": {
+            "type": "number",
+            "description": "Largest party a listing can ask for, 2–10.",
+            "minimum": 2,
+            "maximum": 10
+          },
+          "isLaunch": {
+            "type": "boolean",
+            "description": "On Find Players."
+          },
+          "sort": {
+            "type": "number",
+            "description": "Catalog order, lowest first.",
+            "minimum": 0,
+            "maximum": 999
+          }
+        },
+        "required": [
+          "platforms",
+          "id",
+          "name",
+          "shortCode",
+          "hasRanks",
+          "maxParty",
           "isLaunch"
         ]
+      },
+      "UpdateGameBody": {
+        "type": "object",
+        "properties": {
+          "platforms": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/Platform"
+            }
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "shortCode": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 6
+          },
+          "hasRanks": {
+            "type": "boolean"
+          },
+          "maxParty": {
+            "type": "number",
+            "minimum": 2,
+            "maximum": 10
+          },
+          "isLaunch": {
+            "type": "boolean",
+            "description": "On Find Players."
+          },
+          "sort": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 999
+          }
+        }
+      },
+      "CreateRankBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 30
+          },
+          "tier": {
+            "type": "number",
+            "description": "Position on the ladder, 0 = lowest. Defaults to the top. A taken tier moves the ranks above it up.",
+            "minimum": 0,
+            "maximum": 99
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdateRankBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 30
+          },
+          "tier": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 99
+          }
+        }
       },
       "WaitlistCountDto": {
         "type": "object",
@@ -9672,6 +10510,84 @@
         "required": [
           "topic",
           "count"
+        ]
+      },
+      "MetricsDayDto": {
+        "type": "object",
+        "properties": {
+          "day": {
+            "type": "string",
+            "description": "Addis Ababa date, YYYY-MM-DD."
+          },
+          "signups": {
+            "type": "number"
+          },
+          "listings": {
+            "type": "number"
+          },
+          "posts": {
+            "type": "number"
+          },
+          "played": {
+            "type": "number",
+            "description": "\"played\" check-ins answered that day."
+          }
+        },
+        "required": [
+          "day",
+          "signups",
+          "listings",
+          "posts",
+          "played"
+        ]
+      },
+      "GamePopularityDto": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "listings": {
+            "type": "number",
+            "description": "Listings for it in the range."
+          }
+        },
+        "required": [
+          "gameId",
+          "name",
+          "listings"
+        ]
+      },
+      "TotalsDto": {
+        "type": "object",
+        "properties": {
+          "players": {
+            "type": "number",
+            "description": "Live accounts (not banned or deleted)."
+          },
+          "banned": {
+            "type": "number"
+          },
+          "games": {
+            "type": "number",
+            "description": "Games in the catalog players see."
+          },
+          "openReports": {
+            "type": "number"
+          },
+          "liveGroups": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "players",
+          "banned",
+          "games",
+          "openReports",
+          "liveGroups"
         ]
       },
       "MetricsDto": {
@@ -9710,6 +10626,28 @@
             "items": {
               "$ref": "#/components/schemas/WaitlistCountDto"
             }
+          },
+          "series": {
+            "description": "One row per Addis Ababa day in the range, oldest first, for the charts.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MetricsDayDto"
+            }
+          },
+          "topGames": {
+            "description": "Games with the most listings in the range, up to 8.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GamePopularityDto"
+            }
+          },
+          "totals": {
+            "description": "Right now, not limited to the range.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TotalsDto"
+              }
+            ]
           }
         },
         "required": [
@@ -9720,7 +10658,10 @@
           "listingsPlayed",
           "playedRate",
           "weeklyActive",
-          "waitlist"
+          "waitlist",
+          "series",
+          "topGames",
+          "totals"
         ]
       },
       "ErrorBody": {

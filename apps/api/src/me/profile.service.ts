@@ -1,6 +1,6 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { uuidv7 } from 'uuidv7';
-import { and, asc, countDistinct, eq, inArray, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, countDistinct, eq, inArray, isNull, or, sql, type SQL } from 'drizzle-orm';
 import { endOfTonight, hoursFrom } from '../common/addis-time.js';
 import { AppError } from '../common/app-error.js';
 import { uniqueViolation } from '../common/db-errors.js';
@@ -335,7 +335,10 @@ export class ProfileService {
   private async catalog(gameIds: string[]) {
     if (gameIds.length === 0) return new Map<string, { ranks: Set<string>; roles: Set<string> }>();
     const [found, ranks, roles] = await Promise.all([
-      this.db.select({ id: games.id }).from(games).where(inArray(games.id, gameIds)),
+      this.db
+        .select({ id: games.id })
+        .from(games)
+        .where(and(inArray(games.id, gameIds), isNull(games.deletedAt))),
       this.db
         .select({ id: gameRanks.id, gameId: gameRanks.gameId })
         .from(gameRanks)

@@ -39,11 +39,15 @@ import {
 } from '../db/schema/index.js';
 import { MediaService } from '../feed/media.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
+import { SafetyService } from '../safety/safety.service.js';
+import { hashPassword } from '../auth/crypto.js';
+import { uniqueViolation } from '../common/db-errors.js';
+import type { CreateUserBody, UpdateUserBody } from './admin-catalog.dto.js';
 import type {
   AdminReportDto,
   AdminReportPageDto,
   AdminUserDto,
-  AdminUserPageDto,
+  AdminUserNumberPageDto,
   AdminUsersQuery,
   MetricsDto,
   ResolveAction,
@@ -73,6 +77,7 @@ export class AdminService {
     private readonly sessionsService: SessionsService,
     private readonly notifier: NotificationsService,
     private readonly media: MediaService,
+    private readonly safety: SafetyService,
   ) {}
 
   private async adminUsers(rows: UserRow[]): Promise<AdminUserDto[]> {
@@ -143,6 +148,8 @@ export class AdminService {
       city: u.city,
       mainGame: main.get(u.id) ?? null,
       state: u.deletedAt ? 'deleted' : u.bannedAt ? 'banned' : 'active',
+      role: u.role,
+      ageRange: u.ageRange,
       banReason: u.banReason,
       onboarded: u.onboardedAt !== null,
       createdAt: u.createdAt,
@@ -155,34 +162,125 @@ export class AdminService {
     }));
   }
 
-  async users(q: AdminUsersQuery): Promise<AdminUserPageDto> {
-    const limit = q.limit ?? 20;
-    const after = decodeCursor(q.cursor);
+  async users(q: AdminUsersQuery): Promise<AdminUserNumberPageDto> {
+    const page = q.page ?? 1;
+    const pageSize = q.pageSize ?? 20;
     const pattern = q.query && likePrefix(q.query);
-    const rows = await this.db
-      .select()
-      .from(users)
-      .where(
-        and(
-          after ? lt(users.id, after) : undefined,
-          pattern
-            ? or(
-                ilike(users.username, pattern),
-                ilike(users.displayName, pattern),
-                ilike(users.email, pattern),
-              )
-            : undefined,
-          q.state === 'active' ? and(isNull(users.bannedAt), isNull(users.deletedAt)) : undefined,
-          q.state === 'banned'
-            ? and(isNotNull(users.bannedAt), isNull(users.deletedAt))
-            : undefined,
-          q.state === 'deleted' ? isNotNull(users.deletedAt) : undefined,
-        ),
-      )
-      .orderBy(desc(users.id))
-      .limit(limit + 1);
-    const items = await this.adminUsers(rows.slice(0, limit));
-    return { items, nextCursor: rows.length > limit ? encodeCursor(items.at(-1)!.id) : null };
+    const where = and(
+      pattern
+        ? or(
+            ilike(users.username, pattern),
+            ilike(users.displayName, pattern),
+            ilike(users.email, pattern),
+          )
+        : undefined,
+      q.state === 'active' ? and(isNull(users.bannedAt), isNull(users.deletedAt)) : undefined,
+      q.state === 'banned' ? and(isNotNull(users.bannedAt), isNull(users.deletedAt)) : undefined,
+      q.state === 'deleted' ? isNotNull(users.deletedAt) : undefined,
+    );
+    const [rows, [total]] = await Promise.all([
+      this.db
+        .select()
+        .from(users)
+        .where(where)
+        .orderBy(desc(users.createdAt), desc(users.id))
+        .limit(pageSize)
+        .offset((page - 1) * pageSize),
+      this.db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(users)
+        .where(where),
+    ]);
+    return { items: await this.adminUsers(rows), total: total!.n, page, pageSize };
+  }
+
+  /** Turns a clash on email or username into a 409 the form can show. */
+  private clash(e: unknown): never {
+    const c = uniqueViolation(e);
+    if (c?.includes('email')) {
+      throw new AppError(HttpStatus.CONFLICT, 'email_taken', 'That email already has an account.', {
+        email: 'taken',
+      });
+    }
+    if (c?.includes('username')) {
+      throw new AppError(HttpStatus.CONFLICT, 'username_taken', 'That username is taken.', {
+        username: 'taken',
+      });
+    }
+    throw e;
+  }
+
+  /** An account made by an admin: email already verified, onboarding still to do. */
+  async createUser(admin: User, body: CreateUserBody): Promise<AdminUserDto> {
+    const passwordHash = await hashPassword(body.password);
+    const id = await this.db.transaction(async (tx) => {
+      const [u] = await tx
+        .insert(users)
+        .values({
+          email: body.email,
+          emailVerifiedAt: new Date(),
+          passwordHash,
+          username: body.username,
+          displayName: body.displayName,
+          ageRange: body.ageRange,
+          role: body.role ?? 'player',
+        })
+        .returning({ id: users.id })
+        .catch((e: unknown) => this.clash(e));
+      await this.log(tx, { adminId: admin.id, kind: 'create_user', targetUserId: u!.id });
+      return u!.id;
+    });
+    return this.user(id);
+  }
+
+  async updateUser(admin: User, id: string, body: UpdateUserBody): Promise<AdminUserDto> {
+    if (body.role === 'player' && id === admin.id) {
+      throw new AppError(
+        HttpStatus.CONFLICT,
+        'own_role',
+        'You can’t take away your own admin role.',
+        { role: 'Ask another admin' },
+      );
+    }
+    await this.db.transaction(async (tx) => {
+      const row = await tx.query.users.findFirst({ where: eq(users.id, id) });
+      if (!row || row.deletedAt) throw notFound('That user');
+      const set = Object.fromEntries(Object.entries(body).filter(([, v]) => v !== undefined));
+      if (Object.keys(set).length === 0) return;
+      // A new email is one an admin vouches for, so it counts as verified.
+      if (body.email && body.email !== row.email) set.emailVerifiedAt = new Date();
+      await tx
+        .update(users)
+        .set({ ...set, updatedAt: new Date() })
+        .where(eq(users.id, id))
+        .catch((e: unknown) => this.clash(e));
+      await this.log(tx, {
+        adminId: admin.id,
+        kind: 'update_user',
+        targetUserId: id,
+        note: Object.keys(body)
+          .filter((k) => body[k as keyof UpdateUserBody] !== undefined)
+          .join(', '),
+      });
+    });
+    return this.user(id);
+  }
+
+  /** Same as them deleting their account (DELETE /me): signed out, erased in 30 days. */
+  async deleteUser(admin: User, id: string): Promise<void> {
+    if (id === admin.id) {
+      throw new AppError(
+        HttpStatus.CONFLICT,
+        'own_account',
+        'You can’t delete your own account here.',
+      );
+    }
+    const row = await this.db.query.users.findFirst({ where: eq(users.id, id) });
+    if (!row || row.deletedAt) throw notFound('That user');
+    await this.safety.closeAccount(id);
+    await this.db.transaction((tx) =>
+      this.log(tx, { adminId: admin.id, kind: 'delete_user', targetUserId: id }),
+    );
   }
 
   async user(id: string): Promise<AdminUserDto> {
@@ -507,23 +605,6 @@ export class AdminService {
   }
 
   /** Puts a game on Find Players or takes it off. Live listings for it stay until they end. */
-  async setLaunch(admin: User, gameId: string, isLaunch: boolean): Promise<void> {
-    await this.db.transaction(async (tx) => {
-      const [row] = await tx
-        .update(games)
-        .set({ isLaunch })
-        .where(eq(games.id, gameId))
-        .returning();
-      if (!row) throw notFound('That game');
-      await this.log(tx, {
-        adminId: admin.id,
-        kind: 'set_launch',
-        gameId,
-        note: isLaunch ? 'on' : 'off',
-      });
-    });
-  }
-
   /** docs/DATA_MODEL.md "The metric", for listings created in [from, to). */
   async metrics(from: Date, to: Date): Promise<MetricsDto> {
     const created = and(gte(listings.createdAt, from), lt(listings.createdAt, to));
@@ -584,6 +665,71 @@ export class AdminService {
       playedRate: all!.n ? played!.n / all!.n : 0,
       weeklyActive: active!.n,
       waitlist: waiting,
+      ...(await this.dashboard(from, to)),
+    };
+  }
+
+  /** The dashboard's charts: a row per Addis Ababa day, top games and today's totals. */
+  private async dashboard(from: Date, to: Date) {
+    const day = (col: unknown) =>
+      sql<string>`to_char((${col} at time zone 'Africa/Addis_Ababa')::date, 'YYYY-MM-DD')`;
+    const perDay = async (table: string, col: string, extra = sql``) => {
+      const rows = await this.db.execute<{ day: string; n: number }>(sql`
+        select ${day(sql.raw(col))} as day, count(*)::int as n
+        from ${sql.raw(table)}
+        where ${sql.raw(col)} >= ${from.toISOString()} and ${sql.raw(col)} < ${to.toISOString()} ${extra}
+        group by 1`);
+      return new Map(rows.map((r) => [r.day, Number(r.n)]));
+    };
+    const [signups, made, posted, playedOn, top, [totals]] = await Promise.all([
+      perDay('users', 'created_at'),
+      perDay('listings', 'created_at'),
+      perDay('posts', 'created_at', sql`and status = 'live'`),
+      perDay('check_ins', 'answered_at', sql`and answer = 'played'`),
+      this.db
+        .select({ gameId: games.id, name: games.name, listings: sql<number>`count(*)::int` })
+        .from(listings)
+        .innerJoin(games, eq(games.id, listings.gameId))
+        .where(and(gte(listings.createdAt, from), lt(listings.createdAt, to)))
+        .groupBy(games.id, games.name)
+        .orderBy(desc(sql`count(*)`))
+        .limit(8),
+      this.db.execute<{
+        players: number;
+        banned: number;
+        games: number;
+        open_reports: number;
+        live_groups: number;
+      }>(sql`select
+        (select count(*)::int from users where deleted_at is null and banned_at is null) as players,
+        (select count(*)::int from users where deleted_at is null and banned_at is not null) as banned,
+        (select count(*)::int from games where deleted_at is null) as games,
+        (select count(*)::int from reports where status = 'open') as open_reports,
+        (select count(*)::int from groups where status = 'live') as live_groups`),
+    ]);
+    const series = [];
+    // Walk Addis days: UTC+3 all year, no DST.
+    const addis = (d: Date) => new Date(d.getTime() + 3 * 3600_000).toISOString().slice(0, 10);
+    for (let d = addis(from); d <= addis(new Date(to.getTime() - 1));) {
+      series.push({
+        day: d,
+        signups: signups.get(d) ?? 0,
+        listings: made.get(d) ?? 0,
+        posts: posted.get(d) ?? 0,
+        played: playedOn.get(d) ?? 0,
+      });
+      d = new Date(new Date(`${d}T00:00:00Z`).getTime() + DAY_MS).toISOString().slice(0, 10);
+    }
+    return {
+      series,
+      topGames: top,
+      totals: {
+        players: Number(totals!.players),
+        banned: Number(totals!.banned),
+        games: Number(totals!.games),
+        openReports: Number(totals!.open_reports),
+        liveGroups: Number(totals!.live_groups),
+      },
     };
   }
 }
