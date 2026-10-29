@@ -67,7 +67,7 @@ export const adminActions = pgTable('admin_actions', {
   postId: uuid('post_id').references(() => posts.id),
   commentId: uuid('comment_id').references(() => comments.id),
   groupId: uuid('group_id').references(() => groups.id),
-  /** For set_launch: the game. */
+  /** For set_launch and the game and rank actions: the game. */
   gameId: text('game_id').references(() => games.id),
   note: text('note').notNull().default(''),
   createdAt: createdAt(),

@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { asc } from 'drizzle-orm';
+import { asc, isNull } from 'drizzle-orm';
 import type { Db } from '../db/db.js';
 import { DB } from '../db/db.module.js';
 import { gameModes, gameRanks, gameRoles, games } from '../db/schema/index.js';
@@ -11,7 +11,7 @@ export class GamesService {
 
   async catalog(): Promise<GameDto[]> {
     const [gameRows, ranks, roles, modes] = await Promise.all([
-      this.db.select().from(games).orderBy(asc(games.sort)),
+      this.db.select().from(games).where(isNull(games.deletedAt)).orderBy(asc(games.sort)),
       this.db.select().from(gameRanks).orderBy(asc(gameRanks.tier)),
       this.db.select().from(gameRoles).orderBy(asc(gameRoles.name)),
       this.db.select().from(gameModes).orderBy(asc(gameModes.name)),

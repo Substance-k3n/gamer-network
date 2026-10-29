@@ -75,7 +75,9 @@ export class PlayService {
       this.db.query.connections.findFirst({
         where: and(eq(connections.userAId, a), eq(connections.userBId, b)),
       }),
-      this.db.query.games.findFirst({ where: eq(games.id, body.gameId) }),
+      this.db.query.games.findFirst({
+        where: and(eq(games.id, body.gameId), isNull(games.deletedAt)),
+      }),
       this.db.query.playInvites.findFirst({
         where: and(
           eq(playInvites.fromUserId, from.id),

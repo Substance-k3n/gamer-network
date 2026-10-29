@@ -4,7 +4,14 @@ import { IsBoolean, IsDate, IsIn, IsOptional, IsString, Length, MaxLength } from
 import { PageQuery } from '../common/cursor.js';
 import { reportStatus } from '../db/schema/index.js';
 import { MediaDto } from '../feed/feed.dto.js';
+import { AGE_RANGES, type AgeRange } from '../me/profile.dto.js';
 import { REPORT_REASONS, type ReportReason } from '../safety/safety.dto.js';
+import {
+  GamePopularityDto,
+  MetricsDayDto,
+  PageNumberQuery,
+  TotalsDto,
+} from './admin-catalog.dto.js';
 
 export const REPORT_STATUSES = reportStatus.enumValues;
 export type ReportStatus = (typeof REPORT_STATUSES)[number];
@@ -36,6 +43,12 @@ export class AdminUserDto {
   @ApiProperty({ enum: ACCOUNT_STATES, enumName: 'AccountState' })
   state: AccountState;
 
+  @ApiProperty({ enum: ['player', 'admin'], enumName: 'UserRole' })
+  role: 'player' | 'admin';
+
+  @ApiProperty({ enum: AGE_RANGES, enumName: 'AgeRange' })
+  ageRange: AgeRange;
+
   banReason: string | null;
   onboarded: boolean;
   createdAt: Date;
@@ -51,12 +64,15 @@ export class AdminUserDto {
   groupsCount: number;
 }
 
-export class AdminUserPageDto {
+/** A page of the users table, by page number. */
+export class AdminUserNumberPageDto {
   items: AdminUserDto[];
-  nextCursor: string | null;
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
-export class AdminUsersQuery extends PageQuery {
+export class AdminUsersQuery extends PageNumberQuery {
   /** Username, display name or email prefix. */
   @IsOptional()
   @Transform(trim)
@@ -179,4 +195,10 @@ export class MetricsDto {
   weeklyActive: number;
   /** Everyone who tapped "Notify me", per topic, all time; most wanted first. */
   waitlist: WaitlistCountDto[];
+  /** One row per Addis Ababa day in the range, oldest first, for the charts. */
+  series: MetricsDayDto[];
+  /** Games with the most listings in the range, up to 8. */
+  topGames: GamePopularityDto[];
+  /** Right now, not limited to the range. */
+  totals: TotalsDto;
 }

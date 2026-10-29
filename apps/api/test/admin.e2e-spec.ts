@@ -255,7 +255,7 @@ describe('games', () => {
   it('takes a game off Find Players', async () => {
     const admin = await player({ admin: true });
     const p = await player();
-    await admin.patch('/v1/admin/games/efootball', { isLaunch: false }).expect(204);
+    await admin.patch('/v1/admin/games/efootball', { isLaunch: false }).expect(200);
     await p
       .post('/v1/listings', {
         gameId: 'efootball',
@@ -267,7 +267,7 @@ describe('games', () => {
         durationHours: 2,
       })
       .expect(422);
-    await admin.patch('/v1/admin/games/efootball', { isLaunch: true }).expect(204);
+    await admin.patch('/v1/admin/games/efootball', { isLaunch: true }).expect(200);
     await p.list('efootball');
     await admin.patch('/v1/admin/games/nope', { isLaunch: true }).expect(404);
   });

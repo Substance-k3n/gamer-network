@@ -11,6 +11,7 @@ import {
   users,
 } from '../src/db/schema/index.js';
 import { seedCatalog } from '../src/db/seed.js';
+import { seedGames } from '../src/db/seed/games.js';
 import { TEST_DATABASE_URL } from './test-db.js';
 
 // The rules docs/DATA_MODEL.md says the database itself enforces. Each case
@@ -94,8 +95,10 @@ const listing = (ownerId: string, overrides: Partial<typeof listings.$inferInser
 
 describe('catalog seed', () => {
   it('loads the app catalog with ladders in order', async () => {
-    const [{ value }] = await db.select({ value: count() }).from(games);
-    expect(value).toBe(49);
+    // Admins can add games (and admin tests do), so check the seed's ids are all there.
+    const ids = new Set((await db.select({ id: games.id }).from(games)).map((g) => g.id));
+    expect(seedGames.filter((g) => !ids.has(g.id))).toEqual([]);
+    expect(seedGames).toHaveLength(49);
     const val = await db
       .select({ name: gameRanks.name })
       .from(gameRanks)
@@ -124,6 +127,22 @@ describe('catalog seed', () => {
     await seedCatalog(db);
     const after = await db.select({ value: count() }).from(gameRanks);
     expect(after).toEqual(before);
+  });
+
+  it('leaves games an admin changed alone', async () => {
+    const [mc] = await db.select().from(games).where(eq(games.id, 'mc'));
+    await db.update(games).set({ name: 'Minecraft (Java)' }).where(eq(games.id, 'mc'));
+    await db.insert(gameRanks).values({ gameId: 'mc', name: 'Hardcore', tier: 99 });
+    try {
+      await seedCatalog(db);
+      const [after] = await db.select().from(games).where(eq(games.id, 'mc'));
+      expect(after!.name).toBe('Minecraft (Java)');
+      const ranks = await db.select().from(gameRanks).where(eq(gameRanks.gameId, 'mc'));
+      expect(ranks.map((r) => r.name)).toContain('Hardcore');
+    } finally {
+      await db.update(games).set({ name: mc!.name }).where(eq(games.id, 'mc'));
+      await db.delete(gameRanks).where(and(eq(gameRanks.gameId, 'mc'), eq(gameRanks.tier, 99)));
+    }
   });
 });
 
