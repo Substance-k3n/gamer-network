@@ -1,5 +1,5 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, gte, inArray, lte, type SQL, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, isNull, lte, sql, type SQL } from 'drizzle-orm';
 import type { User } from '../auth/sessions.service.js';
 import { AppError, notFound } from '../common/app-error.js';
 import type { PageQuery } from '../common/cursor.js';
@@ -131,7 +131,9 @@ export class GroupEventsService {
     const when = eventStartError(body.startsAt, now);
     if (when) throw invalid({ startsAt: when });
     if (body.gameId) {
-      const game = await this.db.query.games.findFirst({ where: eq(games.id, body.gameId) });
+      const game = await this.db.query.games.findFirst({
+        where: and(eq(games.id, body.gameId), isNull(games.deletedAt)),
+      });
       if (!game) throw invalid({ gameId: 'Unknown game' });
     }
     const id = await this.db.transaction(async (tx) => {

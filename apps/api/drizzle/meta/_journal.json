@@ -57,6 +57,13 @@
       "when": 1792483167647,
       "tag": "0007_feed_groups_events",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793213082639,
+      "tag": "0008_admin_catalog_users",
+      "breakpoints": true
     }
   ]
 }

@@ -68,7 +68,9 @@ export class PostsService {
     if (shape) throw invalid(shape);
     if (body.groupId) await this.checkMember(author.id, body.groupId);
     if (body.gameId) {
-      const game = await this.db.query.games.findFirst({ where: eq(games.id, body.gameId) });
+      const game = await this.db.query.games.findFirst({
+        where: and(eq(games.id, body.gameId), isNull(games.deletedAt)),
+      });
       if (!game) throw invalid({ gameId: 'Unknown game' });
     }
     await checkRate(

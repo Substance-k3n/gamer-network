@@ -1,5 +1,18 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
-import { and, asc, desc, eq, ilike, inArray, lte, ne, or, type SQL, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  isNull,
+  lte,
+  ne,
+  or,
+  sql,
+  type SQL,
+} from 'drizzle-orm';
 import type { User } from '../auth/sessions.service.js';
 import { AppError, notFound } from '../common/app-error.js';
 import type { PageQuery } from '../common/cursor.js';
@@ -199,7 +212,9 @@ export class GroupsService {
 
   private async checkGame(gameId: string | null | undefined) {
     if (!gameId) return;
-    const game = await this.db.query.games.findFirst({ where: eq(games.id, gameId) });
+    const game = await this.db.query.games.findFirst({
+      where: and(eq(games.id, gameId), isNull(games.deletedAt)),
+    });
     if (!game) throw invalid({ gameId: 'Unknown game' });
   }
 

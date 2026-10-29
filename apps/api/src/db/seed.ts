@@ -7,32 +7,41 @@ import { seedGames } from './seed/games.js';
 
 const MODES = ['Ranked', 'Unrated', 'Casual'] as const;
 
-/** Idempotent: safe to run on every deploy. Updates names and ladders in place. */
+/**
+ * Idempotent: safe to run on every deploy. Adds the games (with their
+ * ladders) that aren't in the database yet and leaves the rest alone:
+ * once a game exists, admins own it (edits, ranks, launch, delete).
+ */
 export async function seedCatalog(db: Db) {
   await db.transaction(async (tx) => {
+    const top = Number(
+      (
+        await tx.execute<{ n: number | null }>(
+          sql`select max(${games.sort})::int as n from ${games}`,
+        )
+      )[0]?.n ?? -1,
+    );
     for (const [i, g] of seedGames.entries()) {
-      const row = {
-        id: g.id,
-        name: g.name,
-        shortCode: g.shortCode,
-        platforms: g.platforms,
-        hasRanks: g.hasRanks,
-        maxParty: g.maxParty,
-        isLaunch: g.isLaunch,
-        sort: i,
-      };
-      await tx.insert(games).values(row).onConflictDoUpdate({ target: games.id, set: row });
+      const [added] = await tx
+        .insert(games)
+        .values({
+          id: g.id,
+          name: g.name,
+          shortCode: g.shortCode,
+          platforms: g.platforms,
+          hasRanks: g.hasRanks,
+          maxParty: g.maxParty,
+          isLaunch: g.isLaunch,
+          // A fresh database keeps the seed's order; later additions go last.
+          sort: top < 0 ? i : top + 1 + i,
+        })
+        .onConflictDoNothing()
+        .returning({ id: games.id });
+      if (!added) continue;
 
       for (const [tier, name] of g.ranks.entries()) {
-        await tx
-          .insert(gameRanks)
-          .values({ gameId: g.id, tier, name })
-          .onConflictDoUpdate({ target: [gameRanks.gameId, gameRanks.tier], set: { name } });
+        await tx.insert(gameRanks).values({ gameId: g.id, tier, name });
       }
-      await tx.execute(
-        sql`delete from ${gameRanks} where ${gameRanks.gameId} = ${g.id} and ${gameRanks.tier} >= ${g.ranks.length}`,
-      );
-
       for (const name of MODES) {
         if (name === 'Ranked' && !g.hasRanks) continue;
         await tx

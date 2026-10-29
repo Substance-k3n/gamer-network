@@ -93,6 +93,15 @@ export const adminActionKind = pgEnum('admin_action_kind', [
   'remove_post',
   'remove_comment',
   'remove_group',
+  'create_game',
+  'update_game',
+  'delete_game',
+  'create_rank',
+  'update_rank',
+  'delete_rank',
+  'create_user',
+  'update_user',
+  'delete_user',
 ]);
 // docs/FEED_AND_GROUPS_API.md "Data model".
 export const postType = pgEnum('post_type', [

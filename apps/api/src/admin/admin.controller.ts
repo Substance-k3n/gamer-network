@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   Param,
@@ -9,7 +10,13 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiNoContentResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { AdminOnly, CurrentUser } from '../auth/auth.decorators.js';
 import type { User } from '../auth/sessions.service.js';
 import { notFound } from '../common/app-error.js';
@@ -18,29 +25,46 @@ import {
   AdminReportPageDto,
   AdminReportsQuery,
   AdminUserDto,
-  AdminUserPageDto,
+  AdminUserNumberPageDto,
   AdminUsersQuery,
   BanBody,
   MetricsDto,
   MetricsQuery,
   NoteBody,
   ResolveReportBody,
-  SetLaunchBody,
 } from './admin.dto.js';
+import {
+  AdminGameDto,
+  AdminGamePageDto,
+  AdminGamesQuery,
+  CreateGameBody,
+  CreateRankBody,
+  CreateUserBody,
+  UpdateGameBody,
+  UpdateRankBody,
+  UpdateUserBody,
+} from './admin-catalog.dto.js';
+import { AdminCatalogService } from './admin-catalog.service.js';
 import { AdminService } from './admin.service.js';
 
 const uuid = (what: string) => new ParseUUIDPipe({ exceptionFactory: () => notFound(what) });
 
 // For apps/admin. Operation ids: adminReports, adminResolveReport, adminUsers,
-// adminUser, adminBan, adminUnban, adminRemoveListing, adminRemovePost,
-// adminRemoveComment, adminRemoveGroup, adminSetLaunch, adminMetrics.
+// adminUser, adminCreateUser, adminUpdateUser, adminDeleteUser, adminBan,
+// adminUnban, adminRemoveListing, adminRemovePost, adminRemoveComment,
+// adminRemoveGroup, adminGames, adminGame, adminCreateGame, adminUpdateGame,
+// adminDeleteGame, adminCreateRank, adminUpdateRank, adminDeleteRank,
+// adminMetrics.
 
 @ApiTags('admin')
 @ApiBearerAuth()
 @AdminOnly()
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly admin: AdminService) {}
+  constructor(
+    private readonly admin: AdminService,
+    private readonly catalog: AdminCatalogService,
+  ) {}
 
   /** The queue. Open ones oldest first. */
   @Get('reports')
@@ -61,11 +85,40 @@ export class AdminController {
     return this.admin.resolve(admin, id, body.action, body.note);
   }
 
-  /** Search and page through players. */
+  /** Search and page through players, newest first. */
   @Get('users')
-  @ApiOkResponse({ type: AdminUserPageDto })
-  users(@Query() q: AdminUsersQuery): Promise<AdminUserPageDto> {
+  @ApiOkResponse({ type: AdminUserNumberPageDto })
+  users(@Query() q: AdminUsersQuery): Promise<AdminUserNumberPageDto> {
     return this.admin.users(q);
+  }
+
+  /** An account with a verified email; they finish onboarding in the app. 409 email_taken or username_taken. */
+  @Post('users')
+  @ApiCreatedResponse({ type: AdminUserDto })
+  createUser(@CurrentUser() admin: User, @Body() body: CreateUserBody): Promise<AdminUserDto> {
+    return this.admin.createUser(admin, body);
+  }
+
+  /** Edit details or role. 409 email_taken, username_taken, or own_role (an admin demoting themself). */
+  @Patch('users/:id')
+  @ApiOkResponse({ type: AdminUserDto })
+  updateUser(
+    @CurrentUser() admin: User,
+    @Param('id', uuid('That user')) id: string,
+    @Body() body: UpdateUserBody,
+  ): Promise<AdminUserDto> {
+    return this.admin.updateUser(admin, id, body);
+  }
+
+  /** Deletes the account like DELETE /me: signed out now, erased in 30 days. 409 own_account. */
+  @Delete('users/:id')
+  @HttpCode(204)
+  @ApiNoContentResponse()
+  async deleteUser(
+    @CurrentUser() admin: User,
+    @Param('id', uuid('That user')) id: string,
+  ): Promise<void> {
+    await this.admin.deleteUser(admin, id);
   }
 
   /** The player drawer. */
@@ -147,16 +200,78 @@ export class AdminController {
     await this.admin.removeGroup(admin, id, body.note);
   }
 
-  /** Puts a game on Find Players, or takes it off. */
+  /** The catalog with player counts, by page. Deleted games with state=deleted. */
+  @Get('games')
+  @ApiOkResponse({ type: AdminGamePageDto })
+  games(@Query() q: AdminGamesQuery): Promise<AdminGamePageDto> {
+    return this.catalog.games(q);
+  }
+
+  /** One game with its ranks and counts, deleted or not. */
+  @Get('games/:id')
+  @ApiOkResponse({ type: AdminGameDto })
+  game(@Param('id') id: string): Promise<AdminGameDto> {
+    return this.catalog.game(id);
+  }
+
+  /** Adds a game to the catalog. 409 game_exists if the id is used (deleted games too). */
+  @Post('games')
+  @ApiCreatedResponse({ type: AdminGameDto })
+  createGame(@CurrentUser() admin: User, @Body() body: CreateGameBody): Promise<AdminGameDto> {
+    return this.catalog.createGame(admin, body);
+  }
+
+  /** Edit a game; `isLaunch` alone puts it on Find Players or takes it off. */
   @Patch('games/:id')
-  @HttpCode(204)
-  @ApiNoContentResponse()
-  setLaunch(
+  @ApiOkResponse({ type: AdminGameDto })
+  updateGame(
     @CurrentUser() admin: User,
     @Param('id') id: string,
-    @Body() body: SetLaunchBody,
-  ): Promise<void> {
-    return this.admin.setLaunch(admin, id, body.isLaunch);
+    @Body() body: UpdateGameBody,
+  ): Promise<AdminGameDto> {
+    return this.catalog.updateGame(admin, id, body);
+  }
+
+  /** Takes it out of the catalog and off every profile; its live listings close. */
+  @Delete('games/:id')
+  @HttpCode(204)
+  @ApiNoContentResponse()
+  async deleteGame(@CurrentUser() admin: User, @Param('id') id: string): Promise<void> {
+    await this.catalog.deleteGame(admin, id);
+  }
+
+  /** Adds a rank; without `tier` it goes on top. */
+  @Post('games/:id/ranks')
+  @ApiCreatedResponse({ type: AdminGameDto })
+  createRank(
+    @CurrentUser() admin: User,
+    @Param('id') id: string,
+    @Body() body: CreateRankBody,
+  ): Promise<AdminGameDto> {
+    return this.catalog.createRank(admin, id, body);
+  }
+
+  /** Rename a rank, or move it: a taken tier swaps the two. */
+  @Patch('games/:id/ranks/:rankId')
+  @ApiOkResponse({ type: AdminGameDto })
+  updateRank(
+    @CurrentUser() admin: User,
+    @Param('id') id: string,
+    @Param('rankId', uuid('That rank')) rankId: string,
+    @Body() body: UpdateRankBody,
+  ): Promise<AdminGameDto> {
+    return this.catalog.updateRank(admin, id, rankId, body);
+  }
+
+  /** Players and listings with it keep the game without a rank. */
+  @Delete('games/:id/ranks/:rankId')
+  @ApiOkResponse({ type: AdminGameDto })
+  deleteRank(
+    @CurrentUser() admin: User,
+    @Param('id') id: string,
+    @Param('rankId', uuid('That rank')) rankId: string,
+  ): Promise<AdminGameDto> {
+    return this.catalog.deleteRank(admin, id, rankId);
   }
 
   /** The MVP's numbers. Defaults to the last 30 days. */

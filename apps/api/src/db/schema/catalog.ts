@@ -1,8 +1,8 @@
 import { boolean, pgTable, smallint, text, unique } from 'drizzle-orm/pg-core';
 import { platform } from './enums.js';
-import { id } from './types.js';
+import { id, ts } from './types.js';
 
-// Seeded by src/db/seed.ts, never written by users.
+// Seeded by src/db/seed.ts; admins add, edit and delete games and ranks.
 
 export const games = pgTable('games', {
   id: text('id').primaryKey(), // the app's ids: val, codm, fc …
@@ -13,6 +13,8 @@ export const games = pgTable('games', {
   maxParty: smallint('max_party').notNull().default(5),
   isLaunch: boolean('is_launch').notNull().default(false),
   sort: smallint('sort').notNull().default(0),
+  /** Deleted by an admin: gone from the catalog and from every profile. Old listings and posts keep pointing here. */
+  deletedAt: ts('deleted_at'),
 });
 
 export const gameRanks = pgTable(

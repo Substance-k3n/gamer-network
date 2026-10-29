@@ -1,6 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types.js';
+import { seedGames } from '../src/db/seed/games.js';
 import type { GameDto } from '../src/games/games.dto.js';
 import { createTestApp } from './app.js';
 
@@ -12,7 +13,9 @@ describe('GET /v1/games', () => {
     ({ app } = await createTestApp());
     const res = await request(app.getHttpServer()).get('/v1/games').expect(200);
     expect(res.headers['cache-control']).toBe('public, max-age=3600');
-    body = res.body;
+    // Admin tests add games of their own (ids starting with "t"): only the seed's count here.
+    const seeded = new Set(seedGames.map((g) => g.id));
+    body = (res.body as GameDto[]).filter((g) => seeded.has(g.id));
   });
   afterAll(() => app.close());
 
