@@ -21,6 +21,10 @@ export type State = {
   userF: UserFilter;
   userQ: string;
   userSel: string | null;
+  /** 1-based page of the users table. */
+  userPage: number;
+  /** The sidebar as an overlay drawer (<= 900px). */
+  navOpen: boolean;
   /** Bumped by the header search, which remounts Users with the new query. */
   searchSeq: number;
   /** Bumped after a moderation action; screens are keyed by it, so they refetch. */
@@ -41,6 +45,8 @@ const initial = (screen: Screen): State => ({
   userF: 'All',
   userQ: '',
   userSel: null,
+  userPage: 1,
+  navOpen: false,
   searchSeq: 0,
   version: 0,
 });
@@ -100,7 +106,7 @@ export function useAdmin(startScreen: Screen): Admin {
   useEffect(loadOpen, [loadOpen]);
 
   const go = (screen: Screen, extra?: Partial<State>) => {
-    set({ screen, ...extra });
+    set({ screen, navOpen: false, ...extra });
     window.scrollTo(0, 0);
   };
 

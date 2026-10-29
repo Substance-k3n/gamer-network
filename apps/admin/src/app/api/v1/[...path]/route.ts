@@ -21,9 +21,11 @@ async function proxy(req: Request, { params }: Ctx) {
     method: req.method,
     headers: {
       authorization: `Bearer ${token}`,
-      ...(req.method === 'GET' ? {} : { 'content-type': 'application/json' }),
+      ...(req.method === 'GET' || req.method === 'DELETE'
+        ? {}
+        : { 'content-type': 'application/json' }),
     },
-    body: req.method === 'GET' ? undefined : await req.text(),
+    body: req.method === 'GET' || req.method === 'DELETE' ? undefined : await req.text(),
     cache: 'no-store',
   });
   if (res.status === 204) return new Response(null, { status: 204 });
@@ -33,4 +35,4 @@ async function proxy(req: Request, { params }: Ctx) {
   });
 }
 
-export { proxy as GET, proxy as PATCH, proxy as POST };
+export { proxy as DELETE, proxy as GET, proxy as PATCH, proxy as POST };

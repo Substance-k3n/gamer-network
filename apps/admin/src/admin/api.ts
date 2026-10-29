@@ -10,6 +10,13 @@ export type Game = S['GameDto'];
 export type ResolveAction = S['ResolveAction'];
 export type AccountState = S['AccountState'];
 export type ReportReason = S['ReportReason'];
+export type AdminGame = S['AdminGameDto'];
+export type AdminGamePage = S['AdminGamePageDto'];
+export type AdminUserPage = S['AdminUserNumberPageDto'];
+export type MetricsDay = S['MetricsDayDto'];
+export type Platform = S['Platform'];
+export type AgeRange = S['AgeRange'];
+export type UserRole = S['UserRole'];
 export type Page<T> = { items: T[]; nextCursor: string | null };
 
 /** The API's error shape (docs/API.md "Errors"): branch on `code`, show `message`. */
