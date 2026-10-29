@@ -2,14 +2,31 @@ import { useEffect, useState } from 'react';
 import { api, type AdminUser } from '../api';
 import { lastSeen, shortDate, STATE_LABEL } from '../data';
 import type { Admin } from '../state';
-import { btnPrimary, btnSecondary } from '../ui';
-import { ACC, C1, DOTO, LINE, MUT, PANEL, SOFT, ST, TX, label, mono, pad2, pill } from '../tokens';
+import { ConfirmModal, btnDanger, btnSecondary } from '../ui';
+import {
+  ACC,
+  C1,
+  DANGER,
+  DOTO,
+  LINE,
+  MUT,
+  PANEL,
+  SOFT,
+  ST,
+  SUNK,
+  TX,
+  label,
+  mono,
+  pad2,
+  pill,
+} from '../tokens';
 
 export function UserDrawer({ admin }: { admin: Admin }) {
   const { s, set, toast, fail, changed } = admin;
   const [u, setU] = useState<AdminUser | null>(null);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
+  const [askBan, setAskBan] = useState(false);
 
   // Keyed by the user id (AdminDashboard), so state starts fresh per user.
   useEffect(() => {
@@ -18,6 +35,15 @@ export function UserDrawer({ admin }: { admin: Admin }) {
 
   if (!s.userSel) return null;
   const close = () => set({ userSel: null });
+
+  /** Banning asks first; the reason is required before the question. */
+  const askToBan = () => {
+    if (!reason.trim()) {
+      toast('Write why first. Only admins see it.');
+      return;
+    }
+    setAskBan(true);
+  };
 
   const act = async (kind: 'ban' | 'unban') => {
     if (!u) return;
@@ -47,11 +73,11 @@ export function UserDrawer({ admin }: { admin: Admin }) {
 
   const stats = u
     ? [
-        { v: pad2(u.connections), l: 'CONNECTIONS' },
-        { v: pad2(u.playedWith), l: 'PLAYED WITH' },
-        { v: pad2(u.openReports), l: 'OPEN REPORTS' },
-        { v: pad2(u.postsCount), l: 'POSTS' },
-        { v: pad2(u.groupsCount), l: 'GROUPS' },
+        { v: pad2(u.connections), l: 'Connections' },
+        { v: pad2(u.playedWith), l: 'Played with' },
+        { v: pad2(u.openReports), l: 'Open reports' },
+        { v: pad2(u.postsCount), l: 'Posts' },
+        { v: pad2(u.groupsCount), l: 'Groups' },
       ]
     : [];
 
@@ -59,7 +85,7 @@ export function UserDrawer({ admin }: { admin: Admin }) {
     <>
       <div
         onClick={close}
-        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 40 }}
+        style={{ position: 'fixed', inset: 0, background: 'var(--scrim)', zIndex: 40 }}
       />
       <div
         style={{
@@ -81,8 +107,8 @@ export function UserDrawer({ admin }: { admin: Admin }) {
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ font: mono(400, 11), color: MUT }}>
-            PLAYER{u ? ` · JOINED ${shortDate(u.createdAt).toUpperCase()}` : ''}
+          <span style={{ font: mono(700, 12), color: MUT }}>
+            Player{u ? ` · joined ${shortDate(u.createdAt)}` : ''}
           </span>
           <button
             type="button"
@@ -125,7 +151,7 @@ export function UserDrawer({ admin }: { admin: Admin }) {
                 {u.displayName[0]?.toUpperCase()}
               </div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontFamily: DOTO, fontWeight: 900, fontSize: 28, lineHeight: 1 }}>
+                <div style={{ fontFamily: DOTO, fontWeight: 800, fontSize: 28, lineHeight: 1 }}>
                   {u.displayName}
                 </div>
                 <div style={{ fontSize: 14, color: MUT, marginTop: 4 }}>
@@ -135,7 +161,7 @@ export function UserDrawer({ admin }: { admin: Admin }) {
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={pill(ST[u.state].bg, ST[u.state].fg, '4px 10px')}>
-                {STATE_LABEL[u.state].toUpperCase()}
+                {STATE_LABEL[u.state]}
               </span>
               <span style={{ fontSize: 13, color: MUT }}>Last active {lastSeen(u)}</span>
             </div>
@@ -145,13 +171,13 @@ export function UserDrawer({ admin }: { admin: Admin }) {
                   key={k.l}
                   style={{ border: `1px solid ${LINE}`, borderRadius: 14, padding: 10 }}
                 >
-                  <div style={{ fontFamily: DOTO, fontWeight: 900, fontSize: 24 }}>{k.v}</div>
+                  <div style={{ fontFamily: DOTO, fontWeight: 800, fontSize: 24 }}>{k.v}</div>
                   <div style={{ ...label, marginTop: 2 }}>{k.l}</div>
                 </div>
               ))}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <span style={label}>ACCOUNT</span>
+              <span style={label}>Account</span>
               <div
                 style={{
                   border: `1px solid ${LINE}`,
@@ -168,14 +194,16 @@ export function UserDrawer({ admin }: { admin: Admin }) {
                 <span style={{ color: MUT }}>
                   Main game: {u.mainGame ?? '—'} · {u.onboarded ? 'Profile live' : 'Not onboarded'}
                 </span>
-                {u.banReason && <span style={{ color: ACC }}>Banned: {u.banReason}</span>}
+                {u.banReason && (
+                  <span style={{ color: DANGER, fontWeight: 600 }}>Banned: {u.banReason}</span>
+                )}
               </div>
             </div>
             <div style={{ flex: 1 }} />
             {u.state !== 'deleted' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <span style={label}>
-                  {u.state === 'banned' ? 'NOTE (OPTIONAL)' : 'WHY · ADMINS ONLY'}
+                  {u.state === 'banned' ? 'Note (optional)' : 'Why · admins only'}
                 </span>
                 <textarea
                   rows={2}
@@ -188,7 +216,7 @@ export function UserDrawer({ admin }: { admin: Admin }) {
                   style={{
                     border: `1px solid ${LINE}`,
                     borderRadius: 14,
-                    background: C1,
+                    background: SUNK,
                     color: TX,
                     padding: '10px 12px',
                     fontSize: 14,
@@ -209,10 +237,10 @@ export function UserDrawer({ admin }: { admin: Admin }) {
                   <button
                     type="button"
                     disabled={busy}
-                    onClick={() => act('ban')}
-                    style={{ ...btnPrimary, width: '100%' }}
+                    onClick={askToBan}
+                    style={{ ...btnDanger, width: '100%' }}
                   >
-                    Ban · signs them out everywhere
+                    Ban, signs them out everywhere
                   </button>
                 )}
               </div>
@@ -220,6 +248,18 @@ export function UserDrawer({ admin }: { admin: Admin }) {
           </>
         )}
       </div>
+      {askBan && u && (
+        <ConfirmModal
+          title={`Ban ${u.displayName}?`}
+          body="They are signed out everywhere now and can't sign in until restored. Your reason is kept for admins."
+          confirm="Ban player"
+          onConfirm={() => {
+            setAskBan(false);
+            act('ban');
+          }}
+          onClose={() => setAskBan(false)}
+        />
+      )}
     </>
   );
 }

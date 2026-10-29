@@ -1,21 +1,235 @@
+/* Soft clay tokens (docs: .squad/SPEC.md). The inline script in layout.tsx sets
+   data-theme before first paint, so there is no flash of the wrong theme. */
+:root,
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #ededea;
+  --surface: #f8f8f6;
+  --sunken: #ededea;
+  --tx: #2f2f2e;
+  --mut: #6b6b67;
+  --faint: #9a9a96;
+  --accent: #a6ebcb;
+  --on-accent: #2f2f2e;
+  --soft: #ddf6ea;
+  --lav: #f1e9b9;
+  --grey: #dcdcd8;
+  --strong: #4a4a48;
+  --acc: #2e9e6e;
+  --divider: #dfdfda;
+  --row-line: #e4e4e0;
+  --dash: #cfcfca;
+  --line: rgba(255, 255, 255, 0.95);
+  --shadow: 0 10px 22px rgba(60, 60, 55, 0.1), 0 2px 4px rgba(60, 60, 55, 0.07);
+  --glow: 0 8px 20px rgba(110, 215, 170, 0.45);
+  --danger: #e5484d;
+  --on-danger: #ffffff;
+  --scrim: rgba(40, 40, 38, 0.38);
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #1a1b1a;
+  --surface: #232524;
+  --sunken: #1a1b1a;
+  --tx: #ecedea;
+  --mut: #a3a6a1;
+  --faint: #74776f;
+  --accent: #a6ebcb;
+  --on-accent: #1a1b1a;
+  --soft: rgba(166, 235, 203, 0.14);
+  --lav: rgba(241, 233, 185, 0.16);
+  --grey: #2e302e;
+  --strong: #d8dad5;
+  --acc: #7fddb2;
+  --divider: #2e302e;
+  --row-line: #2a2c2a;
+  --dash: #3a3d3a;
+  --line: rgba(255, 255, 255, 0.06);
+  --shadow: 0 10px 22px rgba(0, 0, 0, 0.35), 0 2px 4px rgba(0, 0, 0, 0.25);
+  --glow: 0 8px 20px rgba(166, 235, 203, 0.18);
+  --danger: #ff6b6e;
+  --on-danger: #1a1b1a;
+  --scrim: rgba(0, 0, 0, 0.6);
+}
+
+html {
+  --side-w: 248px;
+}
+html[data-sidebar='collapsed'] {
+  --side-w: 76px;
+}
+
 body {
   margin: 0;
-  background: #0c0c0c;
-  font-family: var(--font-grotesk), system-ui, sans-serif;
-  color: #ededed;
+  background: var(--bg);
+  font-family: var(--font-manrope), system-ui, sans-serif;
+  color: var(--tx);
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
 }
 a {
-  color: #ededed;
-}
-a:hover {
-  color: #ff4d2a;
+  color: var(--acc);
 }
 input,
-textarea {
+textarea,
+select,
+button {
   font-family: inherit;
 }
 input::placeholder,
 textarea::placeholder {
-  color: #6e6e6e;
+  color: var(--faint);
+}
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed !important;
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+}
+
+/* Theme toggle: show the icon of the mode you would switch to. */
+.show-in-light {
+  display: inline-flex;
+}
+.show-in-dark {
+  display: none;
+}
+:root[data-theme='dark'] .show-in-light {
+  display: none;
+}
+:root[data-theme='dark'] .show-in-dark {
+  display: inline-flex;
+}
+
+/* Shell: sidebar rail on desktop, overlay drawer at <= 900px. */
+.shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: var(--side-w) minmax(0, 1fr);
+  transition: grid-template-columns 0.18s ease;
+}
+.side {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  box-sizing: border-box;
+  background: var(--surface);
+  border-right: 1px solid var(--divider);
+  padding: 22px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
+}
+.side-collapse svg {
+  transition: transform 0.18s ease;
+}
+html[data-sidebar='collapsed'] .side-collapse svg {
+  transform: rotate(180deg);
+}
+html[data-sidebar='collapsed'] .side .nav-label,
+html[data-sidebar='collapsed'] .side .nav-badge-text,
+html[data-sidebar='collapsed'] .side .brand-sub,
+html[data-sidebar='collapsed'] .side .me-text {
+  display: none;
+}
+html[data-sidebar='collapsed'] .side .nav-item {
+  justify-content: center;
+  padding: 0;
+}
+html[data-sidebar='collapsed'] .side .me-card {
+  padding: 8px;
+  justify-content: center;
+}
+.hamburger {
+  display: none !important;
+}
+.scrim-nav {
+  display: none;
+}
+@media (max-width: 900px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .side {
+    position: fixed;
+    z-index: 50;
+    top: 0;
+    left: 0;
+    width: 272px;
+    max-width: 85vw;
+    transform: translateX(-102%);
+    transition: transform 0.2s ease;
+    box-shadow: var(--shadow);
+  }
+  .side.open {
+    transform: none;
+  }
+  .scrim-nav.open {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 45;
+    background: var(--scrim);
+  }
+  /* The rail never applies to the overlay; it always shows labels. */
+  html[data-sidebar='collapsed'] .side .nav-label,
+  html[data-sidebar='collapsed'] .side .nav-badge-text,
+  html[data-sidebar='collapsed'] .side .brand-sub,
+  html[data-sidebar='collapsed'] .side .me-text {
+    display: revert;
+  }
+  html[data-sidebar='collapsed'] .side .nav-item {
+    justify-content: flex-start;
+    padding: 0 12px;
+  }
+  .side-collapse {
+    display: none !important;
+  }
+  .hamburger {
+    display: inline-flex !important;
+  }
+  .main {
+    padding: 16px 16px 56px !important;
+  }
+}
+
+.skeleton {
+  background: var(--grey);
+  border-radius: 10px;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+.modal-card {
+  animation: rise 0.16s ease-out;
+}
+.row-hover:hover {
+  background: var(--sunken);
+}
+.btn-hover:hover:not(:disabled) {
+  filter: brightness(0.96);
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell,
+  .side,
+  .skeleton,
+  .modal-card {
+    transition: none;
+    animation: none;
+  }
 }
