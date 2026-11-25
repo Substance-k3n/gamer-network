@@ -18,12 +18,14 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { USERNAME, USERNAME_RULE } from '../auth/auth.dto.js';
-import { type Platform, PLATFORMS } from '../common/enums.dto.js';
+import { type Platform, PLATFORMS, PLAY_PLATFORMS } from '../common/enums.dto.js';
 import {
   AGE_RANGES,
   type AgeRange,
   type Day,
   DAYS,
+  CHESS_ID_KINDS,
+  CHESS_TAGS,
   GAMING_ID_KINDS,
   type GamingIdKind,
   ID_VISIBILITIES,
@@ -124,7 +126,7 @@ export class SetPlatformsBody {
   @ApiProperty({ enum: PLATFORMS, enumName: 'Platform', isArray: true })
   @IsArray()
   @ArrayUnique()
-  @IsIn(PLATFORMS, { each: true })
+  @IsIn(PLAY_PLATFORMS, { each: true, message: 'Pick Chess.com or Lichess' })
   platforms: Platform[];
 }
 
@@ -134,16 +136,16 @@ export class SetTagsBody {
   @IsArray()
   @ArrayUnique()
   @ArrayMaxSize(MAX_TAGS, { message: `Pick up to ${MAX_TAGS}` })
-  @IsIn(PLAY_TAGS, { each: true })
+  @IsIn(CHESS_TAGS, { each: true })
   tags: PlayTag[];
 }
 
 export class GamingIdInput {
   @ApiProperty({ enum: GAMING_ID_KINDS, enumName: 'GamingIdKind' })
-  @IsIn(GAMING_ID_KINDS)
+  @IsIn(CHESS_ID_KINDS, { message: 'Add a Chess.com or Lichess username' })
   kind: GamingIdKind;
 
-  /** Required for in_game (e.g. a PUBG Mobile UID), absent otherwise. */
+  /** Required for in_game, absent otherwise. Only chess_com and lichess are accepted now. */
   @ValidateIf((o: GamingIdInput) => o.kind === 'in_game' || o.gameId !== undefined)
   @IsString({ message: 'Pick the game this ID is for' })
   gameId?: string;

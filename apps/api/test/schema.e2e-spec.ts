@@ -79,8 +79,8 @@ const listing = (ownerId: string, overrides: Partial<typeof listings.$inferInser
   const now = new Date();
   return {
     ownerId,
-    gameId: 'val',
-    platform: 'pc' as const,
+    gameId: 'shelf',
+    platform: 'lichess' as const,
     partySize: 2,
     voice: 'required' as const,
     style: 'competitive' as const,
@@ -94,32 +94,25 @@ const listing = (ownerId: string, overrides: Partial<typeof listings.$inferInser
 };
 
 describe('catalog seed', () => {
-  it('loads the app catalog with ladders in order', async () => {
-    // Admins can add games (and admin tests do), so check the seed's ids are all there.
+  it('loads Chess with its rating bands and time controls (ADR-0015)', async () => {
     const ids = new Set((await db.select({ id: games.id }).from(games)).map((g) => g.id));
-    expect(seedGames.filter((g) => !ids.has(g.id))).toEqual([]);
-    expect(seedGames).toHaveLength(49);
-    const val = await db
-      .select({ name: gameRanks.name })
+    expect(seedGames.map((g) => g.id)).toEqual(['chess']);
+    expect(ids.has('chess')).toBe(true);
+    const bands = await db
+      .select({ name: gameRanks.name, tier: gameRanks.tier })
       .from(gameRanks)
-      .where(eq(gameRanks.gameId, 'val'))
+      .where(eq(gameRanks.gameId, 'chess'))
       .orderBy(gameRanks.tier);
-    expect(val.map((r) => r.name)).toEqual([
-      'Iron',
-      'Bronze',
-      'Silver',
-      'Gold',
-      'Platinum',
-      'Diamond',
-      'Ascendant',
-      'Immortal',
-      'Radiant',
+    expect(bands.map((b) => b.name)).toEqual([
+      'Beginner (under 1000)',
+      '1000–1399',
+      '1400–1799',
+      '1800–2199',
+      '2200+',
     ]);
-  });
-
-  it('gives unranked games no Ranked mode', async () => {
-    const mc = await db.select().from(gameModes).where(eq(gameModes.gameId, 'mc'));
-    expect(mc.map((m) => m.name).sort()).toEqual(['Casual', 'Unrated']);
+    const modes = await db.select().from(gameModes).where(eq(gameModes.gameId, 'chess'));
+    expect(modes.map((m) => m.name).sort()).toEqual(['Blitz', 'Bullet', 'Classical', 'Rapid']);
+    expect(modes.every((m) => !m.isRanked)).toBe(true);
   });
 
   it('can run again without duplicating anything', async () => {
@@ -130,18 +123,18 @@ describe('catalog seed', () => {
   });
 
   it('leaves games an admin changed alone', async () => {
-    const [mc] = await db.select().from(games).where(eq(games.id, 'mc'));
-    await db.update(games).set({ name: 'Minecraft (Java)' }).where(eq(games.id, 'mc'));
-    await db.insert(gameRanks).values({ gameId: 'mc', name: 'Hardcore', tier: 99 });
+    const [mc] = await db.select().from(games).where(eq(games.id, 'chess'));
+    await db.update(games).set({ name: 'Chess (Addis)' }).where(eq(games.id, 'chess'));
+    await db.insert(gameRanks).values({ gameId: 'chess', name: 'Master', tier: 99 });
     try {
       await seedCatalog(db);
-      const [after] = await db.select().from(games).where(eq(games.id, 'mc'));
-      expect(after!.name).toBe('Minecraft (Java)');
-      const ranks = await db.select().from(gameRanks).where(eq(gameRanks.gameId, 'mc'));
-      expect(ranks.map((r) => r.name)).toContain('Hardcore');
+      const [after] = await db.select().from(games).where(eq(games.id, 'chess'));
+      expect(after!.name).toBe('Chess (Addis)');
+      const ranks = await db.select().from(gameRanks).where(eq(gameRanks.gameId, 'chess'));
+      expect(ranks.map((r) => r.name)).toContain('Master');
     } finally {
-      await db.update(games).set({ name: mc!.name }).where(eq(games.id, 'mc'));
-      await db.delete(gameRanks).where(and(eq(gameRanks.gameId, 'mc'), eq(gameRanks.tier, 99)));
+      await db.update(games).set({ name: mc!.name }).where(eq(games.id, 'chess'));
+      await db.delete(gameRanks).where(and(eq(gameRanks.gameId, 'chess'), eq(gameRanks.tier, 99)));
     }
   });
 });
@@ -161,10 +154,10 @@ describe('schema rules', () => {
   it("won't store a rank from another game", () =>
     inRollback(async (tx) => {
       const u = await newUser(tx);
-      const fcRank = await rankOf(tx, 'fc', 'Div 3');
+      const fcRank = await rankOf(tx, 'practice', 'Low');
       expect(
         await pgCode(
-          tx.insert(userGames).values({ userId: u.id, gameId: 'val', rankId: fcRank.id }),
+          tx.insert(userGames).values({ userId: u.id, gameId: 'shelf', rankId: fcRank.id }),
         ),
       ).toBe('23503');
     }));
@@ -174,7 +167,7 @@ describe('schema rules', () => {
       const u = await newUser(tx);
       expect(
         await pgCode(
-          tx.insert(userGames).values({ userId: u.id, gameId: 'val', customGameName: 'X' }),
+          tx.insert(userGames).values({ userId: u.id, gameId: 'shelf', customGameName: 'X' }),
         ),
       ).toBe('23514');
     }));
@@ -223,7 +216,7 @@ describe('schema rules', () => {
       const u = await newUser(tx);
       await tx
         .insert(gamingIds)
-        .values({ userId: u.id, kind: 'in_game', gameId: 'pubg', value: '5123' });
+        .values({ userId: u.id, kind: 'in_game', gameId: 'chess', value: '5123' });
     }));
 
   it('keeps gaming IDs private to connections by default', () =>

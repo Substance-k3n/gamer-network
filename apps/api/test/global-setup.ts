@@ -2,6 +2,7 @@ import postgres from 'postgres';
 import { createDb } from '../src/db/db.js';
 import { runMigrations } from '../src/db/migrate.js';
 import { seedCatalog } from '../src/db/seed.js';
+import { seedFixtures } from './fixtures.js';
 import { TEST_DATABASE_URL } from './test-db.js';
 
 /** Creates the test database if needed, migrates it and seeds the catalog. */
@@ -16,6 +17,7 @@ export default async function setup() {
   await runMigrations(TEST_DATABASE_URL);
   const { client, db } = createDb(TEST_DATABASE_URL);
   await seedCatalog(db);
+  await seedFixtures(db);
   await client.end();
 }
 

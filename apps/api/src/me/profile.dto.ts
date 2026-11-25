@@ -8,8 +8,19 @@ export const PLAYER_STATUSES = playerStatus.enumValues;
 export type PlayerStatus = (typeof PLAYER_STATUSES)[number];
 export const PLAY_TAGS = playTag.enumValues;
 export type PlayTag = (typeof PLAY_TAGS)[number];
+/** Tags a profile can pick now (ADR-0015); older ones still read. */
+export const CHESS_TAGS = [
+  'competitive',
+  'casual',
+  'openings',
+  'endgames',
+  'puzzles',
+  'tournaments',
+] as const satisfies readonly PlayTag[];
 export const GAMING_ID_KINDS = gamingIdKind.enumValues;
 export type GamingIdKind = (typeof GAMING_ID_KINDS)[number];
+/** IDs a profile can add now: the usernames an opponent challenges (ADR-0015). */
+export const CHESS_ID_KINDS = ['chess_com', 'lichess'] as const satisfies readonly GamingIdKind[];
 export const ID_VISIBILITIES = idVisibility.enumValues;
 export type IdVisibility = (typeof ID_VISIBILITIES)[number];
 

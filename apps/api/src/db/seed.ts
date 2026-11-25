@@ -5,8 +5,6 @@ import { createDb, type Db } from './db.js';
 import { gameModes, gameRanks, games, users } from './schema/index.js';
 import { seedGames } from './seed/games.js';
 
-const MODES = ['Ranked', 'Unrated', 'Casual'] as const;
-
 /**
  * Idempotent: safe to run on every deploy. Adds the games (with their
  * ladders) that aren't in the database yet and leaves the rest alone:
@@ -42,11 +40,10 @@ export async function seedCatalog(db: Db) {
       for (const [tier, name] of g.ranks.entries()) {
         await tx.insert(gameRanks).values({ gameId: g.id, tier, name });
       }
-      for (const name of MODES) {
-        if (name === 'Ranked' && !g.hasRanks) continue;
+      for (const name of g.modes) {
         await tx
           .insert(gameModes)
-          .values({ gameId: g.id, name, isRanked: name === 'Ranked' })
+          .values({ gameId: g.id, name, isRanked: false })
           .onConflictDoNothing();
       }
     }

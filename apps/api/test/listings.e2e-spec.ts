@@ -26,8 +26,8 @@ afterAll(async () => {
 const http = () => request(app.getHttpServer());
 
 /** pubg: launch, mobile only, parties up to 4. */
-const pubg = () => catalog.find((g) => g.id === 'pubg')!;
-const efootball = () => catalog.find((g) => g.id === 'efootball')!;
+const chess = () => catalog.find((g) => g.id === 'chess')!;
+const practice = () => catalog.find((g) => g.id === 'practice')!;
 
 interface Options {
   city?: string;
@@ -50,11 +50,11 @@ async function player({ city = 'Addis Ababa', verified = true, rankTier = 3 }: O
     .expect(201);
   const auth = { Authorization: `Bearer ${res.body.token}` };
   const userId = res.body.user.id as string;
-  const rank = pubg().ranks.find((r) => r.tier === rankTier)!;
+  const rank = chess().ranks.find((r) => r.tier === rankTier)!;
   await http()
     .put('/v1/me/games')
     .set(auth)
-    .send({ games: [{ gameId: 'pubg', rankId: rank.id }] })
+    .send({ games: [{ gameId: 'chess', rankId: rank.id }] })
     .expect(200);
   await http().patch('/v1/me').set(auth).send({ city }).expect(200);
   await http().post('/v1/me/onboard').set(auth).expect(204);
@@ -74,14 +74,14 @@ async function player({ city = 'Addis Ababa', verified = true, rankTier = 3 }: O
 type Player = Awaited<ReturnType<typeof player>>;
 
 const listing = (overrides: object = {}) => ({
-  gameId: 'pubg',
-  platform: 'mobile',
-  partySize: 4,
-  voice: 'required',
+  gameId: 'chess',
+  platform: 'chess_com',
+  partySize: 2,
+  voice: 'optional',
   style: 'competitive',
   playWhen: 'now',
   durationHours: 2,
-  note: '  Need a sniper  ',
+  note: '  Blitz, best of three  ',
   ...overrides,
 });
 
@@ -95,14 +95,14 @@ describe('POST /v1/listings', () => {
     const body = await post(p);
     expect(body).toMatchObject({
       owner: { id: p.id },
-      game: { id: 'pubg' },
+      game: { id: 'chess' },
       rank: { id: p.rank.id },
       mode: null,
-      partySize: 4,
+      partySize: 2,
       filled: 0,
       playWhen: 'now',
       durationHours: 2,
-      note: 'Need a sniper',
+      note: 'Blitz, best of three',
       status: 'open',
       myRequest: null,
     });
@@ -110,6 +110,13 @@ describe('POST /v1/listings', () => {
     const starts = new Date(body.startsAt).getTime();
     expect(starts).toBeGreaterThanOrEqual(before - 1000);
     expect(new Date(body.expiresAt).getTime() - starts).toBe(2 * 3600 * 1000);
+  });
+
+  it('is 1v1 without asking: party size 2, voice optional (ADR-0015)', async () => {
+    const p = await player();
+    const { partySize: _p, voice: _v, ...bare } = listing();
+    const body = (await p.post('/v1/listings', bare).expect(201)).body;
+    expect(body).toMatchObject({ partySize: 2, voice: 'optional', platform: 'chess_com' });
   });
 
   it('needs a verified email', async () => {
@@ -126,12 +133,12 @@ describe('POST /v1/listings', () => {
         .fields,
     ).toHaveProperty('gameId');
     const res = await p
-      .post(
-        '/v1/listings',
-        listing({ platform: 'pc', partySize: 5, rankId: efootball().ranks[0]!.id }),
-      )
+      .post('/v1/listings', listing({ partySize: 5, rankId: practice().ranks[0]!.id }))
       .expect(422);
-    expect(Object.keys(res.body.error.fields).sort()).toEqual(['partySize', 'platform', 'rankId']);
+    expect(Object.keys(res.body.error.fields).sort()).toEqual(['partySize', 'rankId']);
+    // Squad-game platforms are history only (ADR-0015).
+    const squad = await p.post('/v1/listings', listing({ platform: 'xbox' })).expect(422);
+    expect(squad.body.error.fields).toHaveProperty('platform');
   });
 
   it('allows one live listing; closing frees the slot', async () => {
@@ -209,19 +216,23 @@ describe('GET /v1/listings', () => {
   it('filters by game, rank, platform, voice, style, party size and when', async () => {
     const city = `C${uniq()}`;
     const me = await player({ city });
-    const low = await post(await player({ city, rankTier: 1 }), { voice: 'optional' });
-    const high = await post(await player({ city, rankTier: 6 }), { partySize: 2 });
+    const low = await post(await player({ city, rankTier: 1 }));
+    const high = await post(await player({ city, rankTier: 4 }), {
+      platform: 'lichess',
+      voice: 'required',
+    });
     const later = await post(await player({ city }), { playWhen: 'weekend', style: 'casual' });
     const ids = async (q: string) =>
       (await me.get(`/v1/listings?${q}`).expect(200)).body.items.map((l: { id: string }) => l.id);
 
-    const tier4 = pubg().ranks.find((r) => r.tier === 4)!.id;
+    const tier4 = chess().ranks.find((r) => r.tier === 4)!.id;
     expect(await ids(`minRank=${tier4}`)).toEqual([high.id]);
-    expect(await ids('voice=required')).not.toContain(low.id);
-    expect(await ids('partySize=2')).toEqual([high.id]);
+    expect(await ids('voice=required')).toEqual([high.id]);
+    expect(await ids('partySize=2')).toHaveLength(3);
     expect(await ids('style=casual')).toEqual([later.id]);
-    expect(await ids('game=efootball')).toEqual([]);
-    expect(await ids('platform=mobile')).toHaveLength(3);
+    expect(await ids('game=practice')).toEqual([]);
+    expect(await ids('platform=lichess')).toEqual([high.id]);
+    expect(await ids('platform=chess_com')).toHaveLength(2);
     const now = await ids('when=now');
     expect(now).toContain(low.id);
     // A weekend listing has started only if it's the weekend in Addis already.
@@ -313,7 +324,7 @@ describe('GET /v1/public/listings/{id}', () => {
     const owner = await player();
     const l = await post(owner);
     const { body } = await http().get(`/v1/public/listings/${l.id}`).expect(200);
-    expect(body).toMatchObject({ id: l.id, game: { id: 'pubg' }, status: 'open' });
+    expect(body).toMatchObject({ id: l.id, game: { id: 'chess' }, status: 'open' });
     expect(body.ownerDisplayName).toMatch(/^Lia /);
     expect(JSON.stringify(body)).not.toContain(owner.id);
   });

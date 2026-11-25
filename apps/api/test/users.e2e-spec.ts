@@ -74,8 +74,8 @@ describe('GET /v1/users/{username}', () => {
     await owner
       .put('/v1/me/gaming-ids', {
         gamingIds: [
-          { kind: 'discord', value: 'secret#1' },
-          { kind: 'steam', value: 'open', visibility: 'public' },
+          { kind: 'chess_com', value: 'secret_1' },
+          { kind: 'lichess', value: 'open', visibility: 'public' },
         ],
       })
       .expect(200);
@@ -95,7 +95,7 @@ describe('GET /v1/users/{username}', () => {
     const owner = await player('owner');
     const friend = await player('friend');
     await owner
-      .put('/v1/me/gaming-ids', { gamingIds: [{ kind: 'discord', value: 'secret#1' }] })
+      .put('/v1/me/gaming-ids', { gamingIds: [{ kind: 'chess_com', value: 'secret_1' }] })
       .expect(200);
     await connect(owner.id, friend.id);
     const { body } = await friend.get(`/v1/users/${owner.username}`).expect(200);

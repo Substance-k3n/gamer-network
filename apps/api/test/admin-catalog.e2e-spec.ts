@@ -57,7 +57,7 @@ async function newGame(admin: Awaited<ReturnType<typeof player>>, extra: object 
       id,
       name: `Test Game ${id}`,
       shortCode: 'tg',
-      platforms: ['mobile', 'pc'],
+      platforms: ['chess_com', 'lichess'],
       hasRanks: true,
       maxParty: 4,
       // Off Find Players, so the launch-games tests running alongside don't see it.
@@ -90,7 +90,7 @@ describe('games', () => {
         id: g.id,
         name: 'Again',
         shortCode: 'AG',
-        platforms: ['pc'],
+        platforms: ['lichess'],
         hasRanks: true,
         maxParty: 4,
         isLaunch: false,
@@ -112,9 +112,11 @@ describe('games', () => {
     const page = (await admin.get(`/v1/admin/games?query=Test Game ${g.id}`).expect(200)).body;
     expect(page).toMatchObject({ total: 1, page: 1, pageSize: 20 });
     expect(page.items[0].id).toBe(g.id);
-    const all = (await admin.get('/v1/admin/games?pageSize=5&page=2').expect(200)).body;
-    expect(all.items).toHaveLength(5);
-    expect(all.total).toBeGreaterThan(40);
+    const first = (await admin.get('/v1/admin/games?pageSize=1&page=1').expect(200)).body;
+    const second = (await admin.get('/v1/admin/games?pageSize=1&page=2').expect(200)).body;
+    expect(first.items).toHaveLength(1);
+    expect(second.items[0].id).not.toBe(first.items[0].id);
+    expect(first.total).toBeGreaterThanOrEqual(2);
 
     const edited = (
       await admin.patch(`/v1/admin/games/${g.id}`, { name: 'Renamed', maxParty: 6 }).expect(200)
@@ -135,14 +137,14 @@ describe('games', () => {
     const admin = await player({ admin: true });
     const g = await newGame(admin, { isLaunch: true });
     const p = await player();
-    await p.put('/v1/me/games', { games: [{ gameId: g.id }, { gameId: 'pubg' }] }).expect(200);
+    await p.put('/v1/me/games', { games: [{ gameId: g.id }, { gameId: 'chess' }] }).expect(200);
     await p.post('/v1/me/onboard').expect(204);
     await p.put('/v1/me/status', { status: 'playing', gameId: g.id }).expect(200);
     const listing = (
       await p
         .post('/v1/listings', {
           gameId: g.id,
-          platform: 'mobile',
+          platform: 'chess_com',
           partySize: 2,
           voice: 'optional',
           style: 'casual',
@@ -159,7 +161,7 @@ describe('games', () => {
     await admin.del(`/v1/admin/games/${g.id}`).expect(204);
 
     const me = (await p.get('/v1/me').expect(200)).body;
-    expect(me.games.map((x: { game: { id: string } | null }) => x.game?.id)).toEqual(['pubg']);
+    expect(me.games.map((x: { game: { id: string } | null }) => x.game?.id)).toEqual(['chess']);
     expect(me.statusGame ?? null).toBeNull();
     const [row] = await conn.db.select().from(listings).where(eq(listings.id, listing.id));
     expect(row!.status).toBe('closed');
@@ -295,7 +297,7 @@ describe('dashboard metrics', () => {
       m.series.reduce((n: number, d: { signups: number }) => n + d.signups, 0),
     ).toBeGreaterThan(0);
     expect(m.totals).toMatchObject({ players: expect.any(Number), games: expect.any(Number) });
-    expect(m.totals.games).toBeGreaterThan(40);
+    expect(m.totals.games).toBeGreaterThanOrEqual(1);
     expect(Array.isArray(m.topGames)).toBe(true);
   });
 });

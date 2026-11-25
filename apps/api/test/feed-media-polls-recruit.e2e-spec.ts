@@ -70,7 +70,7 @@ async function player() {
   await http()
     .put('/v1/me/games')
     .set(auth)
-    .send({ games: [{ gameId: 'pubg' }] })
+    .send({ games: [{ gameId: 'chess' }] })
     .expect(200);
   await http().post('/v1/me/onboard').set(auth).expect(204);
   await conn.db.update(users).set({ emailVerifiedAt: new Date() }).where(eq(users.id, userId));
@@ -215,7 +215,7 @@ describe('posts with photos', () => {
 
   it('lets any type carry photos; gameplay needs one; at most 4', async () => {
     const me = await player();
-    const meme = await me.postIt({ type: 'meme', text: 'lol', media: [await me.photo()] });
+    const meme = await me.postIt({ type: 'meme', text: 'shelf', media: [await me.photo()] });
     expect(meme).toMatchObject({ kind: 'text', media: [{ kind: 'image' }] });
     const none = await me.post('/v1/posts', { type: 'gameplay', text: 'clip' }).expect(422);
     expect(none.body.error.fields.media).toBe('Add at least one photo');
@@ -433,7 +433,7 @@ describe('recruitment', () => {
   const recruitBody = (slots = 2, roles?: string) => ({
     type: 'recruitment',
     text: 'Need 2 for ranked',
-    gameId: 'pubg',
+    gameId: 'chess',
     recruit: { slots, roles },
   });
 

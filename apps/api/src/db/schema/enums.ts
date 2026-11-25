@@ -9,7 +9,16 @@ export const playerStatus = pgEnum('player_status', [
   'available_tonight',
   'not_available',
 ]);
-export const platform = pgEnum('platform', ['pc', 'playstation', 'xbox', 'mobile', 'switch']);
+// The squad-game values stay so history reads; inputs take only the chess ones (ADR-0015).
+export const platform = pgEnum('platform', [
+  'pc',
+  'playstation',
+  'xbox',
+  'mobile',
+  'switch',
+  'chess_com',
+  'lichess',
+]);
 export const playTag = pgEnum('play_tag', [
   'competitive',
   'casual',
@@ -20,6 +29,10 @@ export const playTag = pgEnum('play_tag', [
   'ranked',
   'achievement_hunter',
   'story',
+  'openings',
+  'endgames',
+  'puzzles',
+  'tournaments',
 ]);
 export const gamingIdKind = pgEnum('gaming_id_kind', [
   'riot',
@@ -31,6 +44,8 @@ export const gamingIdKind = pgEnum('gaming_id_kind', [
   'ea',
   'activision',
   'in_game',
+  'chess_com',
+  'lichess',
 ]);
 export const idVisibility = pgEnum('id_visibility', ['public', 'connections']);
 export const voice = pgEnum('voice', ['required', 'optional']);

@@ -203,52 +203,55 @@ describe('PUT /v1/me/games', () => {
 describe('platforms, tags and gaming IDs', () => {
   it('replaces platforms and tags', async () => {
     const p = await signup();
-    await p.put('platforms', { platforms: ['pc', 'mobile'] }).expect(200);
-    const { body } = await p.put('tags', { tags: ['fps', 'competitive'] }).expect(200);
-    expect(body.platforms.sort()).toEqual(['mobile', 'pc']);
-    expect(body.tags.sort()).toEqual(['competitive', 'fps']);
+    await p.put('platforms', { platforms: ['lichess', 'chess_com'] }).expect(200);
+    const { body } = await p.put('tags', { tags: ['openings', 'competitive'] }).expect(200);
+    expect(body.platforms.sort()).toEqual(['chess_com', 'lichess']);
+    expect(body.tags.sort()).toEqual(['competitive', 'openings']);
   });
 
-  it('allows at most 6 tags', async () => {
+  it('takes only chess platforms and tags (ADR-0015)', async () => {
     const p = await signup();
-    const tags = ['competitive', 'casual', 'fps', 'rpg', 'strategy', 'co_op', 'ranked'];
-    await p.put('tags', { tags }).expect(422);
+    await p.put('platforms', { platforms: ['pc'] }).expect(422);
+    await p.put('tags', { tags: ['fps'] }).expect(422);
+    const all = ['competitive', 'casual', 'openings', 'endgames', 'puzzles', 'tournaments'];
+    await p.put('tags', { tags: all }).expect(200);
   });
 
-  it('stores gaming IDs, private to connections by default', async () => {
+  it('stores Chess.com and Lichess usernames, private to connections by default', async () => {
     const p = await signup();
-    const g = ranked();
     const { body } = await p
       .put('gaming-ids', {
         gamingIds: [
-          { kind: 'discord', value: 'hana#1' },
-          { kind: 'in_game', gameId: g.id, value: '5123456789', visibility: 'public' },
+          { kind: 'chess_com', value: 'hana_plays' },
+          { kind: 'lichess', value: 'hana-l', visibility: 'public' },
         ],
       })
       .expect(200);
     expect(body.gamingIds).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ kind: 'discord', game: null, visibility: 'connections' }),
-        expect.objectContaining({ kind: 'in_game', game: expect.objectContaining({ id: g.id }) }),
+        expect.objectContaining({ kind: 'chess_com', game: null, visibility: 'connections' }),
+        expect.objectContaining({ kind: 'lichess', visibility: 'public' }),
       ]),
     );
   });
 
-  it('needs a game for in-game IDs', async () => {
+  it('refuses squad-game ID kinds', async () => {
     const p = await signup();
-    const res = await p.put('gaming-ids', { gamingIds: [{ kind: 'in_game', value: '1' }] });
-    expect(res.status).toBe(422);
-    expect(res.body.error.fields).toHaveProperty(['gamingIds.0.gameId']);
+    for (const kind of ['discord', 'steam', 'in_game']) {
+      const res = await p.put('gaming-ids', { gamingIds: [{ kind, value: '1' }] });
+      expect(res.status).toBe(422);
+      expect(res.body.error.fields).toHaveProperty(['gamingIds.0.kind']);
+    }
   });
 
-  it('refuses a game on other IDs, and the same ID twice', async () => {
+  it('refuses a game on a username, and the same ID twice', async () => {
     const p = await signup();
     const res = await p
       .put('gaming-ids', {
         gamingIds: [
-          { kind: 'steam', gameId: ranked().id, value: '2' },
-          { kind: 'discord', value: 'a' },
-          { kind: 'discord', value: 'b' },
+          { kind: 'chess_com', gameId: ranked().id, value: '2' },
+          { kind: 'lichess', value: 'a' },
+          { kind: 'lichess', value: 'b' },
         ],
       })
       .expect(422);
