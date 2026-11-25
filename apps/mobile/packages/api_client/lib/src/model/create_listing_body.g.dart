@@ -78,7 +78,9 @@ class _$CreateListingBody extends CreateListingBody {
   @override
   final Platform platform;
   @override
-  final Voice voice;
+  final num? partySize;
+  @override
+  final Voice? voice;
   @override
   final PlayStyle style;
   @override
@@ -92,8 +94,6 @@ class _$CreateListingBody extends CreateListingBody {
   @override
   final String? rankId;
   @override
-  final num partySize;
-  @override
   final String? note;
 
   factory _$CreateListingBody(
@@ -102,14 +102,14 @@ class _$CreateListingBody extends CreateListingBody {
 
   _$CreateListingBody._(
       {required this.platform,
-      required this.voice,
+      this.partySize,
+      this.voice,
       required this.style,
       required this.playWhen,
       required this.durationHours,
       required this.gameId,
       this.modeId,
       this.rankId,
-      required this.partySize,
       this.note})
       : super._();
   @override
@@ -125,6 +125,7 @@ class _$CreateListingBody extends CreateListingBody {
     if (identical(other, this)) return true;
     return other is CreateListingBody &&
         platform == other.platform &&
+        partySize == other.partySize &&
         voice == other.voice &&
         style == other.style &&
         playWhen == other.playWhen &&
@@ -132,7 +133,6 @@ class _$CreateListingBody extends CreateListingBody {
         gameId == other.gameId &&
         modeId == other.modeId &&
         rankId == other.rankId &&
-        partySize == other.partySize &&
         note == other.note;
   }
 
@@ -140,6 +140,7 @@ class _$CreateListingBody extends CreateListingBody {
   int get hashCode {
     var _$hash = 0;
     _$hash = $jc(_$hash, platform.hashCode);
+    _$hash = $jc(_$hash, partySize.hashCode);
     _$hash = $jc(_$hash, voice.hashCode);
     _$hash = $jc(_$hash, style.hashCode);
     _$hash = $jc(_$hash, playWhen.hashCode);
@@ -147,7 +148,6 @@ class _$CreateListingBody extends CreateListingBody {
     _$hash = $jc(_$hash, gameId.hashCode);
     _$hash = $jc(_$hash, modeId.hashCode);
     _$hash = $jc(_$hash, rankId.hashCode);
-    _$hash = $jc(_$hash, partySize.hashCode);
     _$hash = $jc(_$hash, note.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
@@ -157,6 +157,7 @@ class _$CreateListingBody extends CreateListingBody {
   String toString() {
     return (newBuiltValueToStringHelper(r'CreateListingBody')
           ..add('platform', platform)
+          ..add('partySize', partySize)
           ..add('voice', voice)
           ..add('style', style)
           ..add('playWhen', playWhen)
@@ -164,7 +165,6 @@ class _$CreateListingBody extends CreateListingBody {
           ..add('gameId', gameId)
           ..add('modeId', modeId)
           ..add('rankId', rankId)
-          ..add('partySize', partySize)
           ..add('note', note))
         .toString();
   }
@@ -177,6 +177,10 @@ class CreateListingBodyBuilder
   Platform? _platform;
   Platform? get platform => _$this._platform;
   set platform(Platform? platform) => _$this._platform = platform;
+
+  num? _partySize;
+  num? get partySize => _$this._partySize;
+  set partySize(num? partySize) => _$this._partySize = partySize;
 
   Voice? _voice;
   Voice? get voice => _$this._voice;
@@ -208,10 +212,6 @@ class CreateListingBodyBuilder
   String? get rankId => _$this._rankId;
   set rankId(String? rankId) => _$this._rankId = rankId;
 
-  num? _partySize;
-  num? get partySize => _$this._partySize;
-  set partySize(num? partySize) => _$this._partySize = partySize;
-
   String? _note;
   String? get note => _$this._note;
   set note(String? note) => _$this._note = note;
@@ -224,6 +224,7 @@ class CreateListingBodyBuilder
     final $v = _$v;
     if ($v != null) {
       _platform = $v.platform;
+      _partySize = $v.partySize;
       _voice = $v.voice;
       _style = $v.style;
       _playWhen = $v.playWhen;
@@ -231,7 +232,6 @@ class CreateListingBodyBuilder
       _gameId = $v.gameId;
       _modeId = $v.modeId;
       _rankId = $v.rankId;
-      _partySize = $v.partySize;
       _note = $v.note;
       _$v = null;
     }
@@ -256,8 +256,8 @@ class CreateListingBodyBuilder
         _$CreateListingBody._(
           platform: BuiltValueNullFieldError.checkNotNull(
               platform, r'CreateListingBody', 'platform'),
-          voice: BuiltValueNullFieldError.checkNotNull(
-              voice, r'CreateListingBody', 'voice'),
+          partySize: partySize,
+          voice: voice,
           style: BuiltValueNullFieldError.checkNotNull(
               style, r'CreateListingBody', 'style'),
           playWhen: BuiltValueNullFieldError.checkNotNull(
@@ -268,8 +268,6 @@ class CreateListingBodyBuilder
               gameId, r'CreateListingBody', 'gameId'),
           modeId: modeId,
           rankId: rankId,
-          partySize: BuiltValueNullFieldError.checkNotNull(
-              partySize, r'CreateListingBody', 'partySize'),
           note: note,
         );
     replace(_$result);

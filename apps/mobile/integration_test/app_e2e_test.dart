@@ -147,7 +147,7 @@ void main() {
         final m = app.toastMsg;
         if (m != null && (toasts.isEmpty || toasts.last != m)) toasts.add(m);
       });
-      await see(t, 'Who are you as a gamer?');
+      await see(t, 'Who are you at the board?');
 
       // ---- sign up and confirm the email ----
       await tapText(t, 'Log in');
@@ -167,24 +167,17 @@ void main() {
         await fill(t, '123456', await codeFor(email));
         await tapText(t, 'Confirm email');
       }
-      await see(t, 'What do you play?');
-
-      // ---- onboarding: games, ranks, platforms and IDs ----
-      await fill(t, 'Search 49+ games', 'codm');
-      await tapText(t, 'CoD Mobile');
-      await fill(t, 'Search 49+ games', 'efoot');
-      await tapText(t, 'eFootball');
-      await tapText(t, 'Continue with 2 games');
-      await see(t, 'Your ranks.');
-      await tapText(t, 'Master');
+      // ---- onboarding: Chess is picked for them, then rating, sites and usernames ----
+      await see(t, 'Your rating.');
+      await tapText(t, '1400–1799');
       await tapText(t, 'Continue');
-      await see(t, 'Platforms');
-      await tapText(t, 'Mobile');
-      await tapText(t, 'Competitive');
+      await see(t, 'Where you play');
+      await tapText(t, 'Lichess');
+      await tapText(t, 'Rated');
       await t.enterText(
         find.widgetWithText(TextField, 'Add ID').at(1),
-        '$handle#disc',
-      ); // Discord
+        '${handle}_l',
+      ); // Lichess
       await tapText(t, 'Go live');
       await see(t, 'Profile live — welcome, $name');
       await seeHome(t);
@@ -196,24 +189,24 @@ void main() {
       await fill(
         t,
         'What do you want to know?',
-        'Best CODM loadout this season?',
+        'Best answer to the London System?',
       );
       await hideKeyboard(t);
       await tapText(t, 'Post');
       await see(t, 'Question posted');
-      await see(t, 'Best CODM loadout this season?');
+      await see(t, 'Best answer to the London System?');
 
       // ---- my status lives on my profile now ----
       await nav(t, 'YOU');
       await see(t, 'YOUR STATUS');
       await tapText(t, 'Posts');
-      await see(t, 'Best CODM loadout this season?');
+      await see(t, 'Best answer to the London System?');
 
       // ---- post a listing (Find Players) ----
       await nav(t, 'PLAYERS');
       await tapText(t, 'Post a listing');
       await see(t, 'Looking for players');
-      await tapText(t, 'Squad');
+      await tapText(t, 'Blitz');
       await tapOn(t, find.textContaining('Post listing ·'));
       await see(t, 'Listing live');
       await see(t, 'YOUR LIVE LISTING');
@@ -222,19 +215,19 @@ void main() {
       final posted = (await app.api.listings.myListingGet()).data!.listing!;
       await tapText(t, 'Edit');
       await see(t, 'Edit your listing');
-      await tapText(t, 'Mic optional');
+      await tapText(t, 'Casual');
       await fill(
         t,
-        'Looking for a ranked duo tonight.',
-        'Chill squad, no rage',
+        'Blitz, best of three, tonight.',
+        'Friendly games, no flagging',
       );
       await hideKeyboard(t);
       await tapText(t, 'Save changes');
       await see(t, 'Listing updated');
       final edited = (await app.api.listings.myListingGet()).data!.listing!;
       expect(edited.id, posted.id);
-      expect(edited.voice, Voice.optional);
-      expect(edited.note, 'Chill squad, no rage');
+      expect(edited.style, PlayStyle.casual);
+      expect(edited.note, 'Friendly games, no flagging');
       expect(edited.shareUrl, posted.shareUrl);
 
       // ---- find players: connect from a listing ----
@@ -253,7 +246,7 @@ void main() {
 
       // ---- search, a profile, connect and report ----
       await tapOn(t, icon(Ic.search));
-      await fill(t, 'Gamers by name or username', 'dav');
+      await fill(t, 'Players by name or username', 'dav');
       await tapText(t, 'Dave');
       await see(t, '@dave.exe');
       await tapText(t, 'Connect');
@@ -289,11 +282,11 @@ void main() {
       await fill(
         t,
         'What do you play, and who are you looking for?',
-        'Ranked CODM most nights.',
+        'Rated blitz most nights.',
       );
       await tapText(t, 'Save');
       await see(t, 'Profile updated');
-      await see(t, 'Ranked CODM most nights.');
+      await see(t, 'Rated blitz most nights.');
 
       // ---- Dave accepts and invites them to play ----
       await logout(t);
@@ -305,7 +298,7 @@ void main() {
       await tapText(t, 'Accept');
       await see(t, 'Connected with $name');
       await tapOn(t, icon(Ic.search));
-      await fill(t, 'Gamers by name or username', handle);
+      await fill(t, 'Players by name or username', handle);
       await tapText(t, name);
       await see(t, 'Connected ✓');
       await see(
@@ -339,7 +332,7 @@ void main() {
       // ---- block and unblock ----
       await nav(t, 'PLAYERS');
       await tapOn(t, icon(Ic.search));
-      await fill(t, 'Gamers by name or username', 'hana');
+      await fill(t, 'Players by name or username', 'hana');
       await tapText(t, 'Hana');
       await see(t, '@hanaplays');
       await tapOn(t, icon(Ic.more));

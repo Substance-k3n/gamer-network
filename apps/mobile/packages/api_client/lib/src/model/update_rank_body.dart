@@ -3,71 +3,71 @@
 //
 
 // ignore_for_file: unused_element
-import 'package:api_client/src/model/admin_user_dto.dart';
-import 'package:built_collection/built_collection.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
-part 'admin_user_page_dto.g.dart';
+part 'update_rank_body.g.dart';
 
-/// AdminUserPageDto
+/// UpdateRankBody
 ///
 /// Properties:
-/// * [items]
-/// * [nextCursor]
+/// * [name]
+/// * [tier]
 @BuiltValue()
-abstract class AdminUserPageDto
-    implements Built<AdminUserPageDto, AdminUserPageDtoBuilder> {
-  @BuiltValueField(wireName: r'items')
-  BuiltList<AdminUserDto> get items;
+abstract class UpdateRankBody
+    implements Built<UpdateRankBody, UpdateRankBodyBuilder> {
+  @BuiltValueField(wireName: r'name')
+  String? get name;
 
-  @BuiltValueField(wireName: r'nextCursor')
-  String? get nextCursor;
+  @BuiltValueField(wireName: r'tier')
+  num? get tier;
 
-  AdminUserPageDto._();
+  UpdateRankBody._();
 
-  factory AdminUserPageDto([void updates(AdminUserPageDtoBuilder b)]) =
-      _$AdminUserPageDto;
+  factory UpdateRankBody([void updates(UpdateRankBodyBuilder b)]) =
+      _$UpdateRankBody;
 
   @BuiltValueHook(initializeBuilder: true)
-  static void _defaults(AdminUserPageDtoBuilder b) => b;
+  static void _defaults(UpdateRankBodyBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<AdminUserPageDto> get serializer =>
-      _$AdminUserPageDtoSerializer();
+  static Serializer<UpdateRankBody> get serializer =>
+      _$UpdateRankBodySerializer();
 }
 
-class _$AdminUserPageDtoSerializer
-    implements PrimitiveSerializer<AdminUserPageDto> {
+class _$UpdateRankBodySerializer
+    implements PrimitiveSerializer<UpdateRankBody> {
   @override
-  final Iterable<Type> types = const [AdminUserPageDto, _$AdminUserPageDto];
+  final Iterable<Type> types = const [UpdateRankBody, _$UpdateRankBody];
 
   @override
-  final String wireName = r'AdminUserPageDto';
+  final String wireName = r'UpdateRankBody';
 
   Iterable<Object?> _serializeProperties(
     Serializers serializers,
-    AdminUserPageDto object, {
+    UpdateRankBody object, {
     FullType specifiedType = FullType.unspecified,
   }) sync* {
-    yield r'items';
-    yield serializers.serialize(
-      object.items,
-      specifiedType: const FullType(BuiltList, [FullType(AdminUserDto)]),
-    );
-    yield r'nextCursor';
-    yield object.nextCursor == null
-        ? null
-        : serializers.serialize(
-            object.nextCursor,
-            specifiedType: const FullType.nullable(String),
-          );
+    if (object.name != null) {
+      yield r'name';
+      yield serializers.serialize(
+        object.name,
+        specifiedType: const FullType(String),
+      );
+    }
+    if (object.tier != null) {
+      yield r'tier';
+      yield serializers.serialize(
+        object.tier,
+        specifiedType: const FullType(num),
+      );
+    }
   }
 
   @override
   Object serialize(
     Serializers serializers,
-    AdminUserPageDto object, {
+    UpdateRankBody object, {
     FullType specifiedType = FullType.unspecified,
   }) {
     return _serializeProperties(serializers, object,
@@ -80,27 +80,28 @@ class _$AdminUserPageDtoSerializer
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
     required List<Object?> serializedList,
-    required AdminUserPageDtoBuilder result,
+    required UpdateRankBodyBuilder result,
     required List<Object?> unhandled,
   }) {
     for (var i = 0; i < serializedList.length; i += 2) {
       final key = serializedList[i] as String;
       final value = serializedList[i + 1];
       switch (key) {
-        case r'items':
-          final valueDes = serializers.deserialize(
-            value,
-            specifiedType: const FullType(BuiltList, [FullType(AdminUserDto)]),
-          ) as BuiltList<AdminUserDto>;
-          result.items.replace(valueDes);
-          break;
-        case r'nextCursor':
+        case r'name':
           final valueDes = serializers.deserialize(
             value,
             specifiedType: const FullType.nullable(String),
           ) as String?;
           if (valueDes == null) continue;
-          result.nextCursor = valueDes;
+          result.name = valueDes;
+          break;
+        case r'tier':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(num),
+          ) as num?;
+          if (valueDes == null) continue;
+          result.tier = valueDes;
           break;
         default:
           unhandled.add(key);
@@ -111,12 +112,12 @@ class _$AdminUserPageDtoSerializer
   }
 
   @override
-  AdminUserPageDto deserialize(
+  UpdateRankBody deserialize(
     Serializers serializers,
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    final result = AdminUserPageDtoBuilder();
+    final result = UpdateRankBodyBuilder();
     final serializedList = (serialized as Iterable<Object?>).toList();
     final unhandled = <Object?>[];
     _deserializeProperties(

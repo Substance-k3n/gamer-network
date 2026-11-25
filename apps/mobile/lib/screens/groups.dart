@@ -381,7 +381,7 @@ class CommunitiesScreen extends StatelessWidget {
                     style: t.label(9, c: t.accentText),
                   ),
                   Text(
-                    'Your squad, your game, your city or campus.',
+                    'Your club, your city or your campus.',
                     style: t.body(22, w: w800, ls: -.6, h: 1.1, c: t.onDark),
                   ),
                   Align(
@@ -1457,7 +1457,7 @@ class CreateGroupScreen extends StatelessWidget {
                       children: [
                         BoxField(
                           value: d.name,
-                          hint: 'e.g. Valorant Addis Duo Queue',
+                          hint: 'e.g. Addis Blitz Club',
                           height: 50,
                           maxLength: 40,
                           onChanged: (v) => set(() {

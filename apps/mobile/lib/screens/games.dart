@@ -86,7 +86,7 @@ class _GamePickerState extends State<GamePicker> {
               height: 32,
               padH: 12,
             ),
-            for (final p in platformLabel.keys)
+            for (final p in playPlatforms)
               Pill.chip(
                 platformLabel[p]!,
                 _plat == p,

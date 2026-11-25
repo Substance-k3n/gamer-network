@@ -23,13 +23,12 @@ class FindScreen extends StatelessWidget {
     final s = context.app;
     final t = context.rt;
     final toggles = <(String, bool, VoidCallback)>[
-      ('Mic on', s.fMic, () => s.setFilter(() => s.fMic = !s.fMic)),
       (
         'Tonight',
         s.fTonight,
         () => s.setFilter(() => s.fTonight = !s.fTonight),
       ),
-      ('Competitive', s.fComp, () => s.setFilter(() => s.fComp = !s.fComp)),
+      ('Rated', s.fComp, () => s.setFilter(() => s.fComp = !s.fComp)),
     ];
     // Countdowns tick every second; only this subtree rebuilds.
     return RefreshIndicator(
@@ -184,12 +183,13 @@ class _GameFilters extends StatelessWidget {
             s.fMode == m.id,
             () => s.setFilter(() => s.fMode = s.fMode == m.id ? null : m.id),
           ),
-        for (var n = 2; n <= g.maxParty; n++)
-          chip(
-            partyLabel(n),
-            s.fParty == n,
-            () => s.setFilter(() => s.fParty = s.fParty == n ? null : n),
-          ),
+        if (g.maxParty > 2)
+          for (var n = 2; n <= g.maxParty; n++)
+            chip(
+              partyLabel(n),
+              s.fParty == n,
+              () => s.setFilter(() => s.fParty = s.fParty == n ? null : n),
+            ),
       ],
     );
   }
@@ -393,7 +393,6 @@ class _ListingCard extends StatelessWidget {
             runSpacing: 6,
             children: [
               for (final tag in [
-                l.voice == Voice.required_ ? 'Mic required' : 'Mic optional',
                 playWhenLabel[l.playWhen]!,
                 platformLabel[l.platform]!,
               ])
@@ -689,7 +688,7 @@ class SearchScreen extends StatelessWidget {
               Expanded(
                 child: BoxField(
                   value: s.q,
-                  hint: 'Gamers by name or username',
+                  hint: 'Players by name or username',
                   height: 48,
                   padH: 18,
                   shadow: 3,
@@ -800,7 +799,7 @@ class SearchScreen extends StatelessWidget {
             ),
           ],
           if (ql.length >= 2 && s.found.isEmpty && games.isEmpty)
-            EmptyNote('No gamers called “${s.q.trim()}” yet.'),
+            EmptyNote('No players called “${s.q.trim()}” yet.'),
           if (ql.length < 2 && games.isEmpty)
             const EmptyNote('Type at least 2 letters of a name or username.'),
         ],

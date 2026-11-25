@@ -9,7 +9,7 @@ const groupKindLabel = {
   GroupKind.game: 'Game',
   GroupKind.city: 'City',
   GroupKind.campus: 'Campus',
-  GroupKind.squad: 'Squad',
+  GroupKind.squad: 'Club',
 };
 
 /// The skin colour for a group's tone.

@@ -10,6 +10,10 @@ class _$AdminUserDto extends AdminUserDto {
   @override
   final AccountState state;
   @override
+  final UserRole role;
+  @override
+  final AgeRange ageRange;
+  @override
   final String id;
   @override
   final String username;
@@ -45,6 +49,8 @@ class _$AdminUserDto extends AdminUserDto {
 
   _$AdminUserDto._(
       {required this.state,
+      required this.role,
+      required this.ageRange,
       required this.id,
       required this.username,
       required this.displayName,
@@ -73,6 +79,8 @@ class _$AdminUserDto extends AdminUserDto {
     if (identical(other, this)) return true;
     return other is AdminUserDto &&
         state == other.state &&
+        role == other.role &&
+        ageRange == other.ageRange &&
         id == other.id &&
         username == other.username &&
         displayName == other.displayName &&
@@ -94,6 +102,8 @@ class _$AdminUserDto extends AdminUserDto {
   int get hashCode {
     var _$hash = 0;
     _$hash = $jc(_$hash, state.hashCode);
+    _$hash = $jc(_$hash, role.hashCode);
+    _$hash = $jc(_$hash, ageRange.hashCode);
     _$hash = $jc(_$hash, id.hashCode);
     _$hash = $jc(_$hash, username.hashCode);
     _$hash = $jc(_$hash, displayName.hashCode);
@@ -117,6 +127,8 @@ class _$AdminUserDto extends AdminUserDto {
   String toString() {
     return (newBuiltValueToStringHelper(r'AdminUserDto')
           ..add('state', state)
+          ..add('role', role)
+          ..add('ageRange', ageRange)
           ..add('id', id)
           ..add('username', username)
           ..add('displayName', displayName)
@@ -143,6 +155,14 @@ class AdminUserDtoBuilder
   AccountState? _state;
   AccountState? get state => _$this._state;
   set state(AccountState? state) => _$this._state = state;
+
+  UserRole? _role;
+  UserRole? get role => _$this._role;
+  set role(UserRole? role) => _$this._role = role;
+
+  AgeRange? _ageRange;
+  AgeRange? get ageRange => _$this._ageRange;
+  set ageRange(AgeRange? ageRange) => _$this._ageRange = ageRange;
 
   String? _id;
   String? get id => _$this._id;
@@ -212,6 +232,8 @@ class AdminUserDtoBuilder
     final $v = _$v;
     if ($v != null) {
       _state = $v.state;
+      _role = $v.role;
+      _ageRange = $v.ageRange;
       _id = $v.id;
       _username = $v.username;
       _displayName = $v.displayName;
@@ -250,6 +272,10 @@ class AdminUserDtoBuilder
         _$AdminUserDto._(
           state: BuiltValueNullFieldError.checkNotNull(
               state, r'AdminUserDto', 'state'),
+          role: BuiltValueNullFieldError.checkNotNull(
+              role, r'AdminUserDto', 'role'),
+          ageRange: BuiltValueNullFieldError.checkNotNull(
+              ageRange, r'AdminUserDto', 'ageRange'),
           id: BuiltValueNullFieldError.checkNotNull(id, r'AdminUserDto', 'id'),
           username: BuiltValueNullFieldError.checkNotNull(
               username, r'AdminUserDto', 'username'),

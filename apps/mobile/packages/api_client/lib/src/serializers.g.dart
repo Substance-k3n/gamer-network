@@ -9,10 +9,12 @@ part of 'serializers.dart';
 Serializers _$serializers = (Serializers().toBuilder()
       ..add(AcceptedRequestDto.serializer)
       ..add(AccountState.serializer)
+      ..add(AdminGameDto.serializer)
+      ..add(AdminGamePageDto.serializer)
       ..add(AdminReportDto.serializer)
       ..add(AdminReportPageDto.serializer)
       ..add(AdminUserDto.serializer)
-      ..add(AdminUserPageDto.serializer)
+      ..add(AdminUserNumberPageDto.serializer)
       ..add(AgeRange.serializer)
       ..add(AnswerCheckInBody.serializer)
       ..add(AppConfigResponse.serializer)
@@ -37,11 +39,14 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(ConnectionRequestDto.serializer)
       ..add(ConnectionRequestListDto.serializer)
       ..add(CreateCommentBody.serializer)
+      ..add(CreateGameBody.serializer)
       ..add(CreateGroupBody.serializer)
       ..add(CreateGroupEventBody.serializer)
       ..add(CreateListingBody.serializer)
       ..add(CreateListingBodyDurationHoursEnum.serializer)
       ..add(CreatePostBody.serializer)
+      ..add(CreateRankBody.serializer)
+      ..add(CreateUserBody.serializer)
       ..add(Day.serializer)
       ..add(DeleteAccountBody.serializer)
       ..add(DevicePlatform.serializer)
@@ -50,6 +55,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(FeedFilter.serializer)
       ..add(ForgotPasswordBody.serializer)
       ..add(GameDto.serializer)
+      ..add(GamePopularityDto.serializer)
       ..add(GameRefDto.serializer)
       ..add(GamingIdDto.serializer)
       ..add(GamingIdInput.serializer)
@@ -86,6 +92,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(MediaUploadBody.serializer)
       ..add(MediaUploadDto.serializer)
       ..add(MembershipStatus.serializer)
+      ..add(MetricsDayDto.serializer)
       ..add(MetricsDto.serializer)
       ..add(ModeDto.serializer)
       ..add(ModeRefDto.serializer)
@@ -142,15 +149,18 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(SetGamesBody.serializer)
       ..add(SetGamingIdsBody.serializer)
       ..add(SetGroupRoleBody.serializer)
-      ..add(SetLaunchBody.serializer)
       ..add(SetPlatformsBody.serializer)
       ..add(SetStatusBody.serializer)
       ..add(SetTagsBody.serializer)
       ..add(SignupBody.serializer)
+      ..add(TotalsDto.serializer)
       ..add(UnreadCountDto.serializer)
+      ..add(UpdateGameBody.serializer)
       ..add(UpdateGroupBody.serializer)
       ..add(UpdateListingBody.serializer)
       ..add(UpdateMeBody.serializer)
+      ..add(UpdateRankBody.serializer)
+      ..add(UpdateUserBody.serializer)
       ..add(UserCardDto.serializer)
       ..add(UserGameDto.serializer)
       ..add(UserGameInput.serializer)
@@ -162,6 +172,9 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(VoteBody.serializer)
       ..add(WaitlistBody.serializer)
       ..add(WaitlistCountDto.serializer)
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(AdminGameDto)]),
+          () => ListBuilder<AdminGameDto>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(AdminReportDto)]),
           () => ListBuilder<AdminReportDto>())
@@ -242,6 +255,18 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(BuiltList, const [const FullType(Platform)]),
           () => ListBuilder<Platform>())
       ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(Platform)]),
+          () => ListBuilder<Platform>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(Platform)]),
+          () => ListBuilder<Platform>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(RankDto)]),
+          () => ListBuilder<RankDto>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(Platform)]),
+          () => ListBuilder<Platform>())
+      ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(RankDto)]),
           () => ListBuilder<RankDto>())
       ..addBuilderFactory(
@@ -293,6 +318,12 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(WaitlistCountDto)]),
           () => ListBuilder<WaitlistCountDto>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(MetricsDayDto)]),
+          () => ListBuilder<MetricsDayDto>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(GamePopularityDto)]),
+          () => ListBuilder<GamePopularityDto>())
       ..addBuilderFactory(
           const FullType(
               BuiltMap, const [const FullType(String), const FullType(String)]),

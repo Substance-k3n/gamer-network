@@ -15,7 +15,8 @@ class Glow {
   final double radius;
   final Color color;
 
-  Glow fade(double f) => Glow(center, radius, color.withValues(alpha: color.a * f));
+  Glow fade(double f) =>
+      Glow(center, radius, color.withValues(alpha: color.a * f));
 }
 
 /// Colour accents that change per skin (avatars, tags, statuses).
@@ -100,7 +101,20 @@ class RallyTheme extends ThemeExtension<RallyTheme> {
   final Color text, muted, faint;
 
   // accents
-  final Color accent, accentText, onAccent, soft, lav, grey, strong, onStrong, chipOn, chipOnFg, acc, avatarAccent, tagAccent, pollMine;
+  final Color accent,
+      accentText,
+      onAccent,
+      soft,
+      lav,
+      grey,
+      strong,
+      onStrong,
+      chipOn,
+      chipOnFg,
+      acc,
+      avatarAccent,
+      tagAccent,
+      pollMine;
 
   // lines. A null width means "use the width the design asks for" (Inked);
   // otherwise every border collapses to the skin's hairline.
@@ -128,26 +142,36 @@ class RallyTheme extends ThemeExtension<RallyTheme> {
   // ---- helpers ----
 
   Color tone(Tone t, {bool avatar = false}) => switch (t) {
-        Tone.accent => avatar ? avatarAccent : tagAccent,
-        Tone.soft => soft,
-        Tone.lav => lav,
-        Tone.grey => grey,
-        Tone.free => onDark,
-        Tone.faint => faint,
-      };
+    Tone.accent => avatar ? avatarAccent : tagAccent,
+    Tone.soft => soft,
+    Tone.lav => lav,
+    Tone.grey => grey,
+    Tone.free => onDark,
+    Tone.faint => faint,
+  };
 
   Border border([double w = 2]) => Border.all(color: line, width: lineW ?? w);
-  Border darkBorder([double w = 2]) => Border.all(color: onDarkLine, width: onDarkLineW ?? w);
+  Border darkBorder([double w = 2]) =>
+      Border.all(color: onDarkLine, width: onDarkLineW ?? w);
   BorderSide get dividerSide => BorderSide(color: divider, width: dividerW);
   BorderSide get rowSide => BorderSide(color: rowLine, width: rowLineW);
 
   /// Card shadow. Inked uses a hard offset whose depth varies per element.
-  List<BoxShadow> shadow([double y = 4]) => hard ? [BoxShadow(color: line, offset: Offset(0, y))] : shadows;
+  List<BoxShadow> shadow([double y = 4]) =>
+      hard ? [BoxShadow(color: line, offset: Offset(0, y))] : shadows;
 
   /// Highlighted shadow for primary actions (peach under-shadow on Inked).
-  List<BoxShadow> glow([double y = 4]) => hard ? [BoxShadow(color: accent, offset: Offset(0, y))] : glowShadows;
+  List<BoxShadow> glow([double y = 4]) =>
+      hard ? [BoxShadow(color: accent, offset: Offset(0, y))] : glowShadows;
 
-  TextStyle body(double size, {FontWeight w = w400, Color? c, double? ls, double? h, TextDecoration? deco}) {
+  TextStyle body(
+    double size, {
+    FontWeight w = w400,
+    Color? c,
+    double? ls,
+    double? h,
+    TextDecoration? deco,
+  }) {
     final display = w == w800 && displayFont != null;
     return TextStyle(
       fontFamily: display ? displayFont : bodyFont,
@@ -165,7 +189,15 @@ class RallyTheme extends ThemeExtension<RallyTheme> {
   /// Small caps-style section labels.
   TextStyle label(double size, {Color? c}) {
     final s = size + labelDelta;
-    return TextStyle(fontFamily: labelFont, fontFamilyFallback: _fallback, fontWeight: labelWeight, fontSize: s, letterSpacing: s * labelSpacing, color: c ?? text, height: 1.2);
+    return TextStyle(
+      fontFamily: labelFont,
+      fontFamilyFallback: _fallback,
+      fontWeight: labelWeight,
+      fontSize: s,
+      letterSpacing: s * labelSpacing,
+      color: c ?? text,
+      height: 1.2,
+    );
   }
 
   String up(String s) => labelUpper ? s.toUpperCase() : s;
@@ -193,16 +225,27 @@ class RallyTheme extends ThemeExtension<RallyTheme> {
     final b = t < .5 ? this : o; // non-numeric properties flip at the midpoint
     Color c(Color x, Color y) => Color.lerp(x, y, t)!;
     double d(double x, double y) => lerpDouble(x, y, t)!;
-    double? dn(double? x, double? y) => x == null || y == null ? (t < .5 ? x : y) : d(x, y);
-    List<BoxShadow> sh(List<BoxShadow> x, List<BoxShadow> y) => BoxShadow.lerpList(x, y, t) ?? y;
-    List<BoxShadow> asList(RallyTheme r, List<BoxShadow> soft, Color hardColor) => r.hard ? [BoxShadow(color: hardColor, offset: const Offset(0, 4))] : soft;
+    double? dn(double? x, double? y) =>
+        x == null || y == null ? (t < .5 ? x : y) : d(x, y);
+    List<BoxShadow> sh(List<BoxShadow> x, List<BoxShadow> y) =>
+        BoxShadow.lerpList(x, y, t) ?? y;
+    List<BoxShadow> asList(
+      RallyTheme r,
+      List<BoxShadow> soft,
+      Color hardColor,
+    ) => r.hard
+        ? [BoxShadow(color: hardColor, offset: const Offset(0, 4))]
+        : soft;
     return RallyTheme(
       id: b.id,
       name: b.name,
       tagline: b.tagline,
       brightness: b.brightness,
       bg: c(bg, o.bg),
-      glows: [for (final g in glows) g.fade(1 - t), for (final g in o.glows) g.fade(t)],
+      glows: [
+        for (final g in glows) g.fade(1 - t),
+        for (final g in o.glows) g.fade(t),
+      ],
       blob: c(blob, o.blob),
       surface: c(surface, o.surface),
       sunken: c(sunken, o.sunken),
@@ -239,7 +282,10 @@ class RallyTheme extends ThemeExtension<RallyTheme> {
       rowLineW: d(rowLineW, o.rowLineW),
       hard: b.hard,
       shadows: sh(asList(this, shadows, line), asList(o, o.shadows, o.line)),
-      glowShadows: sh(asList(this, glowShadows, accent), asList(o, o.glowShadows, o.accent)),
+      glowShadows: sh(
+        asList(this, glowShadows, accent),
+        asList(o, o.glowShadows, o.accent),
+      ),
       floatShadows: sh(floatShadows, o.floatShadows),
       blur: d(blur, o.blur),
       bodyFont: b.bodyFont,
@@ -363,7 +409,9 @@ const softTheme = RallyTheme(
     BoxShadow(color: Color(0x736ED7AA), offset: Offset(0, 8), blurRadius: 20),
     BoxShadow(color: Color(0x1F3C785F), offset: Offset(0, 2), blurRadius: 4),
   ],
-  floatShadows: [BoxShadow(color: Color(0x383C3C37), offset: Offset(0, 12), blurRadius: 26)],
+  floatShadows: [
+    BoxShadow(color: Color(0x383C3C37), offset: Offset(0, 12), blurRadius: 26),
+  ],
   bodyFont: 'Manrope',
   labelFont: 'Manrope',
   labelWeight: w700,
@@ -416,12 +464,16 @@ const dotTheme = RallyTheme(
   rowLine: Color(0xFF2E2E2E),
   rowLineW: 1,
   hard: false,
-  shadows: [BoxShadow(color: Color(0x8C000000), offset: Offset(0, 14), blurRadius: 30)],
+  shadows: [
+    BoxShadow(color: Color(0x8C000000), offset: Offset(0, 14), blurRadius: 30),
+  ],
   glowShadows: [
     BoxShadow(color: Color(0xFFFF4D2A), spreadRadius: 1),
     BoxShadow(color: Color(0x38FF4D2A), offset: Offset(0, 10), blurRadius: 26),
   ],
-  floatShadows: [BoxShadow(color: Color(0x99000000), offset: Offset(0, 14), blurRadius: 30)],
+  floatShadows: [
+    BoxShadow(color: Color(0x99000000), offset: Offset(0, 14), blurRadius: 30),
+  ],
   bodyFont: 'Space Grotesk',
   displayFont: 'Doto',
   labelFont: 'Space Mono',
@@ -482,9 +534,15 @@ const glassTheme = RallyTheme(
   rowLine: Color(0x3DFFFFFF),
   rowLineW: 1,
   hard: false,
-  shadows: [BoxShadow(color: Color(0x4D05081E), offset: Offset(0, 10), blurRadius: 30)],
-  glowShadows: [BoxShadow(color: Color(0x598FF0DC), offset: Offset(0, 8), blurRadius: 28)],
-  floatShadows: [BoxShadow(color: Color(0x6605081E), offset: Offset(0, 14), blurRadius: 34)],
+  shadows: [
+    BoxShadow(color: Color(0x4D05081E), offset: Offset(0, 10), blurRadius: 30),
+  ],
+  glowShadows: [
+    BoxShadow(color: Color(0x598FF0DC), offset: Offset(0, 8), blurRadius: 28),
+  ],
+  floatShadows: [
+    BoxShadow(color: Color(0x6605081E), offset: Offset(0, 14), blurRadius: 34),
+  ],
   blur: 22,
   bodyFont: 'Plus Jakarta Sans',
   labelFont: 'Plus Jakarta Sans',
@@ -499,26 +557,37 @@ const glassTheme = RallyTheme(
 
 const rallyThemes = [inkedTheme, softTheme, dotTheme, glassTheme];
 
-RallyTheme themeById(String? id) => rallyThemes.firstWhere((t) => t.id == id, orElse: () => inkedTheme);
+RallyTheme themeById(String? id) =>
+    rallyThemes.firstWhere((t) => t.id == id, orElse: () => inkedTheme);
 
 ThemeData materialTheme(RallyTheme t) => ThemeData(
-      useMaterial3: true,
-      brightness: t.brightness,
-      fontFamily: t.bodyFont,
-      scaffoldBackgroundColor: t.bg,
-      colorScheme: ColorScheme.fromSeed(seedColor: t.accent, brightness: t.brightness, primary: t.text, surface: t.bg),
-      textSelectionTheme: TextSelectionThemeData(cursorColor: t.text, selectionColor: t.accent.withValues(alpha: .4), selectionHandleColor: t.accent),
-      splashFactory: NoSplash.splashFactory,
-      highlightColor: Colors.transparent,
-      extensions: [t],
-    );
+  useMaterial3: true,
+  brightness: t.brightness,
+  fontFamily: t.bodyFont,
+  scaffoldBackgroundColor: t.bg,
+  colorScheme: ColorScheme.fromSeed(
+    seedColor: t.accent,
+    brightness: t.brightness,
+    primary: t.text,
+    surface: t.bg,
+  ),
+  textSelectionTheme: TextSelectionThemeData(
+    cursorColor: t.text,
+    selectionColor: t.accent.withValues(alpha: .4),
+    selectionHandleColor: t.accent,
+  ),
+  splashFactory: NoSplash.splashFactory,
+  highlightColor: Colors.transparent,
+  extensions: [t],
+);
 
 extension RallyThemeContext on BuildContext {
   RallyTheme get rt => Theme.of(this).extension<RallyTheme>()!;
 }
 
 /// CSS-style elliptical radius "h1 h2 h3 h4 / v1 v2 v3 v4" in percent of the box.
-BorderRadius blobRadius(double w, double h, List<double> hr, List<double> vr) => BorderRadius.only(
+BorderRadius blobRadius(double w, double h, List<double> hr, List<double> vr) =>
+    BorderRadius.only(
       topLeft: Radius.elliptical(w * hr[0] / 100, h * vr[0] / 100),
       topRight: Radius.elliptical(w * hr[1] / 100, h * vr[1] / 100),
       bottomRight: Radius.elliptical(w * hr[2] / 100, h * vr[2] / 100),
@@ -527,4 +596,8 @@ BorderRadius blobRadius(double w, double h, List<double> hr, List<double> vr) =>
 
 String pad2(int n) => n.toString().padLeft(2, '0');
 
-const mono = TextStyle(fontFamily: 'monospace', fontFamilyFallback: ['Menlo', 'Courier'], fontSize: 13);
+const mono = TextStyle(
+  fontFamily: 'monospace',
+  fontFamilyFallback: ['Menlo', 'Courier'],
+  fontSize: 13,
+);

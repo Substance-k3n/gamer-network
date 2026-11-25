@@ -4,7 +4,15 @@ import 'theme.dart';
 
 // Labels and lookups between the API's enums and what the app shows.
 
+// Rally is for chess players (ADR-0015). The squad-game values below only
+// label older rows; pickers offer the chess ones.
+
+/// Where a player plays, in picker order.
+const playPlatforms = [Platform.chessCom, Platform.lichess];
+
 const platformLabel = {
+  Platform.chessCom: 'Chess.com',
+  Platform.lichess: 'Lichess',
   Platform.pc: 'PC',
   Platform.playstation: 'PlayStation',
   Platform.xbox: 'Xbox',
@@ -12,9 +20,23 @@ const platformLabel = {
   Platform.switch_: 'Switch',
 };
 
+/// Play tags a profile can pick, in picker order.
+const playTags = [
+  PlayTag.competitive,
+  PlayTag.casual,
+  PlayTag.openings,
+  PlayTag.endgames,
+  PlayTag.puzzles,
+  PlayTag.tournaments,
+];
+
 const tagLabel = {
-  PlayTag.competitive: 'Competitive',
+  PlayTag.competitive: 'Rated',
   PlayTag.casual: 'Casual',
+  PlayTag.openings: 'Openings',
+  PlayTag.endgames: 'Endgames',
+  PlayTag.puzzles: 'Puzzles',
+  PlayTag.tournaments: 'Tournaments',
   PlayTag.fps: 'FPS',
   PlayTag.rpg: 'RPG',
   PlayTag.strategy: 'Strategy',
@@ -63,29 +85,22 @@ const inviteWhenLabel = {
   InviteWhen.tonight: 'Tonight 21:00',
 };
 
-/// "Duo", "Trio"… for a party size (including the poster).
+/// "1v1", "Trio"… for a party size (including the poster). Chess is 1v1.
 String partyLabel(num n) => switch (n) {
-  2 => 'Duo',
+  2 => '1v1',
   3 => 'Trio',
   4 => 'Squad',
   5 => '5-stack',
   _ => '$n players',
 };
 
-/// Gaming ID kinds the profile offers a row for, in order; in-game IDs
-/// (a UID per mobile game) are added per game.
-const idKinds = [
-  GamingIdKind.riot,
-  GamingIdKind.discord,
-  GamingIdKind.steam,
-  GamingIdKind.playstation,
-  GamingIdKind.xbox,
-  GamingIdKind.epic,
-  GamingIdKind.ea,
-  GamingIdKind.activision,
-];
+/// Gaming ID kinds the profile offers a row for, in order: the usernames
+/// an opponent challenges.
+const idKinds = [GamingIdKind.chessCom, GamingIdKind.lichess];
 
 const idKindLabel = {
+  GamingIdKind.chessCom: 'Chess.com',
+  GamingIdKind.lichess: 'Lichess',
   GamingIdKind.riot: 'Riot ID',
   GamingIdKind.discord: 'Discord',
   GamingIdKind.steam: 'Steam',
@@ -189,29 +204,7 @@ class Game {
 
 /// Search words people use for games beyond their name.
 const _aliases = {
-  'lol': ['league', 'lol'],
-  'cs2': ['cs', 'csgo', 'counter strike', 'premier'],
-  'ow': ['overwatch 2', 'ow2'],
-  'r6': ['siege', 'r6', 'rainbow'],
-  'bo7': ['cod', 'call of duty', 'black ops'],
-  'wz': ['cod', 'warzone'],
-  'pubgpc': ['pubg', 'battlegrounds'],
-  'fc': ['fifa', 'fc 26', 'fc 27', 'ultimate team', 'football', 'soccer'],
-  'efootball': ['pes', 'football', 'soccer'],
-  'codm': ['cod', 'call of duty mobile'],
-  'pubg': ['pubg', 'bgmi'],
-  'ff': ['ff max', 'garena'],
-  'mlbb': ['ml', 'mobile legends'],
-  'wr': ['wild rift', 'league'],
-  'coc': ['clash'],
-  'cr': ['clash'],
-  'unite': ['pokemon'],
-  'gta': ['gta v', 'gta 5', 'grand theft auto'],
-  'elden': ['nightreign'],
-  'bf6': ['battlefield'],
-  'mhw': ['monster hunter'],
-  'nba2k': ['basketball'],
-  'mkw': ['mario kart'],
+  'chess': ['chess', 'chess.com', 'lichess', 'blitz', 'bullet', 'rapid'],
 };
 
 /// The game catalog, loaded once per launch, plus games typed in by name.
@@ -438,9 +431,9 @@ class Intro {
 
 const intros = [
   Intro(
-    'Who are you as a gamer?',
-    'Step 1 · Build your gamer ID',
-    'Your games, ranks, platforms and IDs in one profile — not split across six apps.',
+    'Who are you at the board?',
+    'Step 1 · Build your chess ID',
+    'Your rating, time controls and Chess.com or Lichess username in one profile.',
     -150,
     90,
     [48, 52, 60, 40],
@@ -448,17 +441,17 @@ const intros = [
   ),
   Intro(
     'Who’s up for a game tonight?',
-    'Step 2 · Find players who fit',
-    'Browse short-lived “Looking for Players” listings, or post your own in seconds.',
+    'Step 2 · Find opponents who fit',
+    'Browse short-lived challenges near your rating, or post your own in seconds.',
     -20,
     60,
     [60, 40, 42, 58],
     [48, 62, 38, 52],
   ),
   Intro(
-    'Stop queueing with strangers.',
+    'Stop playing random pairings.',
     'Step 3 · Connect & play',
-    'Send a request, get connected, and lock in a session together.',
+    'Send a request, get connected, and challenge each other on Chess.com or Lichess.',
     -110,
     120,
     [42, 58, 55, 45],

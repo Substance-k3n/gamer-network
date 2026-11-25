@@ -15,21 +15,21 @@ part 'gaming_id_input.g.dart';
 /// Properties:
 /// * [kind]
 /// * [visibility] - Defaults to connections.
-/// * [gameId] - Required for in_game (e.g. a PUBG Mobile UID), absent otherwise.
+/// * [gameId] - Required for in_game, absent otherwise. Only chess_com and lichess are accepted now.
 /// * [value]
 @BuiltValue()
 abstract class GamingIdInput
     implements Built<GamingIdInput, GamingIdInputBuilder> {
   @BuiltValueField(wireName: r'kind')
   GamingIdKind get kind;
-  // enum kindEnum {  riot,  steam,  discord,  playstation,  xbox,  epic,  ea,  activision,  in_game,  };
+  // enum kindEnum {  riot,  steam,  discord,  playstation,  xbox,  epic,  ea,  activision,  in_game,  chess_com,  lichess,  };
 
   /// Defaults to connections.
   @BuiltValueField(wireName: r'visibility')
   IdVisibility? get visibility;
   // enum visibilityEnum {  public,  connections,  };
 
-  /// Required for in_game (e.g. a PUBG Mobile UID), absent otherwise.
+  /// Required for in_game, absent otherwise. Only chess_com and lichess are accepted now.
   @BuiltValueField(wireName: r'gameId')
   String? get gameId;
 

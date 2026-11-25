@@ -24,7 +24,7 @@ pnpm --filter @app/api dev 2>&1 | tee /tmp/gn-api.log
 ```
 
 The tests need three players. Sign them up through the API (or the app),
-confirm their emails, onboard them with CoD Mobile or another launch game,
+confirm their emails, onboard them with Chess,
 and give Dave and Yonas a live listing:
 
 | Email              | Username    | Password      |

@@ -439,7 +439,7 @@ Future<void> confirmRemoveConnection(
   if (await confirm(
     context,
     title: 'Remove $name?',
-    body: 'You stop being connected: your private gaming IDs lock again, both ways. They aren’t told.',
+    body: 'You stop being connected: your private usernames lock again, both ways. They aren’t told.',
     yes: 'Remove',
   )) {
     await s.removeConnection(userId, name);

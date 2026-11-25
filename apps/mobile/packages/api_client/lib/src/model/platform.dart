@@ -20,6 +20,10 @@ class Platform extends EnumClass {
   static const Platform mobile = _$mobile;
   @BuiltValueEnumConst(wireName: r'switch')
   static const Platform switch_ = _$switch_;
+  @BuiltValueEnumConst(wireName: r'chess_com')
+  static const Platform chessCom = _$chessCom;
+  @BuiltValueEnumConst(wireName: r'lichess')
+  static const Platform lichess = _$lichess;
 
   static Serializer<Platform> get serializer => _$platformSerializer;
 

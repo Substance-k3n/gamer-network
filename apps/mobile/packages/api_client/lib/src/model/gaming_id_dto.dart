@@ -23,7 +23,7 @@ part 'gaming_id_dto.g.dart';
 abstract class GamingIdDto implements Built<GamingIdDto, GamingIdDtoBuilder> {
   @BuiltValueField(wireName: r'kind')
   GamingIdKind get kind;
-  // enum kindEnum {  riot,  steam,  discord,  playstation,  xbox,  epic,  ea,  activision,  in_game,  };
+  // enum kindEnum {  riot,  steam,  discord,  playstation,  xbox,  epic,  ea,  activision,  in_game,  chess_com,  lichess,  };
 
   @BuiltValueField(wireName: r'visibility')
   IdVisibility get visibility;

@@ -62,9 +62,9 @@ class ListingDraft {
   String gameId = '';
   String? modeId;
   int partySize = 2;
-  Platform platform = Platform.mobile;
+  Platform platform = Platform.chessCom;
   PlayStyle style = PlayStyle.competitive;
-  Voice voice = Voice.required_;
+  Voice voice = Voice.optional;
   PlayWhen when = PlayWhen.tonight;
   int dur = 6;
   String note = '';
@@ -167,8 +167,9 @@ class GamerDraft {
       if (r != null && r.isNotEmpty) ranks[k] = r;
       if (g.role != null) roles[k] = g.role!.id;
     }
-    platforms = me.platforms.toList();
-    tags = me.tags.toList();
+    // Squad-game platforms and tags only read now; saving drops them (ADR-0015).
+    platforms = me.platforms.where(playPlatforms.contains).toList();
+    tags = me.tags.where(playTags.contains).toList();
     ids = {};
     idVis = {};
     for (final x in me.gamingIds) {
@@ -188,13 +189,8 @@ class GamerDraft {
     idVis = {...o.idVis};
   }
 
-  /// ID rows to offer: the fixed kinds, plus an in-game ID per mobile game.
-  List<String> idRows(Catalog c) => [
-    for (final k in idKinds) idKey(k),
-    for (final g in games)
-      if (!c.byId(g).custom && c.byId(g).platforms.contains(Platform.mobile))
-        idKey(GamingIdKind.inGame, g),
-  ];
+  /// ID rows to offer: a Chess.com and a Lichess username (ADR-0015).
+  List<String> idRows(Catalog c) => [for (final k in idKinds) idKey(k)];
 
   List<UserGameInput> gameInputs(Catalog c) => [
     for (final k in games)
@@ -635,7 +631,7 @@ class AppState extends ChangeNotifier {
     me = m;
     if (m.onboardedAt == null) {
       onboard.loadFrom(m, catalog);
-      go(Screen.games);
+      _startOnboarding();
     } else {
       go(Screen.home);
       refreshHome();
@@ -864,7 +860,21 @@ class AppState extends ChangeNotifier {
 
   /// Leaves the code screen: onboarding if it isn't done, else back home.
   void afterVerify() =>
-      me?.onboardedAt == null ? go(Screen.games) : go(Screen.home);
+      me?.onboardedAt == null ? _startOnboarding() : go(Screen.home);
+
+  /// The one game everyone plays, when the catalog has just one (Chess,
+  /// ADR-0015): onboarding picks it and skips the games step.
+  Game? get onlyGame =>
+      catalog.launch.length == 1 ? catalog.launch.first : null;
+
+  void _startOnboarding() {
+    final only = onlyGame;
+    if (only == null) return go(Screen.games);
+    onboard.games
+      ..clear()
+      ..add(only.id);
+    unawaited(goRanks());
+  }
 
   Future<void> resendCode() async {
     final ok = await _busy(() async => api.auth.authResendVerification());
@@ -1199,7 +1209,6 @@ class AppState extends ChangeNotifier {
         ..editId = l.id
         ..gameId = l.game.id
         ..style = l.style
-        ..voice = l.voice
         ..when = l.playWhen
         ..note = l.note ?? '';
       sheet = SheetKind.listing;
@@ -1212,7 +1221,6 @@ class AppState extends ChangeNotifier {
         id: d.editId!,
         updateListingBody: UpdateListingBody(
           (b) => b
-            ..voice = d.voice
             ..style = d.style
             ..playWhen = d.when
             ..note = d.note.trim(),
@@ -1241,7 +1249,7 @@ class AppState extends ChangeNotifier {
         : mine.firstWhere(
             g.platforms.contains,
             orElse: () =>
-                g.platforms.isNotEmpty ? g.platforms.first : Platform.mobile,
+                g.platforms.isNotEmpty ? g.platforms.first : Platform.chessCom,
           );
   }
 
@@ -1847,7 +1855,7 @@ class AppState extends ChangeNotifier {
     });
     toast(
       accept
-          ? 'Accepted — ${a.user.displayName} can see your gamer ID'
+          ? 'Accepted — ${a.user.displayName} can see your chess ID'
           : 'Declined',
     );
   }
@@ -2625,7 +2633,7 @@ class AppState extends ChangeNotifier {
       groupTab = 'About';
       screen = Screen.group;
     });
-    toast(editing ? 'Group updated' : '${g.name} is live — invite your squad');
+    toast(editing ? 'Group updated' : '${g.name} is live — invite your club');
     if (!editing) {
       update(() {
         groupPosts = [];
@@ -2800,6 +2808,7 @@ class AppState extends ChangeNotifier {
       case Screen.games:
         return false;
       case Screen.ranks:
+        if (onlyGame != null) return false;
         go(Screen.games);
       case Screen.platforms:
         go(Screen.ranks);

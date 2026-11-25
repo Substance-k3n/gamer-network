@@ -11,6 +11,8 @@ const Platform _$playstation = const Platform._('playstation');
 const Platform _$xbox = const Platform._('xbox');
 const Platform _$mobile = const Platform._('mobile');
 const Platform _$switch_ = const Platform._('switch_');
+const Platform _$chessCom = const Platform._('chessCom');
+const Platform _$lichess = const Platform._('lichess');
 
 Platform _$valueOf(String name) {
   switch (name) {
@@ -24,6 +26,10 @@ Platform _$valueOf(String name) {
       return _$mobile;
     case 'switch_':
       return _$switch_;
+    case 'chessCom':
+      return _$chessCom;
+    case 'lichess':
+      return _$lichess;
     default:
       throw ArgumentError(name);
   }
@@ -35,6 +41,8 @@ final BuiltSet<Platform> _$values = BuiltSet<Platform>(const <Platform>[
   _$xbox,
   _$mobile,
   _$switch_,
+  _$chessCom,
+  _$lichess,
 ]);
 
 class _$PlatformMeta {
@@ -44,6 +52,8 @@ class _$PlatformMeta {
   Platform get xbox => _$xbox;
   Platform get mobile => _$mobile;
   Platform get switch_ => _$switch_;
+  Platform get chessCom => _$chessCom;
+  Platform get lichess => _$lichess;
   Platform valueOf(String name) => _$valueOf(name);
   BuiltSet<Platform> get values => _$values;
 }
@@ -62,6 +72,8 @@ class _$PlatformSerializer implements PrimitiveSerializer<Platform> {
     'xbox': 'xbox',
     'mobile': 'mobile',
     'switch_': 'switch',
+    'chessCom': 'chess_com',
+    'lichess': 'lichess',
   };
   static const Map<Object, String> _fromWire = const <Object, String>{
     'pc': 'pc',
@@ -69,6 +81,8 @@ class _$PlatformSerializer implements PrimitiveSerializer<Platform> {
     'xbox': 'xbox',
     'mobile': 'mobile',
     'switch': 'switch_',
+    'chess_com': 'chessCom',
+    'lichess': 'lichess',
   };
 
   @override

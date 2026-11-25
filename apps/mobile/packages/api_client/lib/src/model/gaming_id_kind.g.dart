@@ -15,6 +15,8 @@ const GamingIdKind _$epic = const GamingIdKind._('epic');
 const GamingIdKind _$ea = const GamingIdKind._('ea');
 const GamingIdKind _$activision = const GamingIdKind._('activision');
 const GamingIdKind _$inGame = const GamingIdKind._('inGame');
+const GamingIdKind _$chessCom = const GamingIdKind._('chessCom');
+const GamingIdKind _$lichess = const GamingIdKind._('lichess');
 
 GamingIdKind _$valueOf(String name) {
   switch (name) {
@@ -36,6 +38,10 @@ GamingIdKind _$valueOf(String name) {
       return _$activision;
     case 'inGame':
       return _$inGame;
+    case 'chessCom':
+      return _$chessCom;
+    case 'lichess':
+      return _$lichess;
     default:
       throw ArgumentError(name);
   }
@@ -52,6 +58,8 @@ final BuiltSet<GamingIdKind> _$values =
   _$ea,
   _$activision,
   _$inGame,
+  _$chessCom,
+  _$lichess,
 ]);
 
 class _$GamingIdKindMeta {
@@ -65,6 +73,8 @@ class _$GamingIdKindMeta {
   GamingIdKind get ea => _$ea;
   GamingIdKind get activision => _$activision;
   GamingIdKind get inGame => _$inGame;
+  GamingIdKind get chessCom => _$chessCom;
+  GamingIdKind get lichess => _$lichess;
   GamingIdKind valueOf(String name) => _$valueOf(name);
   BuiltSet<GamingIdKind> get values => _$values;
 }
@@ -87,6 +97,8 @@ class _$GamingIdKindSerializer implements PrimitiveSerializer<GamingIdKind> {
     'ea': 'ea',
     'activision': 'activision',
     'inGame': 'in_game',
+    'chessCom': 'chess_com',
+    'lichess': 'lichess',
   };
   static const Map<Object, String> _fromWire = const <Object, String>{
     'riot': 'riot',
@@ -98,6 +110,8 @@ class _$GamingIdKindSerializer implements PrimitiveSerializer<GamingIdKind> {
     'ea': 'ea',
     'activision': 'activision',
     'in_game': 'inGame',
+    'chess_com': 'chessCom',
+    'lichess': 'lichess',
   };
 
   @override
