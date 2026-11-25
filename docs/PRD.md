@@ -1,24 +1,23 @@
 # Product: gamer-network MVP
 
-Last updated 2026-10-08. Replaces the scope in the 2026-10-07 brief where
+Last updated 2026-11-25 (chess only, ADR-0015). Replaces the scope in the 2026-10-07 brief where
 the two differ; the prototype ("rally") stays the visual reference.
 
 ## The bet
 
-Gamers in Addis Ababa will use an app to find people to play with, and
-those connections turn into real games played together.
+Chess players in Addis Ababa will use an app to find opponents, and
+those connections turn into real games played together online.
 
 The biggest risk is not the tech. It is the empty room: someone posts
-"looking for a duo tonight", nobody answers, they never come back. So the
-MVP launches narrow and dense: **one city, two or three games, 50–100
-gamers from communities that already exist.**
+"blitz tonight, anyone?", nobody answers, they never come back. So the
+MVP launches narrow and dense: **one city, one game (chess), 50–100
+players from communities that already exist.**
 
 ## Who it's for
 
-Ethiopian gamers aged 16+ who want regular teammates, starting with
-mobile games people in Addis already play together (likely PUBG Mobile,
-Call of Duty Mobile, eFootball — confirmed by the validation test in
-[validation-test.md](validation-test.md) before we choose).
+Ethiopian chess players aged 16+ who want regular opponents, playing
+online on Chess.com and Lichess ([ADR-0015](decisions/0015-chess-only.md)).
+Over the board waits.
 
 ## MVP scope
 
