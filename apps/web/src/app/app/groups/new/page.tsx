@@ -109,7 +109,7 @@ export default function NewGroup() {
     setGroupsView({ tab: 'mine' });
     // The new page replaces this form, so back goes to the Groups tab.
     router.replace(`/app/groups/${g.id}?tab=About`);
-    toast(`${g.name} is live — invite your squad`);
+    toast(`${g.name} is live — invite your club`);
   };
   const labeled = (label: string, field: React.ReactNode) => (
     <div className="gap" style={{ gap: 6 }}>

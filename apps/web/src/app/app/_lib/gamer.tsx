@@ -9,6 +9,7 @@ import {
   idKinds,
   platformLabel,
   platforms,
+  playTags,
   tagLabel,
   type Game,
 } from './data';
@@ -36,8 +37,9 @@ export function draftFrom(me: Me): GamerDraft {
     custom: {},
     ranks: {},
     roles: {},
-    platforms: [...me.platforms],
-    tags: [...me.tags],
+    // Squad-game platforms and tags only read now; saving drops them (ADR-0015).
+    platforms: me.platforms.filter((p) => platforms.includes(p)),
+    tags: me.tags.filter((t) => playTags.includes(t)),
     ids: {},
     idVis: {},
   };
@@ -72,14 +74,9 @@ export function useGameOf() {
     d.custom[key] ? customGame(d.custom[key]) : game(key);
 }
 
-/** ID rows: the fixed kinds, plus an in-game ID per mobile game. */
-export function idRows(d: GamerDraft, gameOf: (d: GamerDraft, k: string) => Game) {
-  return [
-    ...idKinds.map((k) => k as string),
-    ...d.games
-      .filter((k) => !d.custom[k] && gameOf(d, k).platforms.includes('mobile'))
-      .map((k) => `in_game:${k}`),
-  ];
+/** ID rows: a Chess.com and a Lichess username (ADR-0015). */
+export function idRows() {
+  return idKinds.map((k) => k as string);
 }
 
 export function gameInputs(d: GamerDraft, gameOf: (d: GamerDraft, k: string) => Game) {
@@ -95,8 +92,8 @@ export function gameInputs(d: GamerDraft, gameOf: (d: GamerDraft, k: string) => 
   });
 }
 
-export function idInputs(d: GamerDraft, gameOf: (d: GamerDraft, k: string) => Game) {
-  return idRows(d, gameOf)
+export function idInputs(d: GamerDraft) {
+  return idRows()
     .filter((k) => (d.ids[k] ?? '').trim())
     .map((k) => {
       const inGame = k.startsWith('in_game:');
@@ -428,7 +425,7 @@ export function TagChips({
   const { toast } = useApp();
   return (
     <div className="wrap">
-      {(Object.keys(tagLabel) as PlayTag[]).map((x) => (
+      {playTags.map((x) => (
         <Chip
           key={x}
           on={value.includes(x)}
@@ -459,7 +456,7 @@ export function IdRows({
   const gameOf = useGameOf();
   return (
     <div className="rows">
-      {idRows(draft, gameOf).map((k) => {
+      {idRows().map((k) => {
         const label = k.startsWith('in_game:')
           ? `${gameOf(draft, k.slice(8)).shortCode} UID`
           : idKindLabel[k as GamingIdKind];

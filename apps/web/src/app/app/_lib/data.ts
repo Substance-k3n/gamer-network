@@ -16,18 +16,27 @@ import type {
   UserGame,
 } from './api';
 
+// Rally is for chess players (ADR-0015). The squad-game values only label
+// older rows; pickers offer the chess ones.
 export const platformLabel: Record<Platform, string> = {
+  chess_com: 'Chess.com',
+  lichess: 'Lichess',
   pc: 'PC',
   playstation: 'PlayStation',
   xbox: 'Xbox',
   mobile: 'Mobile',
   switch: 'Switch',
 };
-export const platforms = Object.keys(platformLabel) as Platform[];
+/** Where a player plays, in picker order. */
+export const platforms: Platform[] = ['chess_com', 'lichess'];
 
 export const tagLabel: Record<PlayTag, string> = {
-  competitive: 'Competitive',
+  competitive: 'Rated',
   casual: 'Casual',
+  openings: 'Openings',
+  endgames: 'Endgames',
+  puzzles: 'Puzzles',
+  tournaments: 'Tournaments',
   fps: 'FPS',
   rpg: 'RPG',
   strategy: 'Strategy',
@@ -83,7 +92,7 @@ export const postTypes: { id: PostType; label: string; tone: Tone; placeholder: 
     id: 'discussion',
     label: 'Discussion',
     tone: 'lav',
-    placeholder: 'Start a conversation — e.g. Best co-op game you’ve played recently?',
+    placeholder: 'Start a conversation — e.g. Best opening for a beginner?',
   },
   {
     id: 'gameplay',
@@ -95,14 +104,14 @@ export const postTypes: { id: PostType; label: string; tone: Tone; placeholder: 
     id: 'recruitment',
     label: 'Recruitment',
     tone: 'soft',
-    placeholder: 'Tell players about your team and what you’re looking for…',
+    placeholder: 'Tell players about your club and what you’re looking for…',
   },
   { id: 'poll', label: 'Poll', tone: 'lav', placeholder: 'Ask the community something…' },
   {
     id: 'milestone',
     label: 'Milestone',
     tone: 'accent',
-    placeholder: 'Finally hit Diamond? Share it…',
+    placeholder: 'Finally broke 1800? Share it…',
   },
   { id: 'question', label: 'Question', tone: 'soft', placeholder: 'What do you want to know?' },
   {
@@ -124,22 +133,25 @@ export const postTypes: { id: PostType; label: string; tone: Tone; placeholder: 
 
 export const postTypeInfo = (t: PostType) => postTypes.find((p) => p.id === t) ?? postTypes[0]!;
 
-/** "Duo", "Trio"… for a party size (including the poster). */
-export const partyLabel = (n: number) =>
-  ({ 2: 'Duo', 3: 'Trio', 4: 'Squad', 5: '5-stack' })[n] ?? `${n} players`;
-
-/** Gaming ID rows offered, in order; in-game IDs are added per mobile game. */
-export const idKinds: GamingIdKind[] = [
-  'riot',
-  'discord',
-  'steam',
-  'playstation',
-  'xbox',
-  'epic',
-  'ea',
-  'activision',
+/** Play tags a profile can pick, in picker order. */
+export const playTags: PlayTag[] = [
+  'competitive',
+  'casual',
+  'openings',
+  'endgames',
+  'puzzles',
+  'tournaments',
 ];
+
+/** "1v1", "Trio"… for a party size (including the poster). Chess is 1v1. */
+export const partyLabel = (n: number) =>
+  ({ 2: '1v1', 3: 'Trio', 4: 'Squad', 5: '5-stack' })[n] ?? `${n} players`;
+
+/** Gaming ID rows offered, in order: the usernames an opponent challenges. */
+export const idKinds: GamingIdKind[] = ['chess_com', 'lichess'];
 export const idKindLabel: Record<GamingIdKind, string> = {
+  chess_com: 'Chess.com',
+  lichess: 'Lichess',
   riot: 'Riot ID',
   discord: 'Discord',
   steam: 'Steam',
@@ -276,8 +288,8 @@ export const pad2 = (n: number) => String(n).padStart(2, '0');
 
 export const intros = [
   {
-    kicker: 'Who are you as a gamer?',
-    step: 'Step 1 · Build your gamer ID',
+    kicker: 'Who are you at the board?',
+    step: 'Step 1 · Build your chess ID',
     body: 'Your games, ranks, platforms and IDs in one profile — not split across six apps.',
   },
   {

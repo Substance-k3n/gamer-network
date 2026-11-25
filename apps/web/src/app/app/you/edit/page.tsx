@@ -87,7 +87,7 @@ function Editor({ me }: { me: Me }) {
       await api('me/games', { method: 'PUT', body: { games: gameInputs(d, gameOf) } });
       await api('me/platforms', { method: 'PUT', body: { platforms: d.platforms } });
       await api('me/tags', { method: 'PUT', body: { tags: d.tags } });
-      await api('me/gaming-ids', { method: 'PUT', body: { gamingIds: idInputs(d, gameOf) } });
+      await api('me/gaming-ids', { method: 'PUT', body: { gamingIds: idInputs(d) } });
       return api<Me>('me');
     });
     if (!m) return;
@@ -266,13 +266,11 @@ function Editor({ me }: { me: Me }) {
         >
           <Icon name="plus" size={18} /> Add or change games
         </button>
-        <Label style={{ paddingLeft: 6, marginTop: 4 }}>PLATFORMS</Label>
+        <Label style={{ paddingLeft: 6, marginTop: 4 }}>PLAYS ON</Label>
         <PlatformChips value={d.platforms} onChange={(platforms) => setD({ ...d, platforms })} />
         <Label style={{ paddingLeft: 6, marginTop: 4 }}>PLAY STYLE · UP TO 6</Label>
         <TagChips value={d.tags} onChange={(tags) => setD({ ...d, tags })} />
-        <Label style={{ paddingLeft: 6, marginTop: 4 }}>
-          GAMING IDS · YOU CHOOSE WHO SEES THEM
-        </Label>
+        <Label style={{ paddingLeft: 6, marginTop: 4 }}>USERNAMES · YOU CHOOSE WHO SEES THEM</Label>
         <IdRows draft={d} onChange={setD} />
       </div>
       {picking && (

@@ -78,9 +78,6 @@ export default async function ListingPage({ params }: Props) {
           {listing.rank && <span className="chip">{listing.rank.name}</span>}
           <span className="chip">{platformLabel(listing)}</span>
           <span className="chip">{partyLabel(listing)}</span>
-          <span className="chip">
-            {listing.voice === 'required' ? 'Voice on' : 'Voice optional'}
-          </span>
         </div>
 
         {listing.note && <p className="note">“{listing.note}”</p>}

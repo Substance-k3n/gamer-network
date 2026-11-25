@@ -1,14 +1,26 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { api } from '../../_lib/api';
 import { StepHeader, titleStyle } from '../../_lib/frame';
 import { RankCard, useGameOf } from '../../_lib/gamer';
 import { useOnboard } from '../../_lib/onboard';
+import { useApp } from '../../_lib/store';
 
-/** Step 3: "Your ranks." Kept in the draft; saved with step 4. */
+/** Step 3 (2 with Chess alone): "Your rating." Kept in the draft; saved with the last step. */
 export default function Ranks() {
+  const { games, run, setMe } = useApp();
   const [draft, setDraft] = useOnboard();
   const gameOf = useGameOf();
+  const router = useRouter();
+  // With Chess alone the games step skips itself, so back means log out.
+  const only = games.filter((g) => g.isLaunch).length === 1;
+  const logout = async () => {
+    await run(() => api<void>('auth/logout', { method: 'POST' }), { quiet: true });
+    setMe(null);
+    router.replace('/app/welcome');
+  };
   return (
     <div
       style={{
@@ -30,12 +42,16 @@ export default function Ranks() {
         }}
       />
       <div className="over" style={{ padding: '8px 20px 0' }}>
-        <StepHeader back="/app/onboarding/games" fraction={0.75} label="Step 3" />
+        {only ? (
+          <StepHeader fraction={0.66} label="Step 2" backLabel="Log out" onBackLabel={logout} />
+        ) : (
+          <StepHeader back="/app/onboarding/games" fraction={0.75} label="Step 3" />
+        )}
       </div>
       <div className="over gap" style={{ padding: '20px 20px 14px', gap: 8 }}>
-        <h1 style={titleStyle}>Your ranks.</h1>
+        <h1 style={titleStyle}>Your rating.</h1>
         <div className="muted" style={{ fontSize: 14 }}>
-          Tap your current tier in each game. Skip any you don’t play ranked.
+          Tap the band your Chess.com or Lichess rating sits in. Skip it if you’re new.
         </div>
       </div>
       <div className="over gap grow" style={{ padding: '2px 20px 8px', gap: 12 }}>

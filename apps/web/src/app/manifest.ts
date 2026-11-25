@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: `${BRAND}. Find people to play with`,
     short_name: `${BRAND}.`,
-    description: 'Find gamers in Ethiopia to actually play with.',
+    description: 'Find chess players in Ethiopia to actually play with.',
     start_url: '/app',
     scope: '/',
     display: 'standalone',

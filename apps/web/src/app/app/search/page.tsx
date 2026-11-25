@@ -7,7 +7,7 @@ import { gameMatches, rankLine, statusLook, toneFor } from '../_lib/data';
 import { useApp } from '../_lib/store';
 import { Avatar, BackBtn, Dot, EmptyNote, Field, Label, Rows, toneColor } from '../_lib/ui';
 
-/** Search: gamers by name or username (≥ 2 letters), and launch games. */
+/** Search: players by name or username (≥ 2 letters), and launch games. */
 export default function Search() {
   const { games } = useApp();
   const [q, setQ] = useState('');
@@ -36,11 +36,11 @@ export default function Search() {
           <Field
             value={q}
             onChange={setQ}
-            placeholder="Gamers by name or username"
+            placeholder="Players by name or username"
             h={48}
             autoFocus
             style={{ fontSize: 16 }}
-            aria-label="Search gamers"
+            aria-label="Search players"
           />
         </div>
       </div>
@@ -95,7 +95,7 @@ export default function Search() {
         </>
       )}
       {ql.length >= 2 && shown.length === 0 && launch.length === 0 && (
-        <EmptyNote>No gamers called “{ql}” yet.</EmptyNote>
+        <EmptyNote>No players called “{ql}” yet.</EmptyNote>
       )}
     </div>
   );

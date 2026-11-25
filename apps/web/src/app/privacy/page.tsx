@@ -18,8 +18,9 @@ export default function Privacy() {
       <p className="muted">Last updated {UPDATED}</p>
 
       <p>
-        {BRAND} helps gamers in Ethiopia find people to play with. This page says what we keep about
-        you, why, who else sees it, and how to delete it. The app is for people aged 16 and over.
+        {BRAND} helps chess players in Ethiopia find people to play with. This page says what we
+        keep about you, why, who else sees it, and how to delete it. The app is for people aged 16
+        and over.
       </p>
 
       <h2>What we keep</h2>

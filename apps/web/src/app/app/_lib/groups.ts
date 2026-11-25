@@ -12,7 +12,7 @@ export const kindLabel: Record<GroupKind, string> = {
   game: 'Game',
   city: 'City',
   campus: 'Campus',
-  squad: 'Squad',
+  squad: 'Club',
 };
 
 /** "1,204" style member counts. */

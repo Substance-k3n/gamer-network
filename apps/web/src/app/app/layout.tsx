@@ -37,7 +37,7 @@ const jakarta = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: { absolute: `${BRAND}.` },
-  description: 'Find gamers in Ethiopia to actually play with.',
+  description: 'Find chess players in Ethiopia to actually play with.',
   appleWebApp: { capable: true, title: `${BRAND}.`, statusBarStyle: 'default' },
   robots: { index: false },
 };

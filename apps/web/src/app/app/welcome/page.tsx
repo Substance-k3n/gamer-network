@@ -169,11 +169,11 @@ function IntroId() {
             </div>
           </div>
           <div className="gap" style={{ gap: 6 }}>
-            {row('Valorant', 'Gold · Duelist')}
-            {row('EA FC 25', 'Div 3')}
+            {row('Chess', '1400–1799 · Blitz')}
+            {row('Puzzles', 'Daily streak 12')}
           </div>
           <div className="row" style={{ gap: 5, marginTop: 10 }}>
-            {['PC', 'PS5'].map((x) => (
+            {['Chess.com', 'Lichess'].map((x) => (
               <span
                 key={x}
                 style={{
@@ -197,7 +197,7 @@ function IntroId() {
                 fontWeight: 600,
               }}
             >
-              Competitive
+              Rated
             </span>
           </div>
         </Card>
@@ -210,7 +210,7 @@ function IntroId() {
       </div>
       <div style={{ ...abs(12, 300), ...tilt(-3) }}>
         <Card flat pad="6px 10px" radius={14}>
-          <Label size={9}>RIOT ID · kaleb#ADD</Label>
+          <Label size={9}>CHESS.COM · kaleb_plays</Label>
         </Card>
       </div>
     </>
@@ -233,7 +233,7 @@ function IntroFind() {
               <div className="grow">
                 <div style={{ fontSize: 15, fontWeight: 700 }}>Dave</div>
                 <div className="muted" style={{ fontSize: 11 }}>
-                  Addis Ababa · PC
+                  Addis Ababa · Chess.com
                 </div>
               </div>
               <Digits size={11}>02:14:09</Digits>
@@ -241,10 +241,10 @@ function IntroFind() {
             <div className="row" style={{ gap: 6, alignItems: 'stretch' }}>
               <Card dark flat pad="8px 10px" radius={14} style={{ flex: 1 }}>
                 <Label size={8} color="var(--accent-text)">
-                  RANKED
+                  RATED
                 </Label>
-                <div style={{ fontSize: 15, fontWeight: 700 }}>Valorant</div>
-                <div style={{ fontSize: 12, opacity: 0.85 }}>Diamond</div>
+                <div style={{ fontSize: 15, fontWeight: 700 }}>Blitz 5+0</div>
+                <div style={{ fontSize: 12, opacity: 0.85 }}>1800–2199</div>
               </Card>
               <Card
                 flat
@@ -260,10 +260,10 @@ function IntroFind() {
                 }}
               >
                 <Label size={8}>NEED</Label>
-                <div style={{ fontSize: 17, fontWeight: 800 }}>Duo</div>
+                <div style={{ fontSize: 17, fontWeight: 800 }}>1v1</div>
               </Card>
             </div>
-            <div style={{ fontSize: 13 }}>“Looking for a ranked duo tonight.”</div>
+            <div style={{ fontSize: 13 }}>“Best of three, blitz, tonight.”</div>
             <Pill h={36} size={14} bold look="accent" expand>
               Connect
             </Pill>
@@ -272,7 +272,7 @@ function IntroFind() {
       </div>
       <div className="row" style={{ ...abs('auto', 282), right: 10, gap: 6, ...tilt(-4) }}>
         <Pill h={30} padH={12} size={12} look="ink" style={{ border: 0 }}>
-          Mic on
+          Rated
         </Pill>
         <Pill h={30} padH={12} size={12}>
           Tonight
@@ -306,9 +306,7 @@ function IntroConnect() {
               <Label size={8} color="var(--accent-text)">
                 SESSION
               </Label>
-              <div style={{ fontSize: 16, fontWeight: 700, marginTop: 3 }}>
-                Valorant · Ranked duo
-              </div>
+              <div style={{ fontSize: 16, fontWeight: 700, marginTop: 3 }}>Chess · Rapid 15+10</div>
             </div>
             <Digits size={20}>21:00</Digits>
           </div>

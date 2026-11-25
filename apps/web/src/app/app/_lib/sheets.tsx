@@ -76,14 +76,11 @@ export function ListingSheet({ onClose }: { onClose: () => void }) {
   const [gameId, setGameId] = useState(first?.id ?? '');
   const game = launch.find((g) => g.id === gameId);
   const pickPlatform = (ps: Platform[]) =>
-    ps.includes('mobile') && me?.platforms.includes('mobile')
-      ? 'mobile'
-      : (me?.platforms.find((p) => ps.includes(p)) ?? ps[0] ?? 'mobile');
+    me?.platforms.find((p) => ps.includes(p)) ?? ps[0] ?? 'chess_com';
   const [modeId, setModeId] = useState<string | null>(first?.modes[0]?.id ?? null);
   const [party, setParty] = useState(2);
   const [platform, setPlatform] = useState<Platform>(pickPlatform(first?.platforms ?? []));
   const [style, setStyle] = useState<'competitive' | 'casual'>('competitive');
-  const [voice, setVoice] = useState<'required' | 'optional'>('required');
   const [when, setWhen] = useState<PlayWhen>('tonight');
   const [dur, setDur] = useState<2 | 6 | 24>(6);
   const [note, setNote] = useState('');
@@ -116,7 +113,6 @@ export function ListingSheet({ onClose }: { onClose: () => void }) {
           modeId: modeId ?? undefined,
           platform,
           partySize: party,
-          voice,
           style,
           playWhen: when,
           durationHours: dur,
@@ -144,20 +140,23 @@ export function ListingSheet({ onClose }: { onClose: () => void }) {
         />
         {game.modes.length > 0 && (
           <Group
-            label="MODE"
+            label="TIME CONTROL"
             options={game.modes.map((m) => m.id)}
             value={modeId ?? ''}
             onPick={setModeId}
             labelOf={(id) => game.modes.find((m) => m.id === id)!.name}
           />
         )}
-        <Group
-          label="LOOKING FOR"
-          options={Array.from({ length: game.maxParty - 1 }, (_, i) => i + 2)}
-          value={party}
-          onPick={setParty}
-          labelOf={partyLabel}
-        />
+        {/* Chess is 1v1: nothing to ask (ADR-0015). */}
+        {game.maxParty > 2 && (
+          <Group
+            label="LOOKING FOR"
+            options={Array.from({ length: game.maxParty - 1 }, (_, i) => i + 2)}
+            value={party}
+            onPick={setParty}
+            labelOf={partyLabel}
+          />
+        )}
         {game.platforms.length > 1 && (
           <Group
             label="PLATFORM"
@@ -172,14 +171,7 @@ export function ListingSheet({ onClose }: { onClose: () => void }) {
           options={['competitive', 'casual']}
           value={style}
           onPick={setStyle}
-          labelOf={(s) => (s === 'competitive' ? 'Competitive' : 'Casual')}
-        />
-        <Group<'required' | 'optional'>
-          label="VOICE"
-          options={['required', 'optional']}
-          value={voice}
-          onPick={setVoice}
-          labelOf={(v) => (v === 'required' ? 'Mic required' : 'Mic optional')}
+          labelOf={(s) => (s === 'competitive' ? 'Rated' : 'Casual')}
         />
         <Group
           label="WHEN"
@@ -200,7 +192,7 @@ export function ListingSheet({ onClose }: { onClose: () => void }) {
           <Field
             value={note}
             onChange={setNote}
-            placeholder="Looking for a ranked duo tonight."
+            placeholder="Blitz, best of three, tonight."
             h={48}
             radius={16}
             sunken
@@ -215,7 +207,7 @@ export function ListingSheet({ onClose }: { onClose: () => void }) {
   );
 }
 
-/** Fix my live listing (PATCH /listings/{id}): style, voice, when and note. */
+/** Fix my live listing (PATCH /listings/{id}): style, when and note. */
 export function EditListingSheet({
   l,
   onClose,
@@ -227,7 +219,6 @@ export function EditListingSheet({
 }) {
   const { run, busy, toast } = useApp();
   const [style, setStyle] = useState(l.style);
-  const [voice, setVoice] = useState(l.voice);
   const [when, setWhen] = useState<PlayWhen>(l.playWhen);
   const [note, setNote] = useState(l.note ?? '');
 
@@ -235,7 +226,7 @@ export function EditListingSheet({
     const r = await run(() =>
       api<Listing>(`listings/${l.id}`, {
         method: 'PATCH',
-        body: { style, voice, playWhen: when, note: note.trim() },
+        body: { style, playWhen: when, note: note.trim() },
       }),
     );
     if (!r) return;
@@ -253,14 +244,7 @@ export function EditListingSheet({
           options={['competitive', 'casual']}
           value={style}
           onPick={setStyle}
-          labelOf={(s) => (s === 'competitive' ? 'Competitive' : 'Casual')}
-        />
-        <Group<'required' | 'optional'>
-          label="VOICE"
-          options={['required', 'optional']}
-          value={voice}
-          onPick={setVoice}
-          labelOf={(v) => (v === 'required' ? 'Mic required' : 'Mic optional')}
+          labelOf={(s) => (s === 'competitive' ? 'Rated' : 'Casual')}
         />
         <Group
           label="WHEN"
@@ -274,7 +258,7 @@ export function EditListingSheet({
           <Field
             value={note}
             onChange={setNote}
-            placeholder="Looking for a ranked duo tonight."
+            placeholder="Blitz, best of three, tonight."
             h={48}
             radius={16}
             sunken

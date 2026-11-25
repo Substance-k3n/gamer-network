@@ -110,9 +110,7 @@ export function ListingCard({ l, onChanged }: { l: Listing; onChanged: () => voi
         <div className="row" style={{ gap: 8, alignItems: 'stretch' }}>
           <Card dark flat pad="10px 12px" radius={16} style={{ flex: 1 }}>
             <Label size={9} color="var(--accent-text)">
-              {(
-                l.mode?.name ?? (l.style === 'competitive' ? 'Competitive' : 'Casual')
-              ).toUpperCase()}
+              {(l.mode?.name ?? (l.style === 'competitive' ? 'Rated' : 'Casual')).toUpperCase()}
             </Label>
             <div style={{ fontSize: 17, fontWeight: 700, marginTop: 2 }}>{l.game.name}</div>
             <div style={{ fontSize: 13, opacity: 0.85 }}>{l.rank?.name ?? 'Any rank'}</div>
@@ -138,11 +136,7 @@ export function ListingCard({ l, onChanged }: { l: Listing; onChanged: () => voi
           </div>
         </div>
         <div className="wrap">
-          {[
-            l.voice === 'required' ? 'Mic required' : 'Mic optional',
-            playWhenLabel[l.playWhen],
-            platformLabel[l.platform],
-          ].map((t) => (
+          {[playWhenLabel[l.playWhen], platformLabel[l.platform]].map((t) => (
             <span key={t} className="tag">
               {t}
             </span>
