@@ -394,13 +394,14 @@ class _SheetState extends State<_Sheet> with SingleTickerProviderStateMixin {
               ),
             if (!editing && game.modes.isNotEmpty)
               group<String?>(
-                'MODE',
+                'TIME CONTROL',
                 [for (final m in game.modes) m.id],
                 (id) => game.modes.firstWhere((m) => m.id == id).name,
                 d.modeId,
                 (v) => d.modeId = v,
               ),
-            if (!editing)
+            // Chess is 1v1: nothing to ask (ADR-0015).
+            if (!editing && game.maxParty > 2)
               group(
                 'LOOKING FOR',
                 [for (var n = 2; n <= game.maxParty; n++) n],
@@ -412,7 +413,7 @@ class _SheetState extends State<_Sheet> with SingleTickerProviderStateMixin {
               group(
                 'PLATFORM',
                 [
-                  for (final x in platformLabel.keys)
+                  for (final x in playPlatforms)
                     if (game.platforms.contains(x)) x,
                 ],
                 (x) => platformLabel[x]!,
@@ -422,16 +423,9 @@ class _SheetState extends State<_Sheet> with SingleTickerProviderStateMixin {
             group(
               'STYLE',
               PlayStyle.values.toList(),
-              (x) => x == PlayStyle.competitive ? 'Competitive' : 'Casual',
+              (x) => x == PlayStyle.competitive ? 'Rated' : 'Casual',
               d.style,
               (v) => d.style = v,
-            ),
-            group(
-              'VOICE',
-              const [Voice.required_, Voice.optional],
-              (x) => x == Voice.required_ ? 'Mic required' : 'Mic optional',
-              d.voice,
-              (v) => d.voice = v,
             ),
             group(
               'WHEN',
@@ -542,7 +536,7 @@ class _SheetState extends State<_Sheet> with SingleTickerProviderStateMixin {
                             ),
                             BoxField(
                               value: d.note,
-                              hint: 'Looking for a ranked duo tonight.',
+                              hint: 'Blitz, best of three, tonight.',
                               height: 48,
                               radius: 16,
                               padH: 14,

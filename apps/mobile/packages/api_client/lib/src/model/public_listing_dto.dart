@@ -38,7 +38,7 @@ abstract class PublicListingDto
     implements Built<PublicListingDto, PublicListingDtoBuilder> {
   @BuiltValueField(wireName: r'platform')
   Platform get platform;
-  // enum platformEnum {  pc,  playstation,  xbox,  mobile,  switch,  };
+  // enum platformEnum {  pc,  playstation,  xbox,  mobile,  switch,  chess_com,  lichess,  };
 
   @BuiltValueField(wireName: r'voice')
   Voice get voice;

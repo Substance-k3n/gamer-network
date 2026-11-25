@@ -45,7 +45,7 @@ part 'listing_dto.g.dart';
 abstract class ListingDto implements Built<ListingDto, ListingDtoBuilder> {
   @BuiltValueField(wireName: r'platform')
   Platform get platform;
-  // enum platformEnum {  pc,  playstation,  xbox,  mobile,  switch,  };
+  // enum platformEnum {  pc,  playstation,  xbox,  mobile,  switch,  chess_com,  lichess,  };
 
   @BuiltValueField(wireName: r'voice')
   Voice get voice;

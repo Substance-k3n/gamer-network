@@ -28,6 +28,10 @@ class GamingIdKind extends EnumClass {
   static const GamingIdKind activision = _$activision;
   @BuiltValueEnumConst(wireName: r'in_game')
   static const GamingIdKind inGame = _$inGame;
+  @BuiltValueEnumConst(wireName: r'chess_com')
+  static const GamingIdKind chessCom = _$chessCom;
+  @BuiltValueEnumConst(wireName: r'lichess')
+  static const GamingIdKind lichess = _$lichess;
 
   static Serializer<GamingIdKind> get serializer => _$gamingIdKindSerializer;
 

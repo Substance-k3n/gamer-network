@@ -397,7 +397,7 @@ class _IntroId extends StatelessWidget {
                             style: t.body(19, w: w800, c: t.onDark),
                           ),
                           Text(
-                            t.up('GAMER ID'),
+                            t.up('CHESS ID'),
                             style: t.label(8, c: t.accentText),
                           ),
                         ],
@@ -405,15 +405,15 @@ class _IntroId extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 14),
-                  gameRow('Valorant', 'Gold · Duelist'),
+                  gameRow('Chess', '1400–1799 · Blitz'),
                   const SizedBox(height: 6),
-                  gameRow('EA FC 25', 'Div 3'),
+                  gameRow('Puzzles', 'Daily streak 12'),
                   const SizedBox(height: 10),
                   Row(
                     children: [
                       filled('PC'),
                       const SizedBox(width: 5),
-                      filled('PS5'),
+                      filled('Lichess'),
                       const SizedBox(width: 5),
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -425,7 +425,7 @@ class _IntroId extends StatelessWidget {
                           borderRadius: BorderRadius.circular(99),
                         ),
                         child: Text(
-                          'Competitive',
+                          'Rated',
                           style: t.body(11, w: w600, c: t.onDark),
                         ),
                       ),
@@ -464,7 +464,7 @@ class _IntroId extends StatelessWidget {
               radius: 14,
               shadow: 0,
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              child: Text(t.up('RIOT ID · kaleb#ADD'), style: t.label(9)),
+              child: Text(t.up('CHESS.COM · kaleb_plays'), style: t.label(9)),
             ),
           ),
         ),
@@ -517,7 +517,7 @@ class _IntroFind extends StatelessWidget {
                           children: [
                             Text('Dave', style: t.body(15, w: w700)),
                             Text(
-                              'Addis Ababa · PC',
+                              'Addis Ababa · Chess.com',
                               style: t.body(11, c: t.muted),
                             ),
                           ],
@@ -542,15 +542,15 @@ class _IntroFind extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  t.up('RANKED'),
+                                  t.up('RATED'),
                                   style: t.label(8, c: t.accentText),
                                 ),
                                 Text(
-                                  'Valorant',
+                                  'Blitz 5+0',
                                   style: t.body(15, w: w700, c: t.onDark),
                                 ),
                                 Text(
-                                  'Diamond',
+                                  '1800–2199',
                                   style: t.body(
                                     12,
                                     c: t.onDark.withValues(alpha: .85),
@@ -571,7 +571,7 @@ class _IntroFind extends StatelessWidget {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Text(t.up('NEED'), style: t.label(8)),
-                                Text('Duo', style: t.body(17, w: w800)),
+                                Text('1v1', style: t.body(17, w: w800)),
                               ],
                             ),
                           ),
@@ -579,10 +579,7 @@ class _IntroFind extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Text(
-                    '“Looking for a ranked duo tonight.”',
-                    style: t.body(13),
-                  ),
+                  Text('“Best of three, blitz, tonight.”', style: t.body(13)),
                   Pill(
                     'Connect',
                     height: 36,
@@ -605,7 +602,7 @@ class _IntroFind extends StatelessWidget {
             child: Row(
               children: [
                 Pill(
-                  'Mic on',
+                  'Rated',
                   bg: t.dark,
                   fg: t.onDark,
                   border: 0,
@@ -691,7 +688,7 @@ class _IntroConnect extends StatelessWidget {
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          'Valorant · Ranked duo',
+                          'Chess · Rapid 15+10',
                           style: t.body(16, w: w700, c: t.onDark),
                         ),
                       ],
@@ -736,7 +733,7 @@ class LoginScreen extends StatelessWidget {
           child: RallyLogo(size: 72),
         ),
         Text('Welcome back.', style: t.body(40, w: w800, ls: -1.5, h: 1)),
-        Text('Your squad’s been busy.', style: t.body(15, c: t.muted)),
+        Text('Your opponents have been busy.', style: t.body(15, c: t.muted)),
         const SizedBox(height: 0),
         BoxField(
           value: s.loginUser,
@@ -818,7 +815,7 @@ class SignupScreen extends StatelessWidget {
           label: 'Step 1',
         ),
         const SizedBox(height: 0),
-        Text('Who are you\nas a gamer?', style: _title(t)),
+        Text('Who are you\nat the board?', style: _title(t)),
         Gap(
           10,
           children: [
@@ -1045,13 +1042,13 @@ class RanksScreen extends StatelessWidget {
         child: Blob(w: 460, h: 340, hr: [40, 60, 55, 45], vr: [45, 55, 45, 55]),
       ),
       header: StepHeader(
-        onBack: () => s.go(Screen.games),
-        fraction: .75,
-        label: 'Step 3',
+        onBack: s.onlyGame != null ? s.logout : () => s.go(Screen.games),
+        backLabel: s.onlyGame != null ? 'Log out' : null,
+        fraction: .66,
+        label: 'Step 2',
       ),
-      title: 'Your ranks.',
-      sub:
-          'Tap your current tier in each game. Skip any you don’t play ranked.',
+      title: 'Your rating.',
+      sub: 'Tap the band your Chess.com or Lichess rating sits in. Skip it if you’re new.',
       body: ListView.separated(
         padding: const EdgeInsets.fromLTRB(20, 2, 20, 8),
         itemCount: s.onboard.games.length,
@@ -1090,11 +1087,11 @@ class PlatformsScreen extends StatelessWidget {
         StepHeader(
           onBack: () => s.go(Screen.ranks),
           fraction: 1,
-          label: 'Step 4',
+          label: s.onlyGame != null ? 'Step 3' : 'Step 4',
         ),
         const SizedBox(height: 0),
-        Text('Platforms\n& gaming IDs.', style: _title(t)),
-        const Label('PLATFORMS'),
+        Text('Where you play\n& usernames.', style: _title(t)),
+        const Label('PLAYS ON'),
         PlatformChips(
           selected: s.onboard.platforms,
           onToggle: (p) => s.toggleIn(s.onboard.platforms, p),
@@ -1104,7 +1101,7 @@ class PlatformsScreen extends StatelessWidget {
           selected: s.onboard.tags,
           onToggle: (x) => s.toggleIn(s.onboard.tags, x),
         ),
-        const Label('GAMING IDS · YOU CHOOSE WHO SEES THEM'),
+        const Label('USERNAMES · YOU CHOOSE WHO SEES THEM'),
         IdRows(
           draft: s.onboard,
           onChanged: (k, v) => s.onboard.ids[k] = v,
@@ -1138,7 +1135,7 @@ class PlatformChips extends StatelessWidget {
     spacing: 6,
     runSpacing: 6,
     children: [
-      for (final p in platformLabel.keys)
+      for (final p in playPlatforms)
         Pill.chip(
           platformLabel[p]!,
           selected.contains(p),
@@ -1161,7 +1158,7 @@ class TagChips extends StatelessWidget {
     spacing: 6,
     runSpacing: 6,
     children: [
-      for (final x in tagLabel.keys)
+      for (final x in playTags)
         Pill.chip(
           tagLabel[x]!,
           selected.contains(x),

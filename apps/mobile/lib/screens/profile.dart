@@ -454,7 +454,7 @@ class ProfileScreen extends StatelessWidget {
         children: [
           const Padding(
             padding: EdgeInsets.fromLTRB(14, 12, 14, 4),
-            child: Label('GAMING IDS'),
+            child: Label('USERNAMES'),
           ),
           for (final r in v.gamingIds)
             Padding(
@@ -831,7 +831,7 @@ class _IdCard extends StatelessWidget {
               children: [
                 v.isMe
                     ? Text(
-                        t.up('YOUR GAMER ID'),
+                        t.up('YOUR CHESS ID'),
                         style: t.label(9, c: t.accentText),
                       )
                     : BackBtn(onTap: s.back, size: 38, onDark: true),
@@ -1069,7 +1069,7 @@ class _MiniPost extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 GameBadge(
-                  p.game?.shortCode ?? 'GAMING',
+                  p.game?.shortCode ?? 'CHESS',
                   pad: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 ),
                 ValueListenableBuilder(
@@ -1143,7 +1143,7 @@ class _MomentTile extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    t.up(m.game?.shortCode ?? 'GAMING'),
+                    t.up(m.game?.shortCode ?? 'CHESS'),
                     style: t.label(8, c: t.accentText),
                   ),
                   Text(

@@ -4,6 +4,8 @@
 
 // ignore_for_file: unused_element
 import 'package:api_client/src/model/account_state.dart';
+import 'package:api_client/src/model/user_role.dart';
+import 'package:api_client/src/model/age_range.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
@@ -13,6 +15,8 @@ part 'admin_user_dto.g.dart';
 ///
 /// Properties:
 /// * [state]
+/// * [role]
+/// * [ageRange]
 /// * [id]
 /// * [username]
 /// * [displayName]
@@ -34,6 +38,14 @@ abstract class AdminUserDto
   @BuiltValueField(wireName: r'state')
   AccountState get state;
   // enum stateEnum {  active,  banned,  deleted,  };
+
+  @BuiltValueField(wireName: r'role')
+  UserRole get role;
+  // enum roleEnum {  player,  admin,  };
+
+  @BuiltValueField(wireName: r'ageRange')
+  AgeRange get ageRange;
+  // enum ageRangeEnum {  16_17,  18_24,  25_34,  35_plus,  };
 
   @BuiltValueField(wireName: r'id')
   String get id;
@@ -112,6 +124,16 @@ class _$AdminUserDtoSerializer implements PrimitiveSerializer<AdminUserDto> {
     yield serializers.serialize(
       object.state,
       specifiedType: const FullType(AccountState),
+    );
+    yield r'role';
+    yield serializers.serialize(
+      object.role,
+      specifiedType: const FullType(UserRole),
+    );
+    yield r'ageRange';
+    yield serializers.serialize(
+      object.ageRange,
+      specifiedType: const FullType(AgeRange),
     );
     yield r'id';
     yield serializers.serialize(
@@ -225,6 +247,20 @@ class _$AdminUserDtoSerializer implements PrimitiveSerializer<AdminUserDto> {
             specifiedType: const FullType(AccountState),
           ) as AccountState;
           result.state = valueDes;
+          break;
+        case r'role':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(UserRole),
+          ) as UserRole;
+          result.role = valueDes;
+          break;
+        case r'ageRange':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(AgeRange),
+          ) as AgeRange;
+          result.ageRange = valueDes;
           break;
         case r'id':
           final valueDes = serializers.deserialize(

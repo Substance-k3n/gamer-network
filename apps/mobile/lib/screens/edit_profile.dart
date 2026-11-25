@@ -258,7 +258,7 @@ class EditProfileScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       const Label(
-                        'GAMING IDS · YOU CHOOSE WHO SEES THEM',
+                        'USERNAMES · YOU CHOOSE WHO SEES THEM',
                         padLeft: 6,
                       ),
                       IdRows(

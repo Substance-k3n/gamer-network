@@ -21,7 +21,7 @@ void main() {
       await b.takeScreenshot(n);
     }
 
-    await see(t, 'Who are you as a gamer?');
+    await see(t, 'Who are you at the board?');
     await tapText(t, 'Log in');
     await login(t, 'hana@rally.test');
     await see(t, 'For you'); // the Home feed's filter pill

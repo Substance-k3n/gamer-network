@@ -16,26 +16,31 @@ part 'create_listing_body.g.dart';
 /// CreateListingBody
 ///
 /// Properties:
-/// * [platform] - One of the game's platforms.
-/// * [voice]
+/// * [platform] - One of the game's platforms: Chess.com or Lichess.
+/// * [partySize] - Whole party including you, up to the game's maxParty. Chess is 1v1: defaults to 2.
+/// * [voice] - Chess doesn't ask: defaults to optional.
 /// * [style]
 /// * [playWhen]
 /// * [durationHours] - How long it stays up once play starts.
 /// * [gameId] - A launch game (isLaunch in GET /v1/games).
 /// * [modeId]
 /// * [rankId] - The rank this group plays at. Defaults to your rank in this game.
-/// * [partySize] - Whole party including you, up to the game's maxParty.
 /// * [note]
 @BuiltValue()
 abstract class CreateListingBody
     implements Built<CreateListingBody, CreateListingBodyBuilder> {
-  /// One of the game's platforms.
+  /// One of the game's platforms: Chess.com or Lichess.
   @BuiltValueField(wireName: r'platform')
   Platform get platform;
-  // enum platformEnum {  pc,  playstation,  xbox,  mobile,  switch,  };
+  // enum platformEnum {  pc,  playstation,  xbox,  mobile,  switch,  chess_com,  lichess,  };
 
+  /// Whole party including you, up to the game's maxParty. Chess is 1v1: defaults to 2.
+  @BuiltValueField(wireName: r'partySize')
+  num? get partySize;
+
+  /// Chess doesn't ask: defaults to optional.
   @BuiltValueField(wireName: r'voice')
-  Voice get voice;
+  Voice? get voice;
   // enum voiceEnum {  required,  optional,  };
 
   @BuiltValueField(wireName: r'style')
@@ -62,10 +67,6 @@ abstract class CreateListingBody
   @BuiltValueField(wireName: r'rankId')
   String? get rankId;
 
-  /// Whole party including you, up to the game's maxParty.
-  @BuiltValueField(wireName: r'partySize')
-  num get partySize;
-
   @BuiltValueField(wireName: r'note')
   String? get note;
 
@@ -75,7 +76,9 @@ abstract class CreateListingBody
       _$CreateListingBody;
 
   @BuiltValueHook(initializeBuilder: true)
-  static void _defaults(CreateListingBodyBuilder b) => b;
+  static void _defaults(CreateListingBodyBuilder b) => b
+    ..partySize = 2
+    ..voice = Voice.optional;
 
   @BuiltValueSerializer(custom: true)
   static Serializer<CreateListingBody> get serializer =>
@@ -100,11 +103,20 @@ class _$CreateListingBodySerializer
       object.platform,
       specifiedType: const FullType(Platform),
     );
-    yield r'voice';
-    yield serializers.serialize(
-      object.voice,
-      specifiedType: const FullType(Voice),
-    );
+    if (object.partySize != null) {
+      yield r'partySize';
+      yield serializers.serialize(
+        object.partySize,
+        specifiedType: const FullType(num),
+      );
+    }
+    if (object.voice != null) {
+      yield r'voice';
+      yield serializers.serialize(
+        object.voice,
+        specifiedType: const FullType(Voice),
+      );
+    }
     yield r'style';
     yield serializers.serialize(
       object.style,
@@ -139,11 +151,6 @@ class _$CreateListingBodySerializer
         specifiedType: const FullType(String),
       );
     }
-    yield r'partySize';
-    yield serializers.serialize(
-      object.partySize,
-      specifiedType: const FullType(num),
-    );
     if (object.note != null) {
       yield r'note';
       yield serializers.serialize(
@@ -183,11 +190,20 @@ class _$CreateListingBodySerializer
           ) as Platform;
           result.platform = valueDes;
           break;
+        case r'partySize':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(num),
+          ) as num?;
+          if (valueDes == null) continue;
+          result.partySize = valueDes;
+          break;
         case r'voice':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(Voice),
-          ) as Voice;
+            specifiedType: const FullType.nullable(Voice),
+          ) as Voice?;
+          if (valueDes == null) continue;
           result.voice = valueDes;
           break;
         case r'style':
@@ -233,13 +249,6 @@ class _$CreateListingBodySerializer
           ) as String?;
           if (valueDes == null) continue;
           result.rankId = valueDes;
-          break;
-        case r'partySize':
-          final valueDes = serializers.deserialize(
-            value,
-            specifiedType: const FullType(num),
-          ) as num;
-          result.partySize = valueDes;
           break;
         case r'note':
           final valueDes = serializers.deserialize(

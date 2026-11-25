@@ -3,8 +3,11 @@
 //
 
 // ignore_for_file: unused_element
+import 'package:api_client/src/model/game_popularity_dto.dart';
 import 'package:api_client/src/model/waitlist_count_dto.dart';
 import 'package:built_collection/built_collection.dart';
+import 'package:api_client/src/model/totals_dto.dart';
+import 'package:api_client/src/model/metrics_day_dto.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
@@ -21,6 +24,9 @@ part 'metrics_dto.g.dart';
 /// * [playedRate] - listingsPlayed / listings: the number that decides the MVP.
 /// * [weeklyActive] - People active in the 7 days before `to`.
 /// * [waitlist] - Everyone who tapped \"Notify me\", per topic, all time; most wanted first.
+/// * [series] - One row per Addis Ababa day in the range, oldest first, for the charts.
+/// * [topGames] - Games with the most listings in the range, up to 8.
+/// * [totals] - Right now, not limited to the range.
 @BuiltValue()
 abstract class MetricsDto implements Built<MetricsDto, MetricsDtoBuilder> {
   @BuiltValueField(wireName: r'from')
@@ -51,6 +57,18 @@ abstract class MetricsDto implements Built<MetricsDto, MetricsDtoBuilder> {
   /// Everyone who tapped \"Notify me\", per topic, all time; most wanted first.
   @BuiltValueField(wireName: r'waitlist')
   BuiltList<WaitlistCountDto> get waitlist;
+
+  /// One row per Addis Ababa day in the range, oldest first, for the charts.
+  @BuiltValueField(wireName: r'series')
+  BuiltList<MetricsDayDto> get series;
+
+  /// Games with the most listings in the range, up to 8.
+  @BuiltValueField(wireName: r'topGames')
+  BuiltList<GamePopularityDto> get topGames;
+
+  /// Right now, not limited to the range.
+  @BuiltValueField(wireName: r'totals')
+  TotalsDto get totals;
 
   MetricsDto._();
 
@@ -114,6 +132,21 @@ class _$MetricsDtoSerializer implements PrimitiveSerializer<MetricsDto> {
     yield serializers.serialize(
       object.waitlist,
       specifiedType: const FullType(BuiltList, [FullType(WaitlistCountDto)]),
+    );
+    yield r'series';
+    yield serializers.serialize(
+      object.series,
+      specifiedType: const FullType(BuiltList, [FullType(MetricsDayDto)]),
+    );
+    yield r'topGames';
+    yield serializers.serialize(
+      object.topGames,
+      specifiedType: const FullType(BuiltList, [FullType(GamePopularityDto)]),
+    );
+    yield r'totals';
+    yield serializers.serialize(
+      object.totals,
+      specifiedType: const FullType(TotalsDto),
     );
   }
 
@@ -196,6 +229,28 @@ class _$MetricsDtoSerializer implements PrimitiveSerializer<MetricsDto> {
                 const FullType(BuiltList, [FullType(WaitlistCountDto)]),
           ) as BuiltList<WaitlistCountDto>;
           result.waitlist.replace(valueDes);
+          break;
+        case r'series':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(BuiltList, [FullType(MetricsDayDto)]),
+          ) as BuiltList<MetricsDayDto>;
+          result.series.replace(valueDes);
+          break;
+        case r'topGames':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType:
+                const FullType(BuiltList, [FullType(GamePopularityDto)]),
+          ) as BuiltList<GamePopularityDto>;
+          result.topGames.replace(valueDes);
+          break;
+        case r'totals':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(TotalsDto),
+          ) as TotalsDto;
+          result.totals.replace(valueDes);
           break;
         default:
           unhandled.add(key);

@@ -23,6 +23,12 @@ class _$MetricsDto extends MetricsDto {
   final num weeklyActive;
   @override
   final BuiltList<WaitlistCountDto> waitlist;
+  @override
+  final BuiltList<MetricsDayDto> series;
+  @override
+  final BuiltList<GamePopularityDto> topGames;
+  @override
+  final TotalsDto totals;
 
   factory _$MetricsDto([void Function(MetricsDtoBuilder)? updates]) =>
       (MetricsDtoBuilder()..update(updates))._build();
@@ -35,7 +41,10 @@ class _$MetricsDto extends MetricsDto {
       required this.listingsPlayed,
       required this.playedRate,
       required this.weeklyActive,
-      required this.waitlist})
+      required this.waitlist,
+      required this.series,
+      required this.topGames,
+      required this.totals})
       : super._();
   @override
   MetricsDto rebuild(void Function(MetricsDtoBuilder) updates) =>
@@ -55,7 +64,10 @@ class _$MetricsDto extends MetricsDto {
         listingsPlayed == other.listingsPlayed &&
         playedRate == other.playedRate &&
         weeklyActive == other.weeklyActive &&
-        waitlist == other.waitlist;
+        waitlist == other.waitlist &&
+        series == other.series &&
+        topGames == other.topGames &&
+        totals == other.totals;
   }
 
   @override
@@ -69,6 +81,9 @@ class _$MetricsDto extends MetricsDto {
     _$hash = $jc(_$hash, playedRate.hashCode);
     _$hash = $jc(_$hash, weeklyActive.hashCode);
     _$hash = $jc(_$hash, waitlist.hashCode);
+    _$hash = $jc(_$hash, series.hashCode);
+    _$hash = $jc(_$hash, topGames.hashCode);
+    _$hash = $jc(_$hash, totals.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -83,7 +98,10 @@ class _$MetricsDto extends MetricsDto {
           ..add('listingsPlayed', listingsPlayed)
           ..add('playedRate', playedRate)
           ..add('weeklyActive', weeklyActive)
-          ..add('waitlist', waitlist))
+          ..add('waitlist', waitlist)
+          ..add('series', series)
+          ..add('topGames', topGames)
+          ..add('totals', totals))
         .toString();
   }
 }
@@ -127,6 +145,21 @@ class MetricsDtoBuilder implements Builder<MetricsDto, MetricsDtoBuilder> {
   set waitlist(ListBuilder<WaitlistCountDto>? waitlist) =>
       _$this._waitlist = waitlist;
 
+  ListBuilder<MetricsDayDto>? _series;
+  ListBuilder<MetricsDayDto> get series =>
+      _$this._series ??= ListBuilder<MetricsDayDto>();
+  set series(ListBuilder<MetricsDayDto>? series) => _$this._series = series;
+
+  ListBuilder<GamePopularityDto>? _topGames;
+  ListBuilder<GamePopularityDto> get topGames =>
+      _$this._topGames ??= ListBuilder<GamePopularityDto>();
+  set topGames(ListBuilder<GamePopularityDto>? topGames) =>
+      _$this._topGames = topGames;
+
+  TotalsDtoBuilder? _totals;
+  TotalsDtoBuilder get totals => _$this._totals ??= TotalsDtoBuilder();
+  set totals(TotalsDtoBuilder? totals) => _$this._totals = totals;
+
   MetricsDtoBuilder() {
     MetricsDto._defaults(this);
   }
@@ -142,6 +175,9 @@ class MetricsDtoBuilder implements Builder<MetricsDto, MetricsDtoBuilder> {
       _playedRate = $v.playedRate;
       _weeklyActive = $v.weeklyActive;
       _waitlist = $v.waitlist.toBuilder();
+      _series = $v.series.toBuilder();
+      _topGames = $v.topGames.toBuilder();
+      _totals = $v.totals.toBuilder();
       _$v = null;
     }
     return this;
@@ -179,12 +215,21 @@ class MetricsDtoBuilder implements Builder<MetricsDto, MetricsDtoBuilder> {
             weeklyActive: BuiltValueNullFieldError.checkNotNull(
                 weeklyActive, r'MetricsDto', 'weeklyActive'),
             waitlist: waitlist.build(),
+            series: series.build(),
+            topGames: topGames.build(),
+            totals: totals.build(),
           );
     } catch (_) {
       late String _$failedField;
       try {
         _$failedField = 'waitlist';
         waitlist.build();
+        _$failedField = 'series';
+        series.build();
+        _$failedField = 'topGames';
+        topGames.build();
+        _$failedField = 'totals';
+        totals.build();
       } catch (e) {
         throw BuiltValueNestedFieldError(
             r'MetricsDto', _$failedField, e.toString());

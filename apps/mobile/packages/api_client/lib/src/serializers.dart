@@ -16,10 +16,12 @@ import 'package:api_client/src/model/date.dart';
 
 import 'package:api_client/src/model/accepted_request_dto.dart';
 import 'package:api_client/src/model/account_state.dart';
+import 'package:api_client/src/model/admin_game_dto.dart';
+import 'package:api_client/src/model/admin_game_page_dto.dart';
 import 'package:api_client/src/model/admin_report_dto.dart';
 import 'package:api_client/src/model/admin_report_page_dto.dart';
 import 'package:api_client/src/model/admin_user_dto.dart';
-import 'package:api_client/src/model/admin_user_page_dto.dart';
+import 'package:api_client/src/model/admin_user_number_page_dto.dart';
 import 'package:api_client/src/model/age_range.dart';
 import 'package:api_client/src/model/answer_check_in_body.dart';
 import 'package:api_client/src/model/app_config_response.dart';
@@ -44,10 +46,13 @@ import 'package:api_client/src/model/connection_page_dto.dart';
 import 'package:api_client/src/model/connection_request_dto.dart';
 import 'package:api_client/src/model/connection_request_list_dto.dart';
 import 'package:api_client/src/model/create_comment_body.dart';
+import 'package:api_client/src/model/create_game_body.dart';
 import 'package:api_client/src/model/create_group_body.dart';
 import 'package:api_client/src/model/create_group_event_body.dart';
 import 'package:api_client/src/model/create_listing_body.dart';
 import 'package:api_client/src/model/create_post_body.dart';
+import 'package:api_client/src/model/create_rank_body.dart';
+import 'package:api_client/src/model/create_user_body.dart';
 import 'package:api_client/src/model/day.dart';
 import 'package:api_client/src/model/delete_account_body.dart';
 import 'package:api_client/src/model/device_platform.dart';
@@ -56,6 +61,7 @@ import 'package:api_client/src/model/error_response.dart';
 import 'package:api_client/src/model/feed_filter.dart';
 import 'package:api_client/src/model/forgot_password_body.dart';
 import 'package:api_client/src/model/game_dto.dart';
+import 'package:api_client/src/model/game_popularity_dto.dart';
 import 'package:api_client/src/model/game_ref_dto.dart';
 import 'package:api_client/src/model/gaming_id_dto.dart';
 import 'package:api_client/src/model/gaming_id_input.dart';
@@ -89,6 +95,7 @@ import 'package:api_client/src/model/media_kind.dart';
 import 'package:api_client/src/model/media_upload_body.dart';
 import 'package:api_client/src/model/media_upload_dto.dart';
 import 'package:api_client/src/model/membership_status.dart';
+import 'package:api_client/src/model/metrics_day_dto.dart';
 import 'package:api_client/src/model/metrics_dto.dart';
 import 'package:api_client/src/model/mode_dto.dart';
 import 'package:api_client/src/model/mode_ref_dto.dart';
@@ -145,15 +152,18 @@ import 'package:api_client/src/model/set_avatar_body.dart';
 import 'package:api_client/src/model/set_games_body.dart';
 import 'package:api_client/src/model/set_gaming_ids_body.dart';
 import 'package:api_client/src/model/set_group_role_body.dart';
-import 'package:api_client/src/model/set_launch_body.dart';
 import 'package:api_client/src/model/set_platforms_body.dart';
 import 'package:api_client/src/model/set_status_body.dart';
 import 'package:api_client/src/model/set_tags_body.dart';
 import 'package:api_client/src/model/signup_body.dart';
+import 'package:api_client/src/model/totals_dto.dart';
 import 'package:api_client/src/model/unread_count_dto.dart';
+import 'package:api_client/src/model/update_game_body.dart';
 import 'package:api_client/src/model/update_group_body.dart';
 import 'package:api_client/src/model/update_listing_body.dart';
 import 'package:api_client/src/model/update_me_body.dart';
+import 'package:api_client/src/model/update_rank_body.dart';
+import 'package:api_client/src/model/update_user_body.dart';
 import 'package:api_client/src/model/user_card_dto.dart';
 import 'package:api_client/src/model/user_game_dto.dart';
 import 'package:api_client/src/model/user_game_input.dart';
@@ -170,10 +180,12 @@ part 'serializers.g.dart';
 @SerializersFor([
   AcceptedRequestDto,
   AccountState,
+  AdminGameDto,
+  AdminGamePageDto,
   AdminReportDto,
   AdminReportPageDto,
   AdminUserDto,
-  AdminUserPageDto,
+  AdminUserNumberPageDto,
   AgeRange,
   AnswerCheckInBody,
   AppConfigResponse,
@@ -198,10 +210,13 @@ part 'serializers.g.dart';
   ConnectionRequestDto,
   ConnectionRequestListDto,
   CreateCommentBody,
+  CreateGameBody,
   CreateGroupBody,
   CreateGroupEventBody,
   CreateListingBody,
   CreatePostBody,
+  CreateRankBody,
+  CreateUserBody,
   Day,
   DeleteAccountBody,
   DevicePlatform,
@@ -210,6 +225,7 @@ part 'serializers.g.dart';
   FeedFilter,
   ForgotPasswordBody,
   GameDto,
+  GamePopularityDto,
   GameRefDto,
   GamingIdDto,
   GamingIdInput,
@@ -243,6 +259,7 @@ part 'serializers.g.dart';
   MediaUploadBody,
   MediaUploadDto,
   MembershipStatus,
+  MetricsDayDto,
   MetricsDto,
   ModeDto,
   ModeRefDto,
@@ -299,15 +316,18 @@ part 'serializers.g.dart';
   SetGamesBody,
   SetGamingIdsBody,
   SetGroupRoleBody,
-  SetLaunchBody,
   SetPlatformsBody,
   SetStatusBody,
   SetTagsBody,
   SignupBody,
+  TotalsDto,
   UnreadCountDto,
+  UpdateGameBody,
   UpdateGroupBody,
   UpdateListingBody,
   UpdateMeBody,
+  UpdateRankBody,
+  UpdateUserBody,
   UserCardDto,
   UserGameDto,
   UserGameInput,
@@ -327,6 +347,10 @@ Serializers serializers = (_$serializers.toBuilder()
       ..addBuilderFactory(
         const FullType(BuiltSet, [FullType(PlayTag)]),
         () => SetBuilder<PlayTag>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(MetricsDayDto)]),
+        () => ListBuilder<MetricsDayDto>(),
       )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(UserGameDto)]),
@@ -385,6 +409,10 @@ Serializers serializers = (_$serializers.toBuilder()
         () => SetBuilder<Day>(),
       )
       ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(AdminGameDto)]),
+        () => ListBuilder<AdminGameDto>(),
+      )
+      ..addBuilderFactory(
         const FullType(BuiltList, [FullType(ModeDto)]),
         () => ListBuilder<ModeDto>(),
       )
@@ -415,6 +443,10 @@ Serializers serializers = (_$serializers.toBuilder()
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(GamingIdDto)]),
         () => ListBuilder<GamingIdDto>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(GamePopularityDto)]),
+        () => ListBuilder<GamePopularityDto>(),
       )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(UserCardDto)]),

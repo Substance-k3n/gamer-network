@@ -126,7 +126,7 @@ void main() {
 
   testWidgets('signed out: the intro leads to log in', (t) async {
     await pumpApp(t, FakeApi());
-    expect(find.text('Who are you as a gamer?'), findsOneWidget);
+    expect(find.text('Who are you at the board?'), findsOneWidget);
     await tapText(t, 'Next');
     await tapText(t, 'Next');
     await tapText(t, 'Start');
@@ -150,7 +150,7 @@ void main() {
     await t.pump(const Duration(seconds: 3));
     await settle(t);
     expect(find.textContaining('Waking up rally'), findsNothing);
-    expect(find.text('Who are you as a gamer?'), findsOneWidget);
+    expect(find.text('Who are you at the board?'), findsOneWidget);
     await done(t);
   });
 
@@ -256,7 +256,7 @@ void main() {
     ); // the STYLE chip (MODE has a Casual too)
     await tapText(t, '24h');
     await t.enterText(
-      find.widgetWithText(TextField, 'Looking for a ranked duo tonight.'),
+      find.widgetWithText(TextField, 'Blitz, best of three, tonight.'),
       'Need two for ranked',
     );
     await tapText(t, 'Post listing · expires in 24h');
@@ -268,7 +268,7 @@ void main() {
       'modeId': 'm-ranked-codm',
       'platform': 'mobile',
       'partySize': 4,
-      'voice': 'required',
+      'voice': 'optional',
       'style': 'casual',
       'playWhen': 'tonight',
       'durationHours': 24,
@@ -360,14 +360,15 @@ void main() {
       await t.pump();
       await tapText(t, 'CoD Mobile');
       await tapText(t, 'Continue with 2 games');
-      expect(find.text('Your ranks.'), findsOneWidget);
+      expect(find.text('Your rating.'), findsOneWidget);
       await tapText(t, 'Legendary');
       await tapText(t, 'Continue');
-      await tapText(t, 'PC');
+      expect(find.text('PC'), findsNothing); // chess platforms only
+      await tapText(t, 'Lichess');
       await t.enterText(
         find.widgetWithText(TextField, 'Add ID').at(1),
-        'kaleb.gg',
-      ); // Discord
+        'kaleb_l',
+      ); // Lichess
       api.routes['GET /v1/me'] = me();
       await tapText(t, 'Go live');
       await settle(t);
@@ -377,14 +378,13 @@ void main() {
           {'gameId': 'codm', 'rankId': 'r-legendary'},
         ],
       });
-      expect(
-        (api.bodiesOf('PUT /v1/me/platforms').last! as Map)['platforms'],
-        containsAll(['mobile', 'pc']),
-      );
-      // The fixture's Discord ID was public; the new value keeps that.
+      // The fixture's squad-game platform and IDs drop out.
+      expect((api.bodiesOf('PUT /v1/me/platforms').last! as Map)['platforms'], [
+        'lichess',
+      ]);
       expect(api.bodiesOf('PUT /v1/me/gaming-ids').last, {
         'gamingIds': [
-          {'kind': 'discord', 'visibility': 'public', 'value': 'kaleb.gg'},
+          {'kind': 'lichess', 'visibility': 'connections', 'value': 'kaleb_l'},
         ],
       });
       expect(api.bodiesOf('POST /v1/me/onboard'), hasLength(1));
@@ -392,6 +392,34 @@ void main() {
       await done(t);
     },
   );
+
+  testWidgets('with Chess alone, onboarding skips the games step', (t) async {
+    final api = FakeApi(onboarded: false);
+    api.routes['GET /v1/me'] = me(onboarded: false);
+    api.routes['GET /v1/games'] = [
+      game(
+        'chess',
+        'Chess',
+        'CHESS',
+        launch: true,
+        ranks: ['Beginner (under 1000)', '1000–1399', '1400–1799'],
+        platforms: ['chess_com', 'lichess'],
+      ),
+    ];
+    await pumpApp(t, api, token: 't-1');
+    expect(find.text('What do you play?'), findsNothing);
+    expect(find.text('Your rating.'), findsOneWidget);
+    expect(api.bodiesOf('PUT /v1/me/games').last, {
+      'games': [
+        {'gameId': 'chess'},
+      ],
+    });
+    await tapText(t, '1400–1799');
+    await tapText(t, 'Continue');
+    expect(find.text('Chess.com'), findsWidgets);
+    expect(find.text('Lichess'), findsWidgets);
+    await done(t);
+  });
 
   testWidgets('Home shows the invite I sent, waiting for an answer', (t) async {
     await pumpApp(t, FakeApi(), token: 't-1');
@@ -464,12 +492,11 @@ void main() {
     await tapText(t, 'Edit');
     expect(find.text('Edit your listing'), findsOneWidget);
     expect(find.text('EXPIRES AFTER'), findsNothing);
-    await tapText(t, 'Mic optional');
+    expect(find.text('Mic optional'), findsNothing); // chess doesn't ask
     await tapText(t, 'Now');
     await t.enterText(find.byType(TextField).last, 'Chill games only');
     await tapText(t, 'Save changes');
     expect(api.bodiesOf('PATCH /v1/listings/l-mine').single, {
-      'voice': 'optional',
       'style': 'competitive',
       'playWhen': 'now',
       'note': 'Chill games only',
@@ -687,7 +714,7 @@ void main() {
     await tapText(t, 'Create group');
     expect(find.text('New group'), findsOneWidget);
     await t.enterText(
-      find.widgetWithText(TextField, 'e.g. Valorant Addis Duo Queue'),
+      find.widgetWithText(TextField, 'e.g. Addis Blitz Club'),
       'Addis CODM Duo',
     );
     await t.pump();
@@ -704,7 +731,7 @@ void main() {
     final h = api.headers.lastWhere((h) => h.$1 == 'POST /v1/groups');
     expect(h.$2['Idempotency-Key'] ?? h.$2['idempotency-key'], isNotNull);
     expect(
-      find.text('Addis CODM Duo is live — invite your squad'),
+      find.text('Addis CODM Duo is live — invite your club'),
       findsOneWidget,
     );
     expect(s.groupTab, 'About');
@@ -726,7 +753,7 @@ void main() {
     s.openCreateGroup();
     await settle(t);
     await t.enterText(
-      find.widgetWithText(TextField, 'e.g. Valorant Addis Duo Queue'),
+      find.widgetWithText(TextField, 'e.g. Addis Blitz Club'),
       'CODM Addis',
     );
     await t.pump();
@@ -961,7 +988,7 @@ void main() {
     await settle(t);
     await tapText(t, 'Create group');
     await t.enterText(
-      find.widgetWithText(TextField, 'e.g. Valorant Addis Duo Queue'),
+      find.widgetWithText(TextField, 'e.g. Addis Blitz Club'),
       'ab',
     );
     await t.pump();
@@ -1426,7 +1453,7 @@ void main() {
       isTrue,
     );
     expect(inSheet('ACCEPTED'), findsOneWidget);
-    expect(find.text('Accepted — Hana can see your gamer ID'), findsOneWidget);
+    expect(find.text('Accepted — Hana can see your chess ID'), findsOneWidget);
     await t.tap(inSheet('Decline').first);
     await settle(t);
     expect(

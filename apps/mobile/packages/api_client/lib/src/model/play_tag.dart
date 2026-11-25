@@ -28,6 +28,14 @@ class PlayTag extends EnumClass {
   static const PlayTag achievementHunter = _$achievementHunter;
   @BuiltValueEnumConst(wireName: r'story')
   static const PlayTag story = _$story;
+  @BuiltValueEnumConst(wireName: r'openings')
+  static const PlayTag openings = _$openings;
+  @BuiltValueEnumConst(wireName: r'endgames')
+  static const PlayTag endgames = _$endgames;
+  @BuiltValueEnumConst(wireName: r'puzzles')
+  static const PlayTag puzzles = _$puzzles;
+  @BuiltValueEnumConst(wireName: r'tournaments')
+  static const PlayTag tournaments = _$tournaments;
 
   static Serializer<PlayTag> get serializer => _$playTagSerializer;
 

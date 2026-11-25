@@ -15,6 +15,10 @@ const PlayTag _$coOp = const PlayTag._('coOp');
 const PlayTag _$ranked = const PlayTag._('ranked');
 const PlayTag _$achievementHunter = const PlayTag._('achievementHunter');
 const PlayTag _$story = const PlayTag._('story');
+const PlayTag _$openings = const PlayTag._('openings');
+const PlayTag _$endgames = const PlayTag._('endgames');
+const PlayTag _$puzzles = const PlayTag._('puzzles');
+const PlayTag _$tournaments = const PlayTag._('tournaments');
 
 PlayTag _$valueOf(String name) {
   switch (name) {
@@ -36,6 +40,14 @@ PlayTag _$valueOf(String name) {
       return _$achievementHunter;
     case 'story':
       return _$story;
+    case 'openings':
+      return _$openings;
+    case 'endgames':
+      return _$endgames;
+    case 'puzzles':
+      return _$puzzles;
+    case 'tournaments':
+      return _$tournaments;
     default:
       throw ArgumentError(name);
   }
@@ -51,6 +63,10 @@ final BuiltSet<PlayTag> _$values = BuiltSet<PlayTag>(const <PlayTag>[
   _$ranked,
   _$achievementHunter,
   _$story,
+  _$openings,
+  _$endgames,
+  _$puzzles,
+  _$tournaments,
 ]);
 
 class _$PlayTagMeta {
@@ -64,6 +80,10 @@ class _$PlayTagMeta {
   PlayTag get ranked => _$ranked;
   PlayTag get achievementHunter => _$achievementHunter;
   PlayTag get story => _$story;
+  PlayTag get openings => _$openings;
+  PlayTag get endgames => _$endgames;
+  PlayTag get puzzles => _$puzzles;
+  PlayTag get tournaments => _$tournaments;
   PlayTag valueOf(String name) => _$valueOf(name);
   BuiltSet<PlayTag> get values => _$values;
 }
@@ -86,6 +106,10 @@ class _$PlayTagSerializer implements PrimitiveSerializer<PlayTag> {
     'ranked': 'ranked',
     'achievementHunter': 'achievement_hunter',
     'story': 'story',
+    'openings': 'openings',
+    'endgames': 'endgames',
+    'puzzles': 'puzzles',
+    'tournaments': 'tournaments',
   };
   static const Map<Object, String> _fromWire = const <Object, String>{
     'competitive': 'competitive',
@@ -97,6 +121,10 @@ class _$PlayTagSerializer implements PrimitiveSerializer<PlayTag> {
     'ranked': 'ranked',
     'achievement_hunter': 'achievementHunter',
     'story': 'story',
+    'openings': 'openings',
+    'endgames': 'endgames',
+    'puzzles': 'puzzles',
+    'tournaments': 'tournaments',
   };
 
   @override
