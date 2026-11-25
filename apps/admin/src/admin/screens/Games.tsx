@@ -22,7 +22,8 @@ import {
 import { C1, C2, DANGER, LINE, MUT, RULE, SUNK, label, mono, pad2 } from '../tokens';
 
 const PAGE_SIZE = 20;
-const PLATFORMS = Object.keys(PLATFORM) as Platform[];
+/** What a game can be set to now (ADR-0015). */
+const PLATFORMS: Platform[] = ['chess_com', 'lichess'];
 const message = (e: unknown) =>
   e instanceof ApiError ? e.message : 'Something went wrong. Try again.';
 
@@ -328,9 +329,11 @@ function GameFormModal({
   const [id, setId] = useState(game?.id ?? '');
   const [name, setName] = useState(game?.name ?? '');
   const [code, setCode] = useState(game?.shortCode ?? '');
-  const [plats, setPlats] = useState<Platform[]>(game?.platforms ?? []);
+  const [plats, setPlats] = useState<Platform[]>(
+    (game?.platforms ?? ['chess_com', 'lichess']).filter((p) => PLATFORMS.includes(p)),
+  );
   const [hasRanks, setHasRanks] = useState(game?.hasRanks ?? true);
-  const [party, setParty] = useState(String(game?.maxParty ?? 5));
+  const [party, setParty] = useState(String(game?.maxParty ?? 2));
   const [launch, setLaunch] = useState(game?.isLaunch ?? false);
   const [sort, setSort] = useState(game ? String(game.sort) : '');
   const [idErr, setIdErr] = useState<string | null>(null);

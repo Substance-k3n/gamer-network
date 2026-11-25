@@ -37,7 +37,10 @@ export const STATE_LABEL: Record<AccountState, string> = {
   deleted: 'Deleted',
 };
 
+/** Squad-game platforms only label older games; new ones take chess (ADR-0015). */
 export const PLATFORM: Record<string, string> = {
+  chess_com: 'Chess.com',
+  lichess: 'Lichess',
   pc: 'PC',
   playstation: 'PlayStation',
   xbox: 'Xbox',
