@@ -117,7 +117,7 @@ export default function LoginPage() {
         >
           Welcome back.
         </div>
-        <div style={{ fontSize: 15, color: MUT }}>Your squad&apos;s been busy.</div>
+        <div style={{ fontSize: 15, color: MUT }}>Your opponents have been busy.</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 14 }}>
           <input
             type="email"
