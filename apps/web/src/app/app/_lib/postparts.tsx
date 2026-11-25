@@ -384,7 +384,7 @@ function ApplicationsSheet({ p, onClose }: { p: Post; onClose: () => void }) {
     list.setData(items.map((x) => (x.id === a.id ? { ...x, status: r.status } : x)));
     toast(
       r.status === 'accepted'
-        ? `Accepted — ${a.user.displayName} can see your gamer ID`
+        ? `Accepted — ${a.user.displayName} can see your chess ID`
         : 'Declined',
     );
   };

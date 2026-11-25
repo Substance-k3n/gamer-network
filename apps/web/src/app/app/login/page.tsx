@@ -60,7 +60,7 @@ export default function Login() {
         Welcome back.
       </h1>
       <div className="muted" style={{ fontSize: 15 }}>
-        Your squad’s been busy.
+        Your opponents have been busy.
       </div>
       <Field
         value={email}

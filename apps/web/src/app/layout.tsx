@@ -15,7 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     metadataBase: new URL(config.siteUrl),
     title: { default: `${BRAND}. Find people to play with`, template: `%s · ${BRAND}.` },
-    description: 'Find gamers in Ethiopia to actually play with.',
+    description: 'Find chess players in Ethiopia to actually play with.',
   };
 }
 

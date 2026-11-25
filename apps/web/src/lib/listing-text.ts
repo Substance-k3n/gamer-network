@@ -1,6 +1,8 @@
 import type { PublicListing } from './api';
 
 const PLATFORM: Record<PublicListing['platform'], string> = {
+  chess_com: 'Chess.com',
+  lichess: 'Lichess',
   pc: 'PC',
   playstation: 'PlayStation',
   xbox: 'Xbox',
@@ -8,7 +10,7 @@ const PLATFORM: Record<PublicListing['platform'], string> = {
   switch: 'Switch',
 };
 
-const PARTY: Record<number, string> = { 2: 'Duo', 3: 'Trio', 4: 'Squad', 5: 'Five' };
+const PARTY: Record<number, string> = { 2: '1v1', 3: 'Trio', 4: 'Squad', 5: 'Five' };
 
 export const platformLabel = (l: PublicListing) => PLATFORM[l.platform];
 export const partyLabel = (l: PublicListing) => PARTY[l.partySize] ?? `${l.partySize} players`;
@@ -49,19 +51,14 @@ export function statusLine(l: PublicListing): string {
 
 /** For the link preview: "Hana needs 2 for PUBG Mobile". */
 export function headline(l: PublicListing): string {
-  if (l.status !== 'open') return `${l.ownerDisplayName}'s ${l.game.name} squad`;
+  if (l.status !== 'open') return `${l.ownerDisplayName}'s ${l.game.name} game`;
   const n = openSlots(l);
   return `${l.ownerDisplayName} needs ${n} for ${l.game.name}`;
 }
 
 export function summary(l: PublicListing): string {
-  const parts = [
-    l.mode?.name,
-    l.rank?.name,
-    platformLabel(l),
-    partyLabel(l),
-    l.voice === 'required' ? 'Voice on' : null,
-    whenLabel(l),
-  ].filter(Boolean);
+  const parts = [l.mode?.name, l.rank?.name, platformLabel(l), partyLabel(l), whenLabel(l)].filter(
+    Boolean,
+  );
   return parts.join(' · ');
 }

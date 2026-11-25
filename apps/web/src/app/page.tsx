@@ -10,10 +10,10 @@ export default function Home() {
     <main className="page">
       <Brand />
       <div className="card">
-        <p className="game">Find people to actually play with.</p>
+        <p className="game">Find chess players to actually play with.</p>
         <p className="note">
-          Post what you want to play tonight, see who else is looking, and squad up. Built for
-          gamers in Ethiopia.
+          Post the game you want tonight, see who else is looking near your rating, and challenge
+          them on Chess.com or Lichess. Built for chess players in Ethiopia.
         </p>
         <div className="actions">
           <Link className="button primary" href="/app">

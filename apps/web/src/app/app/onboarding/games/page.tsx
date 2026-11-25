@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useEffect, useRef } from 'react';
 import { api, type Me } from '../../_lib/api';
 import { StepHeader, titleStyle } from '../../_lib/frame';
 import { GamePicker, gameInputs, useGameOf } from '../../_lib/gamer';
@@ -8,13 +9,33 @@ import { useApp } from '../../_lib/store';
 import { BigButton } from '../../_lib/ui';
 import { useOnboard } from '../../_lib/onboard';
 
-/** Step 2: "What do you play?" Saves the games (no ranks yet). */
+/**
+ * Step 2: "What do you play?" Saves the games (no ranks yet). With one game
+ * in the catalog (Chess, ADR-0015) it picks it and moves on to the rating.
+ */
 export default function Games() {
-  const { run, busy, toast, setMe } = useApp();
+  const { run, busy, toast, setMe, games } = useApp();
   const [draft, setDraft] = useOnboard();
   const gameOf = useGameOf();
   const router = useRouter();
   const n = draft.games.length;
+  const launch = games.filter((g) => g.isLaunch);
+  const only = launch.length === 1 ? launch[0] : undefined;
+  const skipped = useRef(false);
+
+  useEffect(() => {
+    if (!only || skipped.current) return;
+    skipped.current = true;
+    const d = { ...draft, games: [only.id] };
+    setDraft(d);
+    void run(() =>
+      api<Me>('me/games', { method: 'PUT', body: { games: gameInputs(d, gameOf) } }),
+    ).then((m) => {
+      if (!m) return;
+      setMe(m);
+      router.replace('/app/onboarding/ranks');
+    });
+  }, [only, draft, setDraft, run, gameOf, setMe, router]);
 
   const next = async () => {
     if (!n) return toast('Pick at least one game');

@@ -54,7 +54,7 @@ export default function Signup() {
       }
     >
       <StepHeader back="/app/login" fraction={0.25} label="Step 1" />
-      <h1 style={titleStyle}>{'Who are you\nas a gamer?'}</h1>
+      <h1 style={titleStyle}>{'Who are you\nat the board?'}</h1>
       <div className="gap" style={{ gap: 10 }}>
         <Labeled label="EMAIL">
           <Field

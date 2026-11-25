@@ -596,9 +596,7 @@ function MyListing({
           <div className="row">
             <div className="grow">
               <Label size={9} color="var(--accent-text)">
-                {(
-                  l.mode?.name ?? (l.style === 'competitive' ? 'Competitive' : 'Casual')
-                ).toUpperCase()}
+                {(l.mode?.name ?? (l.style === 'competitive' ? 'Rated' : 'Casual')).toUpperCase()}
               </Label>
               <div style={{ fontSize: 17, fontWeight: 700 }}>{l.game.name}</div>
               <div style={{ fontSize: 12, opacity: 0.85 }}>

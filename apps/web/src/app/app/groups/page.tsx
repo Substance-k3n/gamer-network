@@ -62,7 +62,7 @@ export default function Groups() {
               className="t-display"
               style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.6, lineHeight: 1.1 }}
             >
-              Your squad, your game, your city or campus.
+              Your club, your city or your campus.
             </div>
             <div>
               <Pill

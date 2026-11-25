@@ -59,7 +59,7 @@ export function PlayerMenu({
     if (
       !(await ask(
         `Remove ${name}?`,
-        'You stop being connected: your private gaming IDs lock again, both ways. They aren’t told.',
+        'You stop being connected: your private usernames lock again, both ways. They aren’t told.',
         'Remove',
       ))
     )

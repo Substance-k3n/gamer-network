@@ -111,9 +111,8 @@ export default function Find({ searchParams }: { searchParams: Promise<{ game?: 
             ))}
         </div>
         <div className="wrap rl-pad">
-          {toggle('mic', 'Mic on')}
           {toggle('tonight', 'Tonight')}
-          {toggle('comp', 'Competitive')}
+          {toggle('comp', 'Rated')}
         </div>
         {game && (
           <div className="scroller rl-pad">

@@ -573,7 +573,7 @@ function Overview({ p }: { p: View }) {
     <>
       <Card flat pad={14} radius={22}>
         <div className="gap" style={{ gap: 8 }}>
-          <Label>PLATFORMS</Label>
+          <Label>PLAYS ON</Label>
           <div className="wrap">
             {(p.platforms.length ? p.platforms.map((x) => platformLabel[x]) : ['—']).map((x) => (
               <span
@@ -607,7 +607,7 @@ function Overview({ p }: { p: View }) {
       </Card>
       <div className="card flat" style={{ borderRadius: 22, overflow: 'hidden' }}>
         <div style={{ padding: '12px 14px 4px' }}>
-          <Label>GAMING IDS</Label>
+          <Label>USERNAMES</Label>
         </div>
         {p.gamingIds.map((x) => (
           <div key={x.id} className="row" style={{ padding: '10px 14px', gap: 10 }}>
