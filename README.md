@@ -50,6 +50,7 @@ calls:
 9. [ADR-0012](docs/decisions/0012-feed-and-groups-in-the-mvp.md) The prototype's feed, groups and Moments join the MVP, built in phases behind `feedEnabled`/`groupsEnabled`.
 10. [ADR-0014](docs/decisions/0014-web-on-cloudflare-workers.md) The web app on Cloudflare Workers' free plan, the admin there too; only the API stays on Render, kept awake.
 11. [ADR-0013](docs/decisions/0013-apps-show-the-prototype-screens-without-flags.md) (proposed) The apps show the prototype's feed, groups (on sample data) and profile now, without the flags.
+12. [ADR-0015](docs/decisions/0015-chess-only.md) rally is for chess players only, online on Chess.com and Lichess: rating bands, time controls, always 1v1.
 
 ## Docs
 
