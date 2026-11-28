@@ -46,7 +46,7 @@ async function player({ verified = true } = {}) {
   await http()
     .put('/v1/me/games')
     .set(auth)
-    .send({ games: [{ gameId: 'pubg' }] })
+    .send({ games: [{ gameId: 'chess' }] })
     .expect(200);
   await http().post('/v1/me/onboard').set(auth).expect(204);
   if (verified) {
@@ -63,12 +63,12 @@ async function player({ verified = true } = {}) {
     ask: async (to: { id: string }, extra: object = {}) =>
       (await p.post('/v1/connection-requests', { toUserId: to.id, ...extra }).expect(201)).body,
     /** Posts a live pubg listing. */
-    list: async (partySize = 4) =>
+    list: async (partySize = 2) =>
       (
         await p
           .post('/v1/listings', {
-            gameId: 'pubg',
-            platform: 'mobile',
+            gameId: 'chess',
+            platform: 'chess_com',
             partySize,
             voice: 'optional',
             style: 'casual',
@@ -165,7 +165,7 @@ describe('accepting', () => {
     const owner = await player();
     const joiner = await player();
     await owner
-      .put('/v1/me/gaming-ids', { gamingIds: [{ kind: 'riot', value: 'Owner#ET1' }] })
+      .put('/v1/me/gaming-ids', { gamingIds: [{ kind: 'chess_com', value: 'owner_et1' }] })
       .expect(200);
     expect((await joiner.get(`/v1/users/${owner.username}`)).body.gamingIds).toEqual([]);
     const listing = await owner.list(2);
@@ -179,7 +179,7 @@ describe('accepting', () => {
 
     const profile = (await joiner.get(`/v1/users/${owner.username}`)).body;
     expect(profile.relationship).toBe('connected');
-    expect(profile.gamingIds.map((g: { value: string }) => g.value)).toEqual(['Owner#ET1']);
+    expect(profile.gamingIds.map((g: { value: string }) => g.value)).toEqual(['owner_et1']);
 
     const after = (await owner.get(`/v1/listings/${listing.id}`)).body;
     expect(after).toMatchObject({ filled: 1, status: 'full' });

@@ -6581,7 +6581,9 @@
           "playstation",
           "xbox",
           "mobile",
-          "switch"
+          "switch",
+          "chess_com",
+          "lichess"
         ]
       },
       "PlayTag": {
@@ -6595,7 +6597,11 @@
           "co_op",
           "ranked",
           "achievement_hunter",
-          "story"
+          "story",
+          "openings",
+          "endgames",
+          "puzzles",
+          "tournaments"
         ]
       },
       "Relationship": {
@@ -6626,7 +6632,9 @@
           "epic",
           "ea",
           "activision",
-          "in_game"
+          "in_game",
+          "chess_com",
+          "lichess"
         ]
       },
       "IdVisibility": {
@@ -7348,7 +7356,7 @@
           },
           "gameId": {
             "type": "string",
-            "description": "Required for in_game (e.g. a PUBG Mobile UID), absent otherwise."
+            "description": "Required for in_game, absent otherwise. Only chess_com and lichess are accepted now."
           },
           "value": {
             "type": "string",
@@ -7887,14 +7895,23 @@
         "type": "object",
         "properties": {
           "platform": {
-            "description": "One of the game's platforms.",
+            "description": "One of the game's platforms: Chess.com or Lichess.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/Platform"
               }
             ]
           },
+          "partySize": {
+            "type": "number",
+            "description": "Whole party including you, up to the game's maxParty. Chess is 1v1: defaults to 2.",
+            "default": 2,
+            "minimum": 2,
+            "maximum": 5
+          },
           "voice": {
+            "description": "Chess doesn't ask: defaults to optional.",
+            "default": "optional",
             "allOf": [
               {
                 "$ref": "#/components/schemas/Voice"
@@ -7937,12 +7954,6 @@
             "description": "The rank this group plays at. Defaults to your rank in this game.",
             "format": "uuid"
           },
-          "partySize": {
-            "type": "number",
-            "description": "Whole party including you, up to the game's maxParty.",
-            "minimum": 2,
-            "maximum": 5
-          },
           "note": {
             "type": "string",
             "nullable": true,
@@ -7951,12 +7962,10 @@
         },
         "required": [
           "platform",
-          "voice",
           "style",
           "playWhen",
           "durationHours",
-          "gameId",
-          "partySize"
+          "gameId"
         ]
       },
       "ListingStatsDto": {

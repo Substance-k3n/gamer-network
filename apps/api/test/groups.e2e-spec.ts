@@ -65,7 +65,7 @@ async function player({ admin = false, verified = true } = {}) {
   await http()
     .put('/v1/me/games')
     .set(auth)
-    .send({ games: [{ gameId: 'pubg' }] })
+    .send({ games: [{ gameId: 'chess' }] })
     .expect(200);
   await http().post('/v1/me/onboard').set(auth).expect(204);
   await conn.db
@@ -144,7 +144,7 @@ describe('groups', () => {
     const group = await me.group({
       name,
       kind: 'game',
-      gameId: 'val',
+      gameId: 'shelf',
       about: 'Ranked and customs',
       rules: [' Be kind ', 'No cheats'],
       tone: 'lav',
@@ -154,7 +154,7 @@ describe('groups', () => {
       name,
       short: `VE${tag[0]!.toUpperCase()}`,
       kind: 'game',
-      game: { id: 'val' },
+      game: { id: 'shelf' },
       place: 'Addis Ababa',
       rules: ['Be kind', 'No cheats'],
       tone: 'lav',
@@ -445,14 +445,14 @@ describe('groups', () => {
         .post(`/v1/groups/${group.id}/events`, {
           title: '5-stack customs',
           startsAt,
-          gameId: 'val',
+          gameId: 'shelf',
         })
         .expect(201)
     ).body;
     expect(event).toMatchObject({
       groupId: group.id,
       title: '5-stack customs',
-      game: { id: 'val' },
+      game: { id: 'shelf' },
       goingCount: 0,
       imGoing: false,
       createdBy: { id: member.id },
@@ -500,7 +500,7 @@ describe('groups', () => {
     const game = await them.group({
       name: `PUBG ${tag}`,
       kind: 'game',
-      gameId: 'pubg',
+      gameId: 'chess',
       approval: true,
     });
     const campus = await them.group({

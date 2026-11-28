@@ -19,25 +19,27 @@ describe('GET /v1/games', () => {
   });
   afterAll(() => app.close());
 
-  it('returns the whole catalog in the app’s order', () => {
-    expect(body).toHaveLength(49);
-    expect(body[0]!.id).toBe('val');
+  it('is Chess alone (ADR-0015)', () => {
+    expect(body.map((g) => g.id)).toEqual(['chess']);
+    expect(body[0]).toMatchObject({
+      name: 'Chess',
+      platforms: ['chess_com', 'lichess'],
+      maxParty: 2,
+      isLaunch: true,
+      hasRanks: true,
+    });
   });
 
-  it('gives each game its ladder lowest first, with modes', () => {
-    const val = body.find((g) => g.id === 'val')!;
-    expect(val.ranks.map((r) => r.tier)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]);
-    expect(val.ranks[5]!.name).toBe('Diamond');
-    expect(val.platforms).toEqual(['pc', 'playstation', 'xbox']);
-    expect(val.modes.map((m) => m.name).sort()).toEqual(['Casual', 'Ranked', 'Unrated']);
-  });
-
-  it('marks the launch games', () => {
-    expect(
-      body
-        .filter((g) => g.isLaunch)
-        .map((g) => g.id)
-        .sort(),
-    ).toEqual(['codm', 'efootball', 'pubg']);
+  it('gives Chess its rating bands lowest first and its time controls', () => {
+    const chess = body[0]!;
+    expect(chess.ranks.map((r) => r.tier)).toEqual([0, 1, 2, 3, 4]);
+    expect(chess.ranks[0]!.name).toBe('Beginner (under 1000)');
+    expect(chess.ranks[4]!.name).toBe('2200+');
+    expect(chess.modes.map((m) => m.name).sort()).toEqual([
+      'Blitz',
+      'Bullet',
+      'Classical',
+      'Rapid',
+    ]);
   });
 });

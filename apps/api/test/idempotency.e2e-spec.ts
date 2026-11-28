@@ -43,7 +43,7 @@ async function player() {
   await http()
     .put('/v1/me/games')
     .set(auth)
-    .send({ games: [{ gameId: 'pubg' }] })
+    .send({ games: [{ gameId: 'chess' }] })
     .expect(200);
   await http().post('/v1/me/onboard').set(auth).expect(204);
   await conn.db.update(users).set({ emailVerifiedAt: new Date() }).where(eq(users.id, userId));
@@ -59,10 +59,10 @@ async function player() {
 }
 
 const listing = (overrides: object = {}) => ({
-  gameId: 'pubg',
-  platform: 'mobile',
-  partySize: 4,
-  voice: 'required',
+  gameId: 'chess',
+  platform: 'chess_com',
+  partySize: 2,
+  voice: 'optional',
   style: 'competitive',
   playWhen: 'now',
   durationHours: 2,
@@ -102,7 +102,7 @@ describe('Idempotency-Key', () => {
 
     await http().post(`/v1/connection-requests/${req.id}/accept`).set(them.auth).expect(200);
     const inviteKey = randomUUID();
-    const invite = { toUserId: them.id, gameId: 'pubg', playWhen: 'now' };
+    const invite = { toUserId: them.id, gameId: 'chess', playWhen: 'now' };
     const sent = (await me.post('/v1/play-invites', invite, inviteKey).expect(201)).body;
     expect((await me.post('/v1/play-invites', invite, inviteKey).expect(201)).body).toEqual(sent);
   });
@@ -129,7 +129,7 @@ describe('Idempotency-Key', () => {
     const me = await player();
     const key = randomUUID();
     await me.post('/v1/listings', listing(), key).expect(201);
-    const res = await me.post('/v1/listings', listing({ partySize: 3 }), key).expect(422);
+    const res = await me.post('/v1/listings', listing({ style: 'casual' }), key).expect(422);
     expect(res.body.error.code).toBe('idempotency_key_reused');
   });
 

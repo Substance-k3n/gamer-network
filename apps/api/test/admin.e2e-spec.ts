@@ -22,7 +22,7 @@ const conn = createDb(TEST_DATABASE_URL);
 
 beforeAll(async () => ({ app } = await createTestApp()));
 afterAll(async () => {
-  await conn.db.update(games).set({ isLaunch: true }).where(eq(games.id, 'efootball'));
+  await conn.db.update(games).set({ isLaunch: true }).where(eq(games.id, 'practice'));
   await app.close();
   await conn.client.end();
 });
@@ -47,7 +47,7 @@ async function player({ admin = false, live = true } = {}) {
     await http()
       .put('/v1/me/games')
       .set(auth)
-      .send({ games: [{ gameId: 'pubg' }] })
+      .send({ games: [{ gameId: 'chess' }] })
       .expect(200);
     await http().post('/v1/me/onboard').set(auth).expect(204);
   }
@@ -61,14 +61,14 @@ async function player({ admin = false, live = true } = {}) {
     get: (path: string) => http().get(path).set(auth),
     post: (path: string, body?: object) => http().post(path).set(auth).send(body),
     patch: (path: string, body: object) => http().patch(path).set(auth).send(body),
-    list: async (gameId = 'pubg') =>
+    list: async (gameId = 'chess') =>
       (
         await http()
           .post('/v1/listings')
           .set(auth)
           .send({
             gameId,
-            platform: 'mobile',
+            platform: 'chess_com',
             partySize: 2,
             voice: 'optional',
             style: 'casual',
@@ -244,7 +244,7 @@ describe('users', () => {
     const target = await player();
     const found = (await admin.get(`/v1/admin/users?query=${target.username}`)).body.items;
     expect(found.map((u: { id: string }) => u.id)).toEqual([target.id]);
-    expect(found[0]).toMatchObject({ mainGame: 'PUBG Mobile', onboarded: true });
+    expect(found[0]).toMatchObject({ mainGame: 'Chess', onboarded: true });
     expect(
       (await admin.get(`/v1/admin/users?query=${target.username}&state=banned`)).body.items,
     ).toEqual([]);
@@ -255,11 +255,11 @@ describe('games', () => {
   it('takes a game off Find Players', async () => {
     const admin = await player({ admin: true });
     const p = await player();
-    await admin.patch('/v1/admin/games/efootball', { isLaunch: false }).expect(200);
+    await admin.patch('/v1/admin/games/practice', { isLaunch: false }).expect(200);
     await p
       .post('/v1/listings', {
-        gameId: 'efootball',
-        platform: 'mobile',
+        gameId: 'practice',
+        platform: 'chess_com',
         partySize: 2,
         voice: 'optional',
         style: 'casual',
@@ -267,8 +267,8 @@ describe('games', () => {
         durationHours: 2,
       })
       .expect(422);
-    await admin.patch('/v1/admin/games/efootball', { isLaunch: true }).expect(200);
-    await p.list('efootball');
+    await admin.patch('/v1/admin/games/practice', { isLaunch: true }).expect(200);
+    await p.list('practice');
     await admin.patch('/v1/admin/games/nope', { isLaunch: true }).expect(404);
   });
 });

@@ -52,7 +52,7 @@ async function player({ admin = false } = {}) {
   await http()
     .put('/v1/me/games')
     .set(auth)
-    .send({ games: [{ gameId: 'pubg' }] })
+    .send({ games: [{ gameId: 'chess' }] })
     .expect(200);
   await http().post('/v1/me/onboard').set(auth).expect(204);
   await conn.db
@@ -119,12 +119,12 @@ describe('posts', () => {
       'meme',
     ];
     for (const type of types) {
-      const post = await me.postIt({ type, gameId: 'pubg', text: `  ${type} text  ` });
+      const post = await me.postIt({ type, gameId: 'chess', text: `  ${type} text  ` });
       expect(post).toMatchObject({
         type,
         kind: type === 'discussion' ? 'discussion' : 'text',
         text: `${type} text`,
-        game: { id: 'pubg' },
+        game: { id: 'chess' },
         audience: 'everyone',
         author: { id: me.id, username: me.username },
         ggCount: 0,
@@ -172,11 +172,13 @@ describe('posts', () => {
 
   it('allows 10 posts an hour, then 429 with Retry-After', async () => {
     const me = await player();
-    await conn.db
-      .insert(posts)
-      .values(
-        Array.from({ length: 10 }, () => ({ authorId: me.id, type: 'meme' as const, text: 'lol' })),
-      );
+    await conn.db.insert(posts).values(
+      Array.from({ length: 10 }, () => ({
+        authorId: me.id,
+        type: 'meme' as const,
+        text: 'shelf',
+      })),
+    );
     const res = await me.post('/v1/posts', { type: 'meme', text: 'one more' }).expect(429);
     expect(res.body.error.code).toBe('rate_limited');
     expect(Number(res.headers['retry-after'])).toBeGreaterThan(0);
@@ -200,9 +202,9 @@ describe('the feed', () => {
     const friend = await player();
     const stranger = await player();
     await connect(me, friend);
-    const friendLfg = await friend.postIt({ type: 'looking_for_players', gameId: 'codm' });
-    const strangerPost = await stranger.postIt({ gameId: 'pubg' });
-    const mine = await me.postIt({ gameId: 'pubg' });
+    const friendLfg = await friend.postIt({ type: 'looking_for_players', gameId: 'practice' });
+    const strangerPost = await stranger.postIt({ gameId: 'chess' });
+    const mine = await me.postIt({ gameId: 'chess' });
 
     const forYou = await feedIds(me, 'filter=for_you', friendLfg.id);
     expect(forYou).toEqual(expect.arrayContaining([mine.id, strangerPost.id, friendLfg.id]));
@@ -214,7 +216,7 @@ describe('the feed', () => {
     expect(lfg).toContain(friendLfg.id);
     expect(lfg).not.toContain(mine.id);
 
-    const pubg = await feedIds(me, 'filter=game&game=pubg', strangerPost.id);
+    const pubg = await feedIds(me, 'filter=game&game=chess', strangerPost.id);
     expect(pubg).toEqual(expect.arrayContaining([mine.id, strangerPost.id]));
     expect(pubg).not.toContain(friendLfg.id);
     await me.get('/v1/feed?filter=game').expect(422);
@@ -538,13 +540,13 @@ describe('moderation', () => {
 describe('share pages and the app switch', () => {
   it('serves public posts for everyone without sign-in, nothing else', async () => {
     const me = await player();
-    const post = await me.postIt({ text: 'x'.repeat(400), gameId: 'pubg' });
+    const post = await me.postIt({ text: 'x'.repeat(400), gameId: 'chess' });
     const res = await http().get(`/v1/public/posts/${post.id}`).expect(200);
     expect(res.body).toMatchObject({
       id: post.id,
       type: 'milestone',
       author: { username: me.username },
-      game: { id: 'pubg' },
+      game: { id: 'chess' },
     });
     expect(res.body.text).toHaveLength(300);
     expect(res.body.author.id).toBeUndefined();

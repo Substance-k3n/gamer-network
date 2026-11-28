@@ -54,7 +54,7 @@ async function player() {
   await http()
     .put('/v1/me/games')
     .set(auth)
-    .send({ games: [{ gameId: 'pubg' }] })
+    .send({ games: [{ gameId: 'chess' }] })
     .expect(200);
   await http().post('/v1/me/onboard').set(auth).expect(204);
   await conn.db.update(users).set({ emailVerifiedAt: new Date() }).where(eq(users.id, userId));
@@ -81,7 +81,7 @@ describe('blocking', () => {
     await connect(me.id, them.id);
     const invite = (
       await them
-        .post('/v1/play-invites', { toUserId: me.id, gameId: 'pubg', playWhen: 'now' })
+        .post('/v1/play-invites', { toUserId: me.id, gameId: 'chess', playWhen: 'now' })
         .expect(201)
     ).body;
     await conn.db
@@ -152,8 +152,8 @@ describe('reports and the waitlist', () => {
     const listing = (
       await other
         .post('/v1/listings', {
-          gameId: 'pubg',
-          platform: 'mobile',
+          gameId: 'chess',
+          platform: 'chess_com',
           partySize: 2,
           voice: 'optional',
           style: 'casual',
@@ -186,8 +186,8 @@ describe('deleting an account', () => {
     const listing = (
       await me
         .post('/v1/listings', {
-          gameId: 'pubg',
-          platform: 'mobile',
+          gameId: 'chess',
+          platform: 'chess_com',
           partySize: 2,
           voice: 'optional',
           style: 'casual',
@@ -230,7 +230,7 @@ describe('deleting an account', () => {
   it('erases personal data 30 days later', async () => {
     const me = await player();
     await me
-      .put('/v1/me/gaming-ids', { gamingIds: [{ kind: 'discord', value: 'me#1' }] })
+      .put('/v1/me/gaming-ids', { gamingIds: [{ kind: 'lichess', value: 'me_1' }] })
       .expect(200);
     await me.del('/v1/me', { password: PASSWORD }).expect(204);
     await conn.db

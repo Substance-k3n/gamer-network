@@ -16,7 +16,7 @@ import {
   Min,
 } from 'class-validator';
 import { USERNAME, USERNAME_RULE } from '../auth/auth.dto.js';
-import { type Platform, PLATFORMS } from '../common/enums.dto.js';
+import { type Platform, PLATFORMS, PLAY_PLATFORMS } from '../common/enums.dto.js';
 import { AGE_RANGES, type AgeRange } from '../me/profile.dto.js';
 import { RankDto } from '../games/games.dto.js';
 
@@ -112,7 +112,7 @@ class GameFields {
   @ApiProperty({ enum: PLATFORMS, enumName: 'Platform', isArray: true })
   @IsArray()
   @ArrayMinSize(1, { message: 'Pick at least one platform' })
-  @IsIn(PLATFORMS, { each: true })
+  @IsIn(PLAY_PLATFORMS, { each: true, message: 'Pick Chess.com or Lichess' })
   platforms: Platform[];
 
   /** False when the ladder is play-style levels rather than ranks. */
@@ -164,7 +164,7 @@ export class UpdateGameBody {
   @IsOptional()
   @IsArray()
   @ArrayMinSize(1, { message: 'Pick at least one platform' })
-  @IsIn(PLATFORMS, { each: true })
+  @IsIn(PLAY_PLATFORMS, { each: true, message: 'Pick Chess.com or Lichess' })
   platforms?: Platform[];
 
   @IsOptional()

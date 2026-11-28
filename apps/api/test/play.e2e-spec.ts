@@ -50,7 +50,7 @@ async function player() {
   await http()
     .put('/v1/me/games')
     .set(auth)
-    .send({ games: [{ gameId: 'pubg' }] })
+    .send({ games: [{ gameId: 'chess' }] })
     .expect(200);
   await http().post('/v1/me/onboard').set(auth).expect(204);
   await conn.db.update(users).set({ emailVerifiedAt: new Date() }).where(eq(users.id, userId));
@@ -60,7 +60,7 @@ async function player() {
     get: (path: string) => http().get(path).set(auth),
     post: (path: string, body?: object) => http().post(path).set(auth).send(body),
     invite: (to: { id: string }, playWhen = 'now') =>
-      p.post('/v1/play-invites', { toUserId: to.id, gameId: 'codm', playWhen }),
+      p.post('/v1/play-invites', { toUserId: to.id, gameId: 'practice', playWhen }),
   };
   return p;
 }
@@ -81,7 +81,7 @@ describe('play invites', () => {
     expect(body).toMatchObject({
       from: { id: a.id },
       to: { id: b.id },
-      game: { id: 'codm' },
+      game: { id: 'practice' },
       playWhen: 'now',
       status: 'pending',
     });

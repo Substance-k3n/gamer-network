@@ -2,7 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import { IsIn, IsInt, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from 'class-validator';
 import { PageQuery } from '../common/cursor.js';
-import { type Platform, PLATFORMS } from '../common/enums.dto.js';
+import { type Platform, PLATFORMS, PLAY_PLATFORMS } from '../common/enums.dto.js';
 import {
   type Duration,
   DURATIONS,
@@ -31,20 +31,24 @@ export class CreateListingBody {
   @IsUUID('7')
   rankId?: string;
 
-  /** One of the game's platforms. */
+  /** One of the game's platforms: Chess.com or Lichess. */
   @ApiProperty({ enum: PLATFORMS, enumName: 'Platform' })
-  @IsIn(PLATFORMS)
+  @IsIn(PLAY_PLATFORMS, { message: 'Pick Chess.com or Lichess' })
   platform: Platform;
 
-  /** Whole party including you, up to the game's maxParty. */
+  /** Whole party including you, up to the game's maxParty. Chess is 1v1: defaults to 2. */
+  @ApiPropertyOptional({ default: 2, minimum: 2, maximum: 5 })
+  @IsOptional()
   @IsInt()
   @Min(2)
   @Max(5)
-  partySize: number;
+  partySize: number = 2;
 
-  @ApiProperty({ enum: VOICES, enumName: 'Voice' })
+  /** Chess doesn't ask: defaults to optional. */
+  @ApiPropertyOptional({ enum: VOICES, enumName: 'Voice', default: 'optional' })
+  @IsOptional()
   @IsIn(VOICES)
-  voice: Voice;
+  voice: Voice = 'optional';
 
   @ApiProperty({ enum: PLAY_STYLES, enumName: 'PlayStyle' })
   @IsIn(PLAY_STYLES)

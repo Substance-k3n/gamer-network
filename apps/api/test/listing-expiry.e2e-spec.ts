@@ -44,7 +44,7 @@ async function postedListing() {
   await http()
     .put('/v1/me/games')
     .set(auth)
-    .send({ games: [{ gameId: 'pubg' }] })
+    .send({ games: [{ gameId: 'chess' }] })
     .expect(200);
   await http().post('/v1/me/onboard').set(auth).expect(204);
   await conn.db.update(users).set({ emailVerifiedAt: new Date() }).where(eq(users.id, userId));
@@ -52,8 +52,8 @@ async function postedListing() {
     .post('/v1/listings')
     .set(auth)
     .send({
-      gameId: 'pubg',
-      platform: 'mobile',
+      gameId: 'chess',
+      platform: 'chess_com',
       partySize: 2,
       voice: 'optional',
       style: 'casual',
