@@ -3,8 +3,8 @@
 The API runs on Render's free tier (ADR-0008), described by
 `render.yaml` at the repo root, with Postgres on Neon's free tier
 (ADR-0010). `main` deploys it: merging a release is the API's deploy.
-The web app and the admin run on Cloudflare Workers' free plan and
-deploy with `wrangler` (ADR-0014, §4).
+The web app and the admin run on Cloudflare Workers' free plan; `main`
+deploys them too, from GitHub Actions (ADR-0014, §4).
 
 **Free-tier limits, know them before the beta:**
 
@@ -110,8 +110,8 @@ Release `dev` → `main` (`release/YYYY-MM-DD`). Render builds the API
 image and switches over only once the new API answers `/health`. The
 API migrates before it starts listening, so a failed migration fails the
 deploy and the old version keeps running. Roll back from the service's
-Events page ("Rollback"). The web Worker doesn't follow `main`: deploy it
-from the merged `main` with `pnpm --filter @app/web deploy:cf` (§4).
+Events page ("Rollback"). The same merge deploys the web and admin
+Workers through the Deploy Workers workflow (§4).
 
 **Check the new code is really live**, not just that the server
 answers: the deploy in the service's Events page should show the merge
@@ -138,12 +138,26 @@ ADR-0014. Each app is a Worker built with OpenNext; its settings are in
 | `gn-web`   | `https://gn-web.rally-et.workers.dev`   |
 | `gn-admin` | `https://gn-admin.rally-et.workers.dev` |
 
-Deploy from a checkout of `main` (`npx wrangler login` once):
+Every push to `main` deploys both, from `.github/workflows/deploy-workers.yml`.
+Its Actions run should be green and `npx wrangler deployments list` (from
+the app's folder) should show a new version. Re-run it from the Actions tab
+("Run workflow") to redeploy without a merge. It needs two repository
+secrets, set once:
+
+| Secret                  | Value                                                                                                                 |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `CLOUDFLARE_API_TOKEN`  | Cloudflare dashboard → My Profile → API Tokens → Create Token → "Edit Cloudflare Workers" template, this account only |
+| `CLOUDFLARE_ACCOUNT_ID` | Workers & Pages overview, right-hand column                                                                           |
+
+By hand, from a checkout of `main` (`npx wrangler login` once):
 
 ```sh
 pnpm --filter @app/web deploy:cf
 pnpm --filter @app/admin deploy:cf
 ```
+
+A "request to Cloudflare's API timed out" from `wrangler` is usually the
+network, not the login or the build: retry.
 
 Secrets, set once per Worker from its folder:
 `npx wrangler secret put CONTACT_EMAIL` (and later

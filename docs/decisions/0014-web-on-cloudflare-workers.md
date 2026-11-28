@@ -48,6 +48,8 @@ of which run on Workers without a rewrite.
   `WEB_ORIGINS` on the API, and the mobile app's share links and App
   Links, change with them.
 - Two hosts to deploy: Render follows `main` for the API; the web and
-  the admin deploy with `wrangler` (`pnpm --filter @app/<app> deploy:cf`).
+  the admin deploy with `wrangler` (`pnpm --filter @app/<app> deploy:cf`),
+  which GitHub Actions runs on every push to `main` (added 2026-10-30,
+  after the admin sat a day behind `main`).
 - Neon's free compute is shared with the `/health` ping; watch its usage
   page during the trial.
